@@ -4,10 +4,10 @@ use insta::{assert_debug_snapshot, with_settings};
 use loco_rs::testing::prelude::*;
 use multitenancy::{
     app::App,
-    models::{_entities::tenants as tenant_entity, users},
+    models::{_entities::tenants as tenant_entity, roles, users},
 };
 use rstest::rstest;
-use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter};
+use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder};
 use serial_test::serial;
 
 use super::prepare_data;
@@ -124,7 +124,7 @@ async fn can_register_an_account_without_a_workspace() {
 #[tokio::test]
 #[serial]
 async fn authenticated_user_can_create_another_workspace() {
-    request::<App, _, _>(|request, _ctx| async move {
+    request::<App, _, _>(|request, ctx| async move {
         let registration = request
             .post("/api/auth/register-account")
             .json(&serde_json::json!({
@@ -179,6 +179,17 @@ async fn authenticated_user_can_create_another_workspace() {
 
         let tenant_id = workspace["tenant_id"].as_i64().unwrap();
         let application_id = workspace["applications"][0]["id"].as_i64().unwrap();
+        let role_names: Vec<String> = roles::Entity::find()
+            .filter(roles::Column::TenantId.eq(tenant_id))
+            .order_by_asc(roles::Column::Id)
+            .all(&ctx.db)
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|role| role.name)
+            .collect();
+        assert_eq!(role_names, ["Owner", "Manager", "Viewer"]);
+
         let document = request
             .post(&format!(
                 "/api/tenants/{tenant_id}/applications/{application_id}/documents"
@@ -555,7 +566,7 @@ async fn can_auth_with_magic_link() {
         seed::<App>(&ctx).await.unwrap();
 
         let payload = serde_json::json!({
-            "email": "user1@example.com",
+            "email": "john@example.com",
         });
         let response = request.post("/api/auth/magic-link").json(&payload).await;
         assert_eq!(
@@ -578,7 +589,7 @@ async fn can_auth_with_magic_link() {
         //     assert_debug_snapshot!(deliveries.messages);
         // });
 
-        let user = users::Model::find_by_email(&ctx.db, "user1@example.com")
+        let user = users::Model::find_by_email(&ctx.db, "john@example.com")
             .await
             .expect("User should be found");
 

@@ -5,15 +5,3 @@
   status: active
   created_at: "2026-01-01T00:00:00Z"
   updated_at: "2026-01-01T00:00:00Z"
-- id: 2
-  tenant_id: 2
-  application_id: 1
-  status: active
-  created_at: "2026-01-01T00:00:00Z"
-  updated_at: "2026-01-01T00:00:00Z"
-- id: 3
-  tenant_id: 1
-  application_id: 2
-  status: inactive
-  created_at: "2026-01-01T00:00:00Z"
-  updated_at: "2026-01-01T00:00:00Z"

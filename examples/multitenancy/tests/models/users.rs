@@ -82,7 +82,7 @@ async fn handle_create_with_password_with_duplicate() {
     let new_user = Model::create_with_password(
         &boot.app_context.db,
         &RegisterParams {
-            email: "user1@example.com".to_string(),
+            email: "john@example.com".to_string(),
             password: "1234".to_string(),
             name: "framework".to_string(),
         },
@@ -104,7 +104,7 @@ async fn can_find_by_email() {
         .await
         .expect("Failed to seed database");
 
-    let existing_user = Model::find_by_email(&boot.app_context.db, "user1@example.com").await;
+    let existing_user = Model::find_by_email(&boot.app_context.db, "john@example.com").await;
     let non_existing_user_results =
         Model::find_by_email(&boot.app_context.db, "un@existing-email.com").await;
 
@@ -279,7 +279,7 @@ async fn can_reset_password() {
         .expect("Failed to find user by PID");
 
     assert!(
-        user.verify_password("12341234"),
+        user.verify_password("password"),
         "Password verification failed for original password"
     );
 

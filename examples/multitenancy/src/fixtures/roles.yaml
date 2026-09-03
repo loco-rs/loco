@@ -1,6 +1,16 @@
 ---
 - id: 1
   tenant_id: 1
-  name: Editor
+  name: Owner
+  created_at: "2026-01-01T00:00:00Z"
+  updated_at: "2026-01-01T00:00:00Z"
+- id: 2
+  tenant_id: 1
+  name: Manager
+  created_at: "2026-01-01T00:00:00Z"
+  updated_at: "2026-01-01T00:00:00Z"
+- id: 3
+  tenant_id: 1
+  name: Viewer
   created_at: "2026-01-01T00:00:00Z"
   updated_at: "2026-01-01T00:00:00Z"

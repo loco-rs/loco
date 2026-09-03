@@ -1,1 +1,2 @@
+mod tenants;
 mod users;

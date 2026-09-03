@@ -14,6 +14,55 @@ pub struct CreatedWorkspace {
     pub application: applications::Model,
 }
 
+async fn create_role(
+    txn: &DatabaseTransaction,
+    tenant_id: i64,
+    name: &str,
+) -> ModelResult<roles::Model> {
+    roles::ActiveModel {
+        name: Set(name.to_owned()),
+        ..Default::default()
+    }
+    .set_tenant(tenant_id)?
+    .insert(txn)
+    .await
+    .map_err(ModelError::from)
+}
+
+async fn create_permission(
+    txn: &DatabaseTransaction,
+    tenant_id: i64,
+    tenant_application_id: i64,
+    key: &str,
+) -> ModelResult<permissions::Model> {
+    permissions::ActiveModel {
+        tenant_application_id: Set(tenant_application_id),
+        key: Set(key.to_owned()),
+        ..Default::default()
+    }
+    .set_tenant(tenant_id)?
+    .insert(txn)
+    .await
+    .map_err(ModelError::from)
+}
+
+async fn grant_permission(
+    txn: &DatabaseTransaction,
+    tenant_id: i64,
+    role_id: i64,
+    permission_id: i64,
+) -> ModelResult<()> {
+    role_permissions::ActiveModel {
+        role_id: Set(role_id),
+        permission_id: Set(permission_id),
+        ..Default::default()
+    }
+    .set_tenant(tenant_id)?
+    .insert(txn)
+    .await?;
+    Ok(())
+}
+
 #[async_trait::async_trait]
 impl ActiveModelBehavior for ActiveModel {
     async fn before_save<C>(self, _db: &C, insert: bool) -> std::result::Result<Self, DbErr>
@@ -88,41 +137,31 @@ impl Model {
         .insert(txn)
         .await?;
 
-        let role = roles::ActiveModel {
-            name: Set("Owner".to_owned()),
-            ..Default::default()
-        }
-        .set_tenant(tenant.id)?
-        .insert(txn)
-        .await?;
+        let owner = create_role(txn, tenant.id, "Owner").await?;
+        let manager = create_role(txn, tenant.id, "Manager").await?;
+        let viewer = create_role(txn, tenant.id, "Viewer").await?;
 
         tenant_member_roles::ActiveModel {
             tenant_member_id: Set(member.id),
-            role_id: Set(role.id),
+            role_id: Set(owner.id),
             ..Default::default()
         }
         .set_tenant(tenant.id)?
         .insert(txn)
         .await?;
 
-        for key in ["documents:read", "documents:create"] {
-            let permission = permissions::ActiveModel {
-                tenant_application_id: Set(subscription.id),
-                key: Set(key.to_owned()),
-                ..Default::default()
-            }
-            .set_tenant(tenant.id)?
-            .insert(txn)
-            .await?;
-
-            role_permissions::ActiveModel {
-                role_id: Set(role.id),
-                permission_id: Set(permission.id),
-                ..Default::default()
-            }
-            .set_tenant(tenant.id)?
-            .insert(txn)
-            .await?;
+        let read_permission =
+            create_permission(txn, tenant.id, subscription.id, "documents:read").await?;
+        let create_permission =
+            create_permission(txn, tenant.id, subscription.id, "documents:create").await?;
+        for (role_id, permission_id) in [
+            (owner.id, read_permission.id),
+            (owner.id, create_permission.id),
+            (manager.id, read_permission.id),
+            (manager.id, create_permission.id),
+            (viewer.id, read_permission.id),
+        ] {
+            grant_permission(txn, tenant.id, role_id, permission_id).await?;
         }
 
         Ok(CreatedWorkspace {

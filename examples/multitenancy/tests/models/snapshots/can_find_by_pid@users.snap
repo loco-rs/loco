@@ -5,6 +5,6 @@ expression: "existing_user.map(|user| (user.pid, user.email))"
 Ok(
     (
         11111111-1111-1111-1111-111111111111,
-        "user1@example.com",
+        "john@example.com",
     ),
 )

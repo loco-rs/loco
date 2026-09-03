@@ -37,12 +37,13 @@ cargo loco start
 
 The example inherits the framework from the repository root through a local
 path dependency, so it always exercises the code in the current checkout.
-Open <http://localhost:5150> and log in with `user1@example.com` / `12341234`.
-The seeded editor can list and create Acme documents. You can also register an
-account with your name, email, and password. After registration, the workspace
-modal opens so you can name your first tenant; its slug is generated
-automatically. Workspace creation atomically adds the tenant, owner membership,
-Documents subscription, and read/create permissions.
+Open <http://localhost:5150> and log in with `john@example.com` / `password`.
+The seeded owner can list and create Designer documents. You can also register
+an account with your name, email, and password. After registration, the
+workspace modal opens so you can name your first tenant; its slug is generated
+automatically. Workspace creation atomically adds the tenant, Owner, Manager,
+and Viewer roles, assigns the creator as Owner, and provisions the Documents
+subscription with role-appropriate permissions.
 
 The `--reset` flag makes repeated demo setup predictable by clearing existing
 rows before loading the fixed-ID fixtures. It deletes accounts and tenants you
