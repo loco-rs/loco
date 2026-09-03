@@ -10,6 +10,7 @@ use crate::{
 };
 use loco_rs::prelude::*;
 use regex::Regex;
+use sea_orm::QueryOrder;
 use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
 
@@ -192,6 +193,7 @@ async fn workspaces(
 ) -> Result<Response> {
     let memberships = tenant_members::Entity::find()
         .filter(tenant_members::Column::UserId.eq(auth.user.id))
+        .order_by_asc(tenant_members::Column::Id)
         .all(&ctx.db)
         .await?;
     let mut workspaces = Vec::with_capacity(memberships.len());
@@ -204,6 +206,7 @@ async fn workspaces(
         let subscriptions = tenant_applications::Entity::find()
             .in_tenant(tenant.id)
             .filter(tenant_applications::Column::Status.eq("active"))
+            .order_by_asc(tenant_applications::Column::Id)
             .find_also_related(applications::Entity)
             .all(&ctx.db)
             .await?;

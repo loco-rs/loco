@@ -15,3 +15,11 @@
   status: pending
   created_at: "2026-01-03T00:00:00Z"
   updated_at: "2026-01-03T00:00:00Z"
+- id: 3
+  tenant_id: 2
+  tenant_application_id: 5
+  number: INV-DEV-1001
+  amount_cents: 9900
+  status: paid
+  created_at: "2026-01-03T00:00:00Z"
+  updated_at: "2026-01-03T00:00:00Z"

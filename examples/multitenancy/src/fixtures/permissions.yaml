@@ -23,3 +23,33 @@
   key: billing:manage
   created_at: "2026-01-01T00:00:00Z"
   updated_at: "2026-01-01T00:00:00Z"
+- id: 5
+  tenant_id: 2
+  tenant_application_id: 4
+  key: documents:read
+  created_at: "2026-01-01T00:00:00Z"
+  updated_at: "2026-01-01T00:00:00Z"
+- id: 6
+  tenant_id: 2
+  tenant_application_id: 4
+  key: documents:create
+  created_at: "2026-01-01T00:00:00Z"
+  updated_at: "2026-01-01T00:00:00Z"
+- id: 7
+  tenant_id: 2
+  tenant_application_id: 5
+  key: billing:read
+  created_at: "2026-01-01T00:00:00Z"
+  updated_at: "2026-01-01T00:00:00Z"
+- id: 8
+  tenant_id: 2
+  tenant_application_id: 5
+  key: billing:manage
+  created_at: "2026-01-01T00:00:00Z"
+  updated_at: "2026-01-01T00:00:00Z"
+- id: 9
+  tenant_id: 2
+  tenant_application_id: 6
+  key: analytics:read
+  created_at: "2026-01-01T00:00:00Z"
+  updated_at: "2026-01-01T00:00:00Z"

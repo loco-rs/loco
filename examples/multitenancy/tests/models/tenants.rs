@@ -11,7 +11,7 @@ use serial_test::serial;
 
 #[tokio::test]
 #[serial]
-async fn seed_creates_the_designer_workspace_and_roles() {
+async fn seed_creates_two_workspaces_with_application_subscriptions() {
     let boot = boot_test::<App>().await.unwrap();
     seed::<App>(&boot.app_context).await.unwrap();
     let db = &boot.app_context.db;
@@ -21,14 +21,17 @@ async fn seed_creates_the_designer_workspace_and_roles() {
     assert_eq!(user.email, "john@example.com");
     assert!(user.verify_password("password"));
 
-    let tenant = tenants::Entity::find_by_id(1)
-        .one(db)
+    let seeded_tenants = tenants::Entity::find()
+        .order_by_asc(tenants::Column::Id)
+        .all(db)
         .await
-        .unwrap()
         .unwrap();
     assert_eq!(
-        (tenant.name.as_str(), tenant.slug.as_str()),
-        ("Designer", "designer")
+        seeded_tenants
+            .iter()
+            .map(|tenant| (tenant.name.as_str(), tenant.slug.as_str()))
+            .collect::<Vec<_>>(),
+        [("Designer", "designer"), ("Developer", "developer")]
     );
 
     let application_names = applications::Entity::find()
@@ -39,17 +42,31 @@ async fn seed_creates_the_designer_workspace_and_roles() {
         .into_iter()
         .map(|application| application.name)
         .collect::<Vec<_>>();
-    assert_eq!(application_names, ["Documents", "Billing"]);
+    assert_eq!(application_names, ["Documents", "Billing", "Analytics"]);
 
     let subscriptions = tenant_applications::Entity::find()
         .order_by_asc(tenant_applications::Column::Id)
         .all(db)
         .await
         .unwrap();
-    assert_eq!(subscriptions.len(), 2);
-    assert!(subscriptions
-        .iter()
-        .all(|subscription| subscription.tenant_id == 1 && subscription.status == "active"));
+    assert_eq!(
+        subscriptions
+            .iter()
+            .map(|subscription| (
+                subscription.tenant_id,
+                subscription.application_id,
+                subscription.status.as_str()
+            ))
+            .collect::<Vec<_>>(),
+        [
+            (1, 1, "active"),
+            (1, 2, "active"),
+            (1, 3, "inactive"),
+            (2, 1, "active"),
+            (2, 2, "active"),
+            (2, 3, "active")
+        ]
+    );
 
     let member = tenant_members::Entity::find_by_id(1)
         .one(db)
@@ -66,14 +83,17 @@ async fn seed_creates_the_designer_workspace_and_roles() {
         .into_iter()
         .map(|role| role.name)
         .collect();
-    assert_eq!(role_names, ["Owner", "Manager", "Viewer"]);
+    assert_eq!(
+        role_names,
+        ["Owner", "Manager", "Viewer", "Owner", "Manager", "Viewer"]
+    );
 
     let members = tenant_members::Entity::find()
         .order_by_asc(tenant_members::Column::Id)
         .all(db)
         .await
         .unwrap();
-    assert_eq!(members.len(), 3);
+    assert_eq!(members.len(), 4);
 
     let assigned_roles = tenant_member_roles::Entity::find()
         .order_by_asc(tenant_member_roles::Column::Id)
@@ -83,7 +103,7 @@ async fn seed_creates_the_designer_workspace_and_roles() {
         .into_iter()
         .map(|assignment| (assignment.tenant_member_id, assignment.role_id))
         .collect::<Vec<_>>();
-    assert_eq!(assigned_roles, [(1, 1), (2, 2), (3, 3)]);
+    assert_eq!(assigned_roles, [(1, 1), (2, 2), (3, 3), (4, 4)]);
 
     let permission_keys: Vec<String> = permissions::Entity::find()
         .order_by_asc(permissions::Column::Id)
@@ -99,7 +119,12 @@ async fn seed_creates_the_designer_workspace_and_roles() {
             "documents:read",
             "documents:create",
             "billing:read",
-            "billing:manage"
+            "billing:manage",
+            "documents:read",
+            "documents:create",
+            "billing:read",
+            "billing:manage",
+            "analytics:read"
         ]
     );
 
@@ -121,18 +146,35 @@ async fn seed_creates_the_designer_workspace_and_roles() {
             (2, 1),
             (2, 2),
             (2, 3),
-            (3, 1)
+            (3, 1),
+            (4, 5),
+            (4, 6),
+            (4, 7),
+            (4, 8),
+            (4, 9),
+            (5, 5),
+            (5, 6),
+            (5, 7),
+            (5, 9),
+            (6, 5),
+            (6, 9)
         ]
     );
 
-    let document = documents::Entity::find_by_id(1)
-        .one(db)
+    let seeded_documents = documents::Entity::find()
+        .order_by_asc(documents::Column::Id)
+        .all(db)
         .await
-        .unwrap()
         .unwrap();
     assert_eq!(
-        (document.tenant_id, document.title.as_str()),
-        (1, "Designer onboarding")
+        seeded_documents
+            .iter()
+            .map(|document| (document.tenant_id, document.title.as_str()))
+            .collect::<Vec<_>>(),
+        [
+            (1, "Designer onboarding"),
+            (2, "Developer architecture notes")
+        ]
     );
 
     let seeded_invoices = invoices::Entity::find()
@@ -140,7 +182,8 @@ async fn seed_creates_the_designer_workspace_and_roles() {
         .all(db)
         .await
         .unwrap();
-    assert_eq!(seeded_invoices.len(), 2);
+    assert_eq!(seeded_invoices.len(), 3);
     assert_eq!(seeded_invoices[0].number, "INV-1001");
     assert_eq!(seeded_invoices[1].status, "pending");
+    assert_eq!(seeded_invoices[2].number, "INV-DEV-1001");
 }
