@@ -11,7 +11,7 @@ use serial_test::serial;
 
 #[tokio::test]
 #[serial]
-async fn seed_creates_two_workspaces_with_application_subscriptions() {
+async fn seed_creates_two_workspaces_with_application_availability() {
     let boot = boot_test::<App>().await.unwrap();
     seed::<App>(&boot.app_context).await.unwrap();
     let db = &boot.app_context.db;
@@ -42,20 +42,30 @@ async fn seed_creates_two_workspaces_with_application_subscriptions() {
         .into_iter()
         .map(|application| application.name)
         .collect::<Vec<_>>();
-    assert_eq!(application_names, ["Documents", "Billing", "Analytics"]);
+    assert_eq!(
+        application_names,
+        [
+            "Documents",
+            "Billing",
+            "Analytics",
+            "Client Portal",
+            "Feature Flags",
+            "Priority Support"
+        ]
+    );
 
-    let subscriptions = tenant_applications::Entity::find()
+    let tenant_application_rows = tenant_applications::Entity::find()
         .order_by_asc(tenant_applications::Column::Id)
         .all(db)
         .await
         .unwrap();
     assert_eq!(
-        subscriptions
+        tenant_application_rows
             .iter()
-            .map(|subscription| (
-                subscription.tenant_id,
-                subscription.application_id,
-                subscription.status.as_str()
+            .map(|tenant_application| (
+                tenant_application.tenant_id,
+                tenant_application.application_id,
+                tenant_application.status.as_str()
             ))
             .collect::<Vec<_>>(),
         [
@@ -64,7 +74,13 @@ async fn seed_creates_two_workspaces_with_application_subscriptions() {
             (1, 3, "inactive"),
             (2, 1, "active"),
             (2, 2, "active"),
-            (2, 3, "active")
+            (2, 3, "active"),
+            (1, 4, "active"),
+            (1, 5, "inactive"),
+            (1, 6, "active"),
+            (2, 4, "inactive"),
+            (2, 5, "active"),
+            (2, 6, "active")
         ]
     );
 

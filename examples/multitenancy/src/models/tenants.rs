@@ -50,6 +50,23 @@ async fn create_role(
     .map_err(ModelError::from)
 }
 
+async fn create_tenant_application(
+    txn: &DatabaseTransaction,
+    tenant_id: i64,
+    application_id: i64,
+    status: &str,
+) -> ModelResult<tenant_applications::Model> {
+    tenant_applications::ActiveModel {
+        application_id: Set(application_id),
+        status: Set(status.to_owned()),
+        ..Default::default()
+    }
+    .set_tenant(tenant_id)?
+    .insert(txn)
+    .await
+    .map_err(ModelError::from)
+}
+
 async fn create_permission(
     txn: &DatabaseTransaction,
     tenant_id: i64,
@@ -127,23 +144,19 @@ impl Model {
 
         let documents_application = find_or_create_application(txn, "Documents").await?;
         let billing_application = find_or_create_application(txn, "Billing").await?;
-
-        let documents_subscription = tenant_applications::ActiveModel {
-            application_id: Set(documents_application.id),
-            status: Set("active".to_owned()),
-            ..Default::default()
+        let documents_tenant_application =
+            create_tenant_application(txn, tenant.id, documents_application.id, "active").await?;
+        let billing_tenant_application =
+            create_tenant_application(txn, tenant.id, billing_application.id, "active").await?;
+        for name in [
+            "Analytics",
+            "Client Portal",
+            "Feature Flags",
+            "Priority Support",
+        ] {
+            let addon = find_or_create_application(txn, name).await?;
+            create_tenant_application(txn, tenant.id, addon.id, "inactive").await?;
         }
-        .set_tenant(tenant.id)?
-        .insert(txn)
-        .await?;
-        let billing_subscription = tenant_applications::ActiveModel {
-            application_id: Set(billing_application.id),
-            status: Set("active".to_owned()),
-            ..Default::default()
-        }
-        .set_tenant(tenant.id)?
-        .insert(txn)
-        .await?;
 
         let member = tenant_members::ActiveModel {
             user_id: Set(user_id),
@@ -167,19 +180,34 @@ impl Model {
         .insert(txn)
         .await?;
 
-        let read_permission =
-            create_permission(txn, tenant.id, documents_subscription.id, "documents:read").await?;
+        let read_permission = create_permission(
+            txn,
+            tenant.id,
+            documents_tenant_application.id,
+            "documents:read",
+        )
+        .await?;
         let documents_create = create_permission(
             txn,
             tenant.id,
-            documents_subscription.id,
+            documents_tenant_application.id,
             "documents:create",
         )
         .await?;
-        let billing_read =
-            create_permission(txn, tenant.id, billing_subscription.id, "billing:read").await?;
-        let billing_manage =
-            create_permission(txn, tenant.id, billing_subscription.id, "billing:manage").await?;
+        let billing_read = create_permission(
+            txn,
+            tenant.id,
+            billing_tenant_application.id,
+            "billing:read",
+        )
+        .await?;
+        let billing_manage = create_permission(
+            txn,
+            tenant.id,
+            billing_tenant_application.id,
+            "billing:manage",
+        )
+        .await?;
         for (role_id, permission_id) in [
             (owner.id, read_permission.id),
             (owner.id, documents_create.id),

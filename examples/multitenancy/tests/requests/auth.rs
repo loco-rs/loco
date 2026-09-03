@@ -161,6 +161,7 @@ async fn authenticated_user_can_create_another_workspace() {
         let workspace = created.json::<serde_json::Value>();
         assert_eq!(workspace["tenant_name"], "Research Team");
         assert_eq!(workspace["tenant_slug"], "research-team");
+        assert_eq!(workspace["applications"].as_array().unwrap().len(), 2);
         assert_eq!(workspace["applications"][0]["name"], "Documents");
 
         let workspaces = request
@@ -189,6 +190,25 @@ async fn authenticated_user_can_create_another_workspace() {
             .map(|role| role.name)
             .collect();
         assert_eq!(role_names, ["Owner", "Administrator", "Manager", "Support"]);
+
+        let dashboard = request
+            .get(&format!("/api/tenants/{tenant_id}/dashboard"))
+            .authorization_bearer(&token)
+            .await;
+        assert_eq!(dashboard.status_code(), 200, "{}", dashboard.text());
+        let dashboard: serde_json::Value = dashboard.json();
+        assert_eq!(dashboard["applications"].as_array().unwrap().len(), 6);
+        for addon in dashboard["applications"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|application| {
+                !matches!(application["name"].as_str(), Some("Documents" | "Billing"))
+            })
+        {
+            assert_eq!(addon["status"], "inactive");
+            assert_eq!(addon["permissions"], serde_json::json!([]));
+        }
 
         let document = request
             .post(&format!(

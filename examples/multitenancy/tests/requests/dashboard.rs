@@ -29,7 +29,7 @@ async fn owner_sees_seeded_workspace_access_graph() {
         let body: serde_json::Value = response.json();
         assert_eq!(body["tenant_name"], "Designer");
         assert_eq!(body["stats"]["member_count"], 3);
-        assert_eq!(body["stats"]["application_count"], 3);
+        assert_eq!(body["stats"]["application_count"], 6);
         assert_eq!(body["stats"]["document_count"], 1);
         assert_eq!(body["stats"]["invoice_count"], 2);
         assert_eq!(body["current_member"]["name"], "John Doe");
@@ -50,16 +50,25 @@ async fn owner_sees_seeded_workspace_access_graph() {
         assert_eq!(applications[0]["status"], "inactive");
         assert_eq!(applications[0]["permissions"], serde_json::json!([]));
         assert_eq!(applications[1]["name"], "Billing");
-        assert_eq!(applications[2]["name"], "Documents");
+        assert_eq!(applications[2]["name"], "Client Portal");
+        assert_eq!(applications[3]["name"], "Documents");
         assert_eq!(applications[1]["permissions"].as_array().unwrap().len(), 2);
-        assert_eq!(applications[2]["permissions"].as_array().unwrap().len(), 2);
+        assert_eq!(applications[3]["permissions"].as_array().unwrap().len(), 2);
+        assert_eq!(applications[2]["status"], "active");
+        assert_eq!(applications[2]["permissions"], serde_json::json!([]));
+        assert_eq!(applications[4]["name"], "Feature Flags");
+        assert_eq!(applications[4]["status"], "inactive");
+        assert_eq!(applications[4]["permissions"], serde_json::json!([]));
+        assert_eq!(applications[5]["name"], "Priority Support");
+        assert_eq!(applications[5]["status"], "active");
+        assert_eq!(applications[5]["permissions"], serde_json::json!([]));
     })
     .await;
 }
 
 #[tokio::test]
 #[serial]
-async fn owner_sees_only_active_workspace_options_and_developer_analytics() {
+async fn owner_sees_only_active_workspace_options_and_seeded_addons() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
         let john = users::Entity::find_by_id(1)
@@ -86,8 +95,26 @@ async fn owner_sees_only_active_workspace_options_and_developer_analytics() {
             .iter()
             .find(|workspace| workspace["tenant_name"] == "Developer")
             .unwrap();
-        assert_eq!(designer["applications"].as_array().unwrap().len(), 2);
-        assert_eq!(developer["applications"].as_array().unwrap().len(), 3);
+        assert_eq!(designer["applications"].as_array().unwrap().len(), 4);
+        assert_eq!(developer["applications"].as_array().unwrap().len(), 5);
+        let designer_names = designer["applications"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|application| application["name"].as_str().unwrap())
+            .collect::<Vec<_>>();
+        let developer_names = developer["applications"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|application| application["name"].as_str().unwrap())
+            .collect::<Vec<_>>();
+        assert!(designer_names.contains(&"Client Portal"));
+        assert!(!designer_names.contains(&"Feature Flags"));
+        assert!(designer_names.contains(&"Priority Support"));
+        assert!(!developer_names.contains(&"Client Portal"));
+        assert!(developer_names.contains(&"Feature Flags"));
+        assert!(developer_names.contains(&"Priority Support"));
         assert!(developer["applications"]
             .as_array()
             .unwrap()
@@ -102,7 +129,7 @@ async fn owner_sees_only_active_workspace_options_and_developer_analytics() {
         let dashboard: serde_json::Value = response.json();
         assert_eq!(dashboard["tenant_name"], "Developer");
         assert_eq!(dashboard["stats"]["member_count"], 1);
-        assert_eq!(dashboard["stats"]["application_count"], 3);
+        assert_eq!(dashboard["stats"]["application_count"], 6);
         assert_eq!(dashboard["stats"]["document_count"], 1);
         assert_eq!(dashboard["stats"]["invoice_count"], 1);
         assert_eq!(dashboard["applications"][0]["name"], "Analytics");
@@ -111,6 +138,18 @@ async fn owner_sees_only_active_workspace_options_and_developer_analytics() {
             dashboard["applications"][0]["permissions"],
             serde_json::json!(["analytics:read"])
         );
+        for index in [2, 4, 5] {
+            assert_eq!(
+                dashboard["applications"][index]["permissions"],
+                serde_json::json!([])
+            );
+        }
+        assert_eq!(dashboard["applications"][2]["name"], "Client Portal");
+        assert_eq!(dashboard["applications"][2]["status"], "inactive");
+        assert_eq!(dashboard["applications"][4]["name"], "Feature Flags");
+        assert_eq!(dashboard["applications"][4]["status"], "active");
+        assert_eq!(dashboard["applications"][5]["name"], "Priority Support");
+        assert_eq!(dashboard["applications"][5]["status"], "active");
     })
     .await;
 }

@@ -35,3 +35,39 @@
   status: active
   created_at: "2026-01-01T00:00:00Z"
   updated_at: "2026-01-01T00:00:00Z"
+- id: 7
+  tenant_id: 1
+  application_id: 4
+  status: active
+  created_at: "2026-01-01T00:00:00Z"
+  updated_at: "2026-01-01T00:00:00Z"
+- id: 8
+  tenant_id: 1
+  application_id: 5
+  status: inactive
+  created_at: "2026-01-01T00:00:00Z"
+  updated_at: "2026-01-01T00:00:00Z"
+- id: 9
+  tenant_id: 1
+  application_id: 6
+  status: active
+  created_at: "2026-01-01T00:00:00Z"
+  updated_at: "2026-01-01T00:00:00Z"
+- id: 10
+  tenant_id: 2
+  application_id: 4
+  status: inactive
+  created_at: "2026-01-01T00:00:00Z"
+  updated_at: "2026-01-01T00:00:00Z"
+- id: 11
+  tenant_id: 2
+  application_id: 5
+  status: active
+  created_at: "2026-01-01T00:00:00Z"
+  updated_at: "2026-01-01T00:00:00Z"
+- id: 12
+  tenant_id: 2
+  application_id: 6
+  status: active
+  created_at: "2026-01-01T00:00:00Z"
+  updated_at: "2026-01-01T00:00:00Z"
