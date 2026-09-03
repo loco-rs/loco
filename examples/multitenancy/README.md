@@ -39,8 +39,9 @@ The example inherits the framework from the repository root through a local
 path dependency, so it always exercises the code in the current checkout.
 Open <http://localhost:5150> and log in with `user1@example.com` / `12341234`.
 The seeded editor can list and create Acme documents. You can also register a
-new account: registration atomically creates its tenant, owner membership,
-Documents subscription, and read/create permissions.
+new account with your name, email, password, and tenant name; the tenant slug
+is generated automatically. Registration atomically creates its tenant, owner
+membership, Documents subscription, and read/create permissions.
 
 The `--reset` flag makes repeated demo setup predictable by clearing existing
 rows before loading the fixed-ID fixtures. It deletes accounts and tenants you

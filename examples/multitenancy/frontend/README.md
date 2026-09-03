@@ -15,6 +15,8 @@ then start Loco from the example root. Loco serves `frontend/dist` with SPA
 fallback.
 
 The SPA includes registration, login, tenant/application selection, and
-logout. Registration creates the initial tenant and owner permissions; login
-uses Loco's JWT endpoint; and `/api/auth/workspaces` returns only the active
-tenant subscriptions available to the authenticated user.
+logout. Registration asks for the user's name, email, password, and tenant
+name in separate rows; the tenant slug is generated automatically. It creates
+the initial tenant and owner permissions, login uses Loco's JWT endpoint, and
+`/api/auth/workspaces` returns only the active tenant subscriptions available
+to the authenticated user.

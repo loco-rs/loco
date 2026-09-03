@@ -238,17 +238,6 @@ select:focus {
   box-shadow: 0 0 0 3px rgb(239 86 65 / 13%);
 }
 
-.field-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.8rem;
-}
-
-.field-row > div {
-  display: grid;
-  gap: 0.85rem;
-}
-
 .button-row {
   display: flex;
   flex-wrap: wrap;
