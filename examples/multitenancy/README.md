@@ -57,11 +57,15 @@ The API endpoints are:
 POST /api/auth/register-tenant
 POST /api/auth/login
 GET  /api/auth/workspaces
+POST /api/auth/workspaces
 GET  /api/tenants/{tenant_id}/applications/{application_id}/documents
 POST /api/tenants/{tenant_id}/applications/{application_id}/documents
 ```
 
 The workspace and document endpoints expect `Authorization: Bearer <jwt>`.
+Creating a workspace accepts `{"tenant_name":"Research team","tenant_slug":"research-team"}`;
+the SPA derives the slug from the name automatically and selects the new
+workspace after creation.
 The document POST body is
 `{"title":"Launch plan"}`. The SPA stores the JWT and selected
 tenant/application context in local storage; it never includes `tenant_id` in

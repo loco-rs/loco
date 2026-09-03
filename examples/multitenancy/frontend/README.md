@@ -14,9 +14,9 @@ port 5150. For a production-style single-origin build, run `pnpm build` and
 then start Loco from the example root. Loco serves `frontend/dist` with SPA
 fallback.
 
-The SPA includes registration, login, tenant/application selection, and
-logout. Registration asks for the user's name, email, password, and tenant
-name in separate rows; the tenant slug is generated automatically. It creates
-the initial tenant and owner permissions, login uses Loco's JWT endpoint, and
-`/api/auth/workspaces` returns only the active tenant subscriptions available
-to the authenticated user.
+The SPA includes registration, login, tenant/application selection, workspace
+creation, and logout. Registration asks for the user's name, email, password,
+and tenant name in separate rows; tenant slugs are generated automatically.
+It creates the initial tenant and owner permissions, login uses Loco's JWT
+endpoint, and `/api/auth/workspaces` lists and creates workspaces for the
+authenticated user.

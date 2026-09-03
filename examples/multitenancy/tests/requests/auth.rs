@@ -143,6 +143,85 @@ async fn can_register_a_tenant_and_use_the_authenticated_workspace() {
 
 #[tokio::test]
 #[serial]
+async fn authenticated_user_can_create_another_workspace() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let registration = request
+            .post("/api/auth/register-tenant")
+            .json(&serde_json::json!({
+                "name": "Ada Owner",
+                "email": "ada-two@acme.test",
+                "password": "correct-horse-battery-staple",
+                "tenant_name": "Acme Labs",
+                "tenant_slug": "acme-labs"
+            }))
+            .await;
+        assert_eq!(registration.status_code(), 200, "{}", registration.text());
+        let token = registration.json::<serde_json::Value>()["token"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+
+        let created = request
+            .post("/api/auth/workspaces")
+            .authorization_bearer(&token)
+            .json(&serde_json::json!({
+                "tenant_name": "Research Team",
+                "tenant_slug": "research-team"
+            }))
+            .await;
+        assert_eq!(created.status_code(), 200, "{}", created.text());
+        let workspace = created.json::<serde_json::Value>();
+        assert_eq!(workspace["tenant_name"], "Research Team");
+        assert_eq!(workspace["tenant_slug"], "research-team");
+        assert_eq!(workspace["applications"][0]["name"], "Documents");
+
+        let workspaces = request
+            .get("/api/auth/workspaces")
+            .authorization_bearer(&token)
+            .await;
+        assert_eq!(workspaces.status_code(), 200, "{}", workspaces.text());
+        assert_eq!(
+            workspaces
+                .json::<serde_json::Value>()
+                .as_array()
+                .unwrap()
+                .len(),
+            2
+        );
+
+        let tenant_id = workspace["tenant_id"].as_i64().unwrap();
+        let application_id = workspace["applications"][0]["id"].as_i64().unwrap();
+        let document = request
+            .post(&format!(
+                "/api/tenants/{tenant_id}/applications/{application_id}/documents"
+            ))
+            .authorization_bearer(&token)
+            .json(&serde_json::json!({ "title": "Research roadmap" }))
+            .await;
+        assert_eq!(document.status_code(), 200, "{}", document.text());
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn workspace_creation_requires_authentication() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let response = request
+            .post("/api/auth/workspaces")
+            .json(&serde_json::json!({
+                "tenant_name": "Private Team",
+                "tenant_slug": "private-team"
+            }))
+            .await;
+
+        assert_eq!(response.status_code(), 401, "{}", response.text());
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
 async fn tenant_registration_rolls_back_when_the_slug_exists() {
     request::<App, _, _>(|request, ctx| async move {
         let payload = serde_json::json!({

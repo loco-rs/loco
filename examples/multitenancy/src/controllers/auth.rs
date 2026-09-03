@@ -1,5 +1,7 @@
 use crate::{
-    dtos::auth::{ApplicationAccess, RegisterTenant, RegisterTenantResponse, Workspace},
+    dtos::auth::{
+        ApplicationAccess, CreateWorkspace, RegisterTenant, RegisterTenantResponse, Workspace,
+    },
     mailers::auth::AuthMailer,
     models::{
         _entities::{applications, tenant_applications, tenant_members, tenants, users},
@@ -243,6 +245,31 @@ async fn workspaces(
     format::json(workspaces)
 }
 
+#[debug_handler]
+async fn create_workspace(
+    auth: auth::JWTWithUser<users::Model>,
+    State(ctx): State<AppContext>,
+    JsonValidate(params): JsonValidate<CreateWorkspace>,
+) -> Result<Response> {
+    let workspace = tenant_model::Model::create_workspace(
+        &ctx.db,
+        auth.user.id,
+        &params.tenant_name,
+        &params.tenant_slug,
+    )
+    .await?;
+
+    format::json(Workspace {
+        tenant_id: workspace.tenant.id,
+        tenant_name: workspace.tenant.name,
+        tenant_slug: workspace.tenant.slug,
+        applications: vec![ApplicationAccess {
+            id: workspace.application.id,
+            name: workspace.application.name,
+        }],
+    })
+}
+
 /// Magic link authentication provides a secure and passwordless way to log in to the application.
 ///
 /// # Flow
@@ -348,6 +375,7 @@ pub fn routes() -> Routes {
         .add("/reset", post(reset))
         .add("/current", get(current))
         .add("/workspaces", get(workspaces))
+        .add("/workspaces", post(create_workspace))
         .add("/magic-link", post(magic_link))
         .add("/magic-link/{token}", get(magic_link_verify))
         .add("/resend-verification-mail", post(resend_verification_email))

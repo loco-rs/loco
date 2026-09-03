@@ -1,6 +1,7 @@
 pub use super::_entities::tenants::{ActiveModel, Entity, Model};
 use loco_rs::prelude::*;
 use sea_orm::entity::prelude::*;
+use sea_orm::DatabaseTransaction;
 pub type Tenants = Entity;
 
 use super::{
@@ -13,6 +14,11 @@ use super::{
 
 pub struct RegisteredWorkspace {
     pub user: users::Model,
+    pub tenant: tenants::Model,
+    pub application: applications::Model,
+}
+
+pub struct CreatedWorkspace {
     pub tenant: tenants::Model,
     pub application: applications::Model,
 }
@@ -35,6 +41,124 @@ impl ActiveModelBehavior for ActiveModel {
 
 // implement your read-oriented logic here
 impl Model {
+    async fn create_workspace_in_transaction(
+        txn: &DatabaseTransaction,
+        user_id: i64,
+        tenant_name: &str,
+        tenant_slug: &str,
+    ) -> ModelResult<CreatedWorkspace> {
+        if tenants::Entity::find()
+            .filter(tenants::Column::Slug.eq(tenant_slug))
+            .one(txn)
+            .await?
+            .is_some()
+        {
+            return Err(ModelError::EntityAlreadyExists);
+        }
+
+        let tenant = tenants::ActiveModel {
+            name: Set(tenant_name.to_owned()),
+            slug: Set(tenant_slug.to_owned()),
+            ..Default::default()
+        }
+        .insert(txn)
+        .await?;
+
+        let application = match applications::Entity::find()
+            .filter(applications::Column::Name.eq("Documents"))
+            .one(txn)
+            .await?
+        {
+            Some(application) => application,
+            None => {
+                applications::ActiveModel {
+                    name: Set("Documents".to_owned()),
+                    ..Default::default()
+                }
+                .insert(txn)
+                .await?
+            }
+        };
+
+        let subscription = tenant_applications::ActiveModel {
+            application_id: Set(application.id),
+            status: Set("active".to_owned()),
+            ..Default::default()
+        }
+        .set_tenant(tenant.id)?
+        .insert(txn)
+        .await?;
+
+        let member = tenant_members::ActiveModel {
+            user_id: Set(user_id),
+            ..Default::default()
+        }
+        .set_tenant(tenant.id)?
+        .insert(txn)
+        .await?;
+
+        let role = roles::ActiveModel {
+            name: Set("Owner".to_owned()),
+            ..Default::default()
+        }
+        .set_tenant(tenant.id)?
+        .insert(txn)
+        .await?;
+
+        tenant_member_roles::ActiveModel {
+            tenant_member_id: Set(member.id),
+            role_id: Set(role.id),
+            ..Default::default()
+        }
+        .set_tenant(tenant.id)?
+        .insert(txn)
+        .await?;
+
+        for key in ["documents:read", "documents:create"] {
+            let permission = permissions::ActiveModel {
+                tenant_application_id: Set(subscription.id),
+                key: Set(key.to_owned()),
+                ..Default::default()
+            }
+            .set_tenant(tenant.id)?
+            .insert(txn)
+            .await?;
+
+            role_permissions::ActiveModel {
+                role_id: Set(role.id),
+                permission_id: Set(permission.id),
+                ..Default::default()
+            }
+            .set_tenant(tenant.id)?
+            .insert(txn)
+            .await?;
+        }
+
+        Ok(CreatedWorkspace {
+            tenant,
+            application,
+        })
+    }
+
+    /// Creates a tenant workspace and assigns the user as its owner.
+    ///
+    /// # Errors
+    ///
+    /// Returns a model error when the slug exists or setup fails. The
+    /// transaction is rolled back when any workspace record cannot be created.
+    pub async fn create_workspace(
+        db: &DatabaseConnection,
+        user_id: i64,
+        tenant_name: &str,
+        tenant_slug: &str,
+    ) -> ModelResult<CreatedWorkspace> {
+        let txn = db.begin().await?;
+        let workspace =
+            Self::create_workspace_in_transaction(&txn, user_id, tenant_name, tenant_slug).await?;
+        txn.commit().await?;
+        Ok(workspace)
+    }
+
     /// Atomically creates a user and an owner workspace with the Documents
     /// application and its default permissions.
     ///
@@ -50,100 +174,15 @@ impl Model {
     ) -> ModelResult<RegisteredWorkspace> {
         let txn = db.begin().await?;
         let user = users::Model::create_with_password_in_transaction(&txn, user).await?;
-
-        if tenants::Entity::find()
-            .filter(tenants::Column::Slug.eq(tenant_slug))
-            .one(&txn)
-            .await?
-            .is_some()
-        {
-            return Err(ModelError::EntityAlreadyExists);
-        }
-
-        let tenant = tenants::ActiveModel {
-            name: Set(tenant_name.to_owned()),
-            slug: Set(tenant_slug.to_owned()),
-            ..Default::default()
-        }
-        .insert(&txn)
-        .await?;
-
-        let application = match applications::Entity::find()
-            .filter(applications::Column::Name.eq("Documents"))
-            .one(&txn)
-            .await?
-        {
-            Some(application) => application,
-            None => {
-                applications::ActiveModel {
-                    name: Set("Documents".to_owned()),
-                    ..Default::default()
-                }
-                .insert(&txn)
-                .await?
-            }
-        };
-
-        let subscription = tenant_applications::ActiveModel {
-            application_id: Set(application.id),
-            status: Set("active".to_owned()),
-            ..Default::default()
-        }
-        .set_tenant(tenant.id)?
-        .insert(&txn)
-        .await?;
-
-        let member = tenant_members::ActiveModel {
-            user_id: Set(user.id),
-            ..Default::default()
-        }
-        .set_tenant(tenant.id)?
-        .insert(&txn)
-        .await?;
-
-        let role = roles::ActiveModel {
-            name: Set("Owner".to_owned()),
-            ..Default::default()
-        }
-        .set_tenant(tenant.id)?
-        .insert(&txn)
-        .await?;
-
-        tenant_member_roles::ActiveModel {
-            tenant_member_id: Set(member.id),
-            role_id: Set(role.id),
-            ..Default::default()
-        }
-        .set_tenant(tenant.id)?
-        .insert(&txn)
-        .await?;
-
-        for key in ["documents:read", "documents:create"] {
-            let permission = permissions::ActiveModel {
-                tenant_application_id: Set(subscription.id),
-                key: Set(key.to_owned()),
-                ..Default::default()
-            }
-            .set_tenant(tenant.id)?
-            .insert(&txn)
-            .await?;
-
-            role_permissions::ActiveModel {
-                role_id: Set(role.id),
-                permission_id: Set(permission.id),
-                ..Default::default()
-            }
-            .set_tenant(tenant.id)?
-            .insert(&txn)
-            .await?;
-        }
+        let workspace =
+            Self::create_workspace_in_transaction(&txn, user.id, tenant_name, tenant_slug).await?;
 
         txn.commit().await?;
 
         Ok(RegisteredWorkspace {
             user,
-            tenant,
-            application,
+            tenant: workspace.tenant,
+            application: workspace.application,
         })
     }
 }

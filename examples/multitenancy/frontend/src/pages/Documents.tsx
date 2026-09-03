@@ -1,15 +1,18 @@
 import { useState, type FormEvent } from "react";
-import { useWorkspaces } from "../api/auth";
+import { useCreateWorkspace, useWorkspaces } from "../api/auth";
 import { useCreateDocument, useDocuments } from "../api/documents";
 import {
   loadWorkspace,
   saveWorkspace,
   type SelectedWorkspace,
 } from "../auth/session";
+import { tenantSlug } from "../auth/tenant";
+import type { Workspace } from "../bindings/Workspace";
 
 export function Documents() {
   const workspaces = useWorkspaces();
   const [savedWorkspace, setSavedWorkspace] = useState(loadWorkspace);
+  const [workspaceCreatorOpen, setWorkspaceCreatorOpen] = useState(false);
 
   if (workspaces.isLoading) {
     return (
@@ -45,11 +48,41 @@ export function Documents() {
         option.applicationId === savedWorkspace.applicationId,
     ) ?? options[0];
 
+  function activateWorkspace(workspace: Workspace) {
+    const application = workspace.applications[0];
+    if (!application) {
+      return;
+    }
+
+    const next = {
+      tenantId: workspace.tenant_id,
+      tenantName: workspace.tenant_name,
+      applicationId: application.id,
+      applicationName: application.name,
+    };
+    saveWorkspace(next);
+    setSavedWorkspace(next);
+    setWorkspaceCreatorOpen(false);
+  }
+
   if (!selected) {
     return (
       <section className="panel empty-state">
         <h1>No active workspace</h1>
         <p>Your account is not a member of a tenant with an active application.</p>
+        <button
+          className="primary"
+          type="button"
+          onClick={() => setWorkspaceCreatorOpen(true)}
+        >
+          Create your first workspace
+        </button>
+        {workspaceCreatorOpen && (
+          <WorkspaceCreator
+            onClose={() => setWorkspaceCreatorOpen(false)}
+            onCreated={activateWorkspace}
+          />
+        )}
       </section>
     );
   }
@@ -72,22 +105,31 @@ export function Documents() {
           <h1>Documents</h1>
           <p>Create and manage records inside an explicitly scoped workspace.</p>
         </div>
-        <label className="workspace-picker">
-          <span>Working in</span>
-          <select
-            value={`${selected.tenantId}:${selected.applicationId}`}
-            onChange={(event) => selectWorkspace(event.target.value)}
+        <div className="workspace-actions">
+          <label className="workspace-picker">
+            <span>Working in</span>
+            <select
+              value={`${selected.tenantId}:${selected.applicationId}`}
+              onChange={(event) => selectWorkspace(event.target.value)}
+            >
+              {options.map((option) => (
+                <option
+                  key={`${option.tenantId}:${option.applicationId}`}
+                  value={`${option.tenantId}:${option.applicationId}`}
+                >
+                  {option.tenantName} · {option.applicationName}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            className="secondary new-workspace-button"
+            type="button"
+            onClick={() => setWorkspaceCreatorOpen(true)}
           >
-            {options.map((option) => (
-              <option
-                key={`${option.tenantId}:${option.applicationId}`}
-                value={`${option.tenantId}:${option.applicationId}`}
-              >
-                {option.tenantName} · {option.applicationName}
-              </option>
-            ))}
-          </select>
-        </label>
+            <span aria-hidden="true">+</span> New workspace
+          </button>
+        </div>
       </header>
 
       <div className="workspace-context" aria-label="Current tenant context">
@@ -109,7 +151,109 @@ export function Documents() {
         key={`${selected.tenantId}:${selected.applicationId}`}
         workspace={selected}
       />
+
+      {workspaceCreatorOpen && (
+        <WorkspaceCreator
+          onClose={() => setWorkspaceCreatorOpen(false)}
+          onCreated={activateWorkspace}
+        />
+      )}
     </section>
+  );
+}
+
+function WorkspaceCreator({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: (workspace: Workspace) => void;
+}) {
+  const createWorkspace = useCreateWorkspace();
+  const [name, setName] = useState("");
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const slug = tenantSlug(name);
+    if (!slug) {
+      setValidationError("Use at least one letter or number in the workspace name.");
+      return;
+    }
+
+    createWorkspace.mutate(
+      { tenant_name: name.trim(), tenant_slug: slug },
+      { onSuccess: onCreated },
+    );
+  }
+
+  return (
+    <div
+      className="workspace-modal-backdrop"
+      role="presentation"
+      onMouseDown={onClose}
+    >
+      <section
+        className="panel workspace-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="workspace-modal-title"
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            onClose();
+          }
+        }}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <button
+          className="modal-close"
+          type="button"
+          aria-label="Close workspace form"
+          onClick={onClose}
+        >
+          ×
+        </button>
+        <span className="eyebrow">New tenant</span>
+        <h2 id="workspace-modal-title">Create a workspace</h2>
+        <p className="form-description">
+          You will become the owner with permission to read and create documents.
+        </p>
+        <form onSubmit={handleSubmit}>
+          <label htmlFor="workspace-name">Workspace name</label>
+          <input
+            id="workspace-name"
+            autoFocus
+            minLength={2}
+            maxLength={100}
+            value={name}
+            onChange={(event) => {
+              setName(event.target.value);
+              setValidationError(null);
+            }}
+            placeholder="Research team"
+            required
+          />
+          <p className="hint">The workspace slug is generated automatically.</p>
+          {(validationError || createWorkspace.error) && (
+            <p className="error" role="alert">
+              {validationError ?? createWorkspace.error?.message}
+            </p>
+          )}
+          <div className="modal-actions">
+            <button className="secondary" type="button" onClick={onClose}>
+              Cancel
+            </button>
+            <button
+              className="primary"
+              type="submit"
+              disabled={createWorkspace.isPending}
+            >
+              {createWorkspace.isPending ? "Creating…" : "Create workspace"}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
   );
 }
 

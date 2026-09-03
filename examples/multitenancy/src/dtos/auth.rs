@@ -30,6 +30,15 @@ pub struct RegisterTenant {
     pub tenant_slug: String,
 }
 
+#[derive(Debug, serde::Serialize, serde::Deserialize, validator::Validate, TS)]
+#[ts(export, export_to = "../frontend/src/bindings/")]
+pub struct CreateWorkspace {
+    #[validate(length(min = 2, max = 100))]
+    pub tenant_name: String,
+    #[validate(length(min = 2, max = 100), custom(function = "validate_tenant_slug"))]
+    pub tenant_slug: String,
+}
+
 #[derive(Debug, serde::Serialize, serde::Deserialize, TS)]
 #[ts(export, export_to = "../frontend/src/bindings/")]
 pub struct RegisterTenantResponse {
