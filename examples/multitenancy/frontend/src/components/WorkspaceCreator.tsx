@@ -57,7 +57,8 @@ export function WorkspaceCreator({
         <span className="eyebrow">New tenant</span>
         <h2 id="workspace-modal-title">Create a workspace</h2>
         <p className="form-description">
-          You will become the owner with permission to read and create documents.
+          You will become the workspace owner and can manage its members and
+          applications.
         </p>
         <form onSubmit={handleSubmit}>
           <label htmlFor="workspace-name">Workspace name</label>
