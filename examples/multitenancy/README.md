@@ -88,7 +88,9 @@ The document POST body is `{"title":"Launch plan"}`. The invoice POST body is
 `{"number":"INV-1003","amount_cents":7900,"status":"draft"}`. The SPA stores the JWT and selected
 tenant/application context in local storage; it never includes `tenant_id` in
 a create body. Its authenticated console has Overview, Documents, Billing,
-Members, and Applications pages. The Members table can display each member's
+Members, and Add-ons pages. The Add-ons catalog excludes the core Documents
+and Billing applications and reflects optional product availability from the
+workspace subscription. The Members table can display each member's
 complete effective access on a dedicated page, while workspace Owners can use
 a separate management page to assign Owner, Administrator, Manager, or Support
 to other members and configure each role's permissions. Permission changes apply to

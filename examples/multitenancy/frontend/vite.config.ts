@@ -14,6 +14,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: [
+        "src/addons.ts",
         "src/auth/RequireAuth.tsx",
         "src/auth/session.ts",
         "src/auth/tenant.ts",

@@ -3,7 +3,7 @@ import { App } from "./App";
 import { RequireAuth } from "./auth/RequireAuth";
 import { getToken } from "./auth/session";
 import { Documents } from "./pages/Documents";
-import { Applications } from "./pages/Applications";
+import { Addons } from "./pages/Addons";
 import { Billing } from "./pages/Billing";
 import { Dashboard } from "./pages/Dashboard";
 import { Login } from "./pages/Login";
@@ -31,7 +31,8 @@ export const router = createBrowserRouter([
           { path: "members", element: <Members /> },
           { path: "members/:memberId", element: <MemberManagement /> },
           { path: "members/:memberId/edit", element: <MemberManagement edit /> },
-          { path: "applications", element: <Applications /> },
+          { path: "addons", element: <Addons /> },
+          { path: "applications", element: <Navigate to="/addons" replace /> },
         ],
       },
     ],

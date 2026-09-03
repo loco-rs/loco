@@ -1444,6 +1444,10 @@ code {
   gap: 1rem;
 }
 
+.addon-grid {
+  grid-template-columns: minmax(0, 48rem);
+}
+
 .application-card-heading {
   display: flex;
   align-items: center;

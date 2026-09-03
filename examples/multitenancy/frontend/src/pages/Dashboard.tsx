@@ -1,5 +1,6 @@
 import { Link, useOutletContext } from "react-router";
 import { useDashboard } from "../api/dashboard";
+import { addonsFrom } from "../addons";
 import type { SelectedWorkspace } from "../auth/session";
 import type { WorkspaceOutletContext } from "../auth/workspace-context";
 
@@ -35,6 +36,7 @@ function DashboardDetails({ workspace }: { workspace: SelectedWorkspace }) {
   }
 
   const { stats, current_member: currentMember } = dashboard.data;
+  const addons = addonsFrom(dashboard.data.applications);
   return (
     <section className="console-page">
       <header className="console-heading">
@@ -42,7 +44,7 @@ function DashboardDetails({ workspace }: { workspace: SelectedWorkspace }) {
           <span className="eyebrow">Workspace overview</span>
           <h1>{dashboard.data.tenant_name}</h1>
           <p>
-            People, applications, and tenant-scoped records in one place. You
+            People, add-ons, and tenant-scoped records in one place. You
             are signed in as {currentMember.roles.join(" · ")}.
           </p>
         </div>
@@ -50,7 +52,7 @@ function DashboardDetails({ workspace }: { workspace: SelectedWorkspace }) {
 
       <div className="stat-grid">
         <Stat label="Members" value={stats.member_count} />
-        <Stat label="Applications" value={stats.application_count} />
+        <Stat label="Add-ons" value={addons.length} />
         <Stat label="Documents" value={stats.document_count} />
         <Stat label="Invoices" value={stats.invoice_count} />
       </div>
@@ -74,17 +76,17 @@ function DashboardDetails({ workspace }: { workspace: SelectedWorkspace }) {
 
         <section className="panel overview-panel">
           <div className="panel-heading">
-            <div><span className="eyebrow">Subscriptions</span><h2>Applications</h2></div>
-            <Link to="/applications">Manage</Link>
+            <div><span className="eyebrow">Subscriptions</span><h2>Add-ons</h2></div>
+            <Link to="/addons">View all</Link>
           </div>
           <div className="application-list">
-            {dashboard.data.applications.map((application) => (
-              <div key={application.id}>
-                <span className={`application-icon ${application.name.toLowerCase()}`}>
-                  {application.name.charAt(0)}
+            {addons.map((addon) => (
+              <div key={addon.id}>
+                <span className={`application-icon ${addon.name.toLowerCase()}`}>
+                  {addon.name.charAt(0)}
                 </span>
-                <div><strong>{application.name}</strong><small>{application.permissions.length} permissions granted</small></div>
-                <span className={`active-badge ${application.status}`}>{application.status}</span>
+                <div><strong>{addon.name}</strong><small>{addon.status === "active" ? "Included in subscription" : "Available to purchase"}</small></div>
+                <span className={`active-badge ${addon.status}`}>{addon.status}</span>
               </div>
             ))}
           </div>

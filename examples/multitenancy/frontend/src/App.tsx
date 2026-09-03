@@ -242,7 +242,7 @@ export function App() {
                   Billing
                 </NavLink>
                 <NavLink to="/members">Members</NavLink>
-                <NavLink to="/applications">Applications</NavLink>
+                <NavLink to="/addons">Add-ons</NavLink>
               </nav>
               <div className="sidebar-note">
                 <span className="status-dot" />
