@@ -6,7 +6,8 @@ use sea_orm::PaginatorTrait;
 
 use crate::{
     dtos::dashboard::{
-        DashboardApplication, DashboardDto, DashboardStats, MemberAccess, PermissionAccess,
+        DashboardApplication, DashboardDto, DashboardStats, MemberAccess, MemberRoleUpdate,
+        PermissionAccess, UpdateMemberRole,
     },
     models::_entities::{
         applications, documents, invoices, permissions, role_permissions, roles,
@@ -191,6 +192,28 @@ fn build_applications(
     result
 }
 
+async fn ensure_owner(ctx: &AppContext, tenant_id: i64, user_id: i64) -> Result<()> {
+    let rows = AccessRows::load(ctx, tenant_id).await?;
+    let AccessRows {
+        member_users,
+        assignments,
+        roles,
+        grants,
+        permissions,
+        subscriptions,
+    } = rows;
+    let access = AccessMaps::from_rows(assignments, roles, grants, permissions, &subscriptions);
+    let is_owner = build_members(member_users, &access)
+        .iter()
+        .find(|member| member.user_id == user_id)
+        .is_some_and(|member| member.roles.iter().any(|role| role == "Owner"));
+    if is_owner {
+        Ok(())
+    } else {
+        unauthorized("only workspace owners can edit member roles")
+    }
+}
+
 #[debug_handler]
 pub async fn show(
     State(ctx): State<AppContext>,
@@ -253,8 +276,55 @@ pub async fn show(
     })
 }
 
+#[debug_handler]
+pub async fn update_member_role(
+    State(ctx): State<AppContext>,
+    auth: auth::JWTWithUser<users::Model>,
+    Path((tenant_id, member_id)): Path<(i64, i64)>,
+    JsonValidate(params): JsonValidate<UpdateMemberRole>,
+) -> Result<Response> {
+    ensure_owner(&ctx, tenant_id, auth.user.id).await?;
+
+    let member = tenant_members::Entity::find_by_id(member_id)
+        .in_tenant(tenant_id)
+        .one(&ctx.db)
+        .await?
+        .ok_or(ModelError::EntityNotFound)?;
+    if member.user_id == auth.user.id {
+        return bad_request("owners cannot change their own role");
+    }
+    let role = roles::Entity::find()
+        .in_tenant(tenant_id)
+        .filter(roles::Column::Name.eq(&params.role))
+        .one(&ctx.db)
+        .await?
+        .ok_or(ModelError::EntityNotFound)?;
+
+    let txn = ctx.db.begin().await?;
+    tenant_member_roles::Entity::delete_many()
+        .filter(tenant_member_roles::Column::TenantId.eq(tenant_id))
+        .filter(tenant_member_roles::Column::TenantMemberId.eq(member.id))
+        .exec(&txn)
+        .await?;
+    tenant_member_roles::ActiveModel {
+        tenant_member_id: Set(member.id),
+        role_id: Set(role.id),
+        ..Default::default()
+    }
+    .set_tenant(tenant_id)?
+    .insert(&txn)
+    .await?;
+    txn.commit().await?;
+
+    format::json(MemberRoleUpdate {
+        member_id,
+        role: params.role,
+    })
+}
+
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("api/tenants/{tenant_id}/dashboard/")
         .add("/", get(show))
+        .add("/members/{member_id}/role", post(update_member_role))
 }

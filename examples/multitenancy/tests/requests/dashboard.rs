@@ -113,6 +113,74 @@ async fn owner_sees_only_active_workspace_options_and_developer_analytics() {
 
 #[tokio::test]
 #[serial]
+async fn owner_can_change_another_members_role() {
+    request::<App, _, _>(|request, ctx| async move {
+        seed::<App>(&ctx).await.unwrap();
+        let john = users::Entity::find_by_id(1)
+            .one(&ctx.db)
+            .await
+            .unwrap()
+            .unwrap();
+        let jane = users::Entity::find_by_id(2)
+            .one(&ctx.db)
+            .await
+            .unwrap()
+            .unwrap();
+        let jwt = ctx.config.get_jwt_config().unwrap();
+        let john_token = john.generate_jwt(&jwt.secret, jwt.expiration).unwrap();
+        let jane_token = jane.generate_jwt(&jwt.secret, jwt.expiration).unwrap();
+
+        let update = request
+            .post("/api/tenants/1/dashboard/members/2/role")
+            .authorization_bearer(&john_token)
+            .json(&serde_json::json!({ "role": "Viewer" }))
+            .await;
+        assert_eq!(update.status_code(), 200, "{}", update.text());
+        update.assert_json(&serde_json::json!({
+            "member_id": 2,
+            "role": "Viewer"
+        }));
+
+        let dashboard = request
+            .get("/api/tenants/1/dashboard")
+            .authorization_bearer(&john_token)
+            .await;
+        let body: serde_json::Value = dashboard.json();
+        let jane = body["members"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|member| member["member_id"] == 2)
+            .unwrap();
+        assert_eq!(jane["roles"], serde_json::json!(["Viewer"]));
+        assert_eq!(jane["permissions"].as_array().unwrap().len(), 1);
+
+        let forbidden = request
+            .post("/api/tenants/1/dashboard/members/3/role")
+            .authorization_bearer(&jane_token)
+            .json(&serde_json::json!({ "role": "Manager" }))
+            .await;
+        assert_eq!(forbidden.status_code(), 401);
+
+        let self_update = request
+            .post("/api/tenants/1/dashboard/members/1/role")
+            .authorization_bearer(&john_token)
+            .json(&serde_json::json!({ "role": "Manager" }))
+            .await;
+        assert_eq!(self_update.status_code(), 400);
+
+        let invalid = request
+            .post("/api/tenants/1/dashboard/members/2/role")
+            .authorization_bearer(&john_token)
+            .json(&serde_json::json!({ "role": "Superuser" }))
+            .await;
+        assert_eq!(invalid.status_code(), 400);
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
 async fn non_member_cannot_view_a_workspace_dashboard() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();

@@ -1,5 +1,13 @@
 use ts_rs::TS;
 
+fn validate_role(role: &str) -> Result<(), validator::ValidationError> {
+    if matches!(role, "Owner" | "Manager" | "Viewer") {
+        Ok(())
+    } else {
+        Err(validator::ValidationError::new("role"))
+    }
+}
+
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, TS)]
 #[ts(export, export_to = "../frontend/src/bindings/")]
 pub struct PermissionAccess {
@@ -55,4 +63,19 @@ pub struct DashboardDto {
     pub current_member: MemberAccess,
     pub members: Vec<MemberAccess>,
     pub applications: Vec<DashboardApplication>,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, validator::Validate, TS)]
+#[ts(export, export_to = "../frontend/src/bindings/")]
+pub struct UpdateMemberRole {
+    #[validate(custom(function = "validate_role"))]
+    pub role: String,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, TS)]
+#[ts(export, export_to = "../frontend/src/bindings/")]
+pub struct MemberRoleUpdate {
+    #[ts(type = "number")]
+    pub member_id: i64,
+    pub role: String,
 }
