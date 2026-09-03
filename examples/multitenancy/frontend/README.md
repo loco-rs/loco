@@ -26,7 +26,7 @@ available application contexts from active `tenant_applications` subscriptions.
 The workspace console provides Overview, Documents, Billing, Members, and
 Applications pages. Overview summarizes tenant-owned records and access. The
 Members page displays each role and its effective application permissions.
-Every member has a detailed access view, and workspace Owners can edit another
-member's role directly from the table.
+Each non-owner member links to a dedicated access page, and workspace Owners
+can open a separate role-management page from the table.
 Documents and Billing use the selected tenant's matching subscription and hide
 write forms when the current member has read-only access.

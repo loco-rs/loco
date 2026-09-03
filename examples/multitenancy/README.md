@@ -87,8 +87,9 @@ The document POST body is `{"title":"Launch plan"}`. The invoice POST body is
 tenant/application context in local storage; it never includes `tenant_id` in
 a create body. Its authenticated console has Overview, Documents, Billing,
 Members, and Applications pages. The Members table can display each member's
-complete effective access, while workspace Owners can assign Owner, Manager,
-or Viewer to other members. The request tests exercise both the seeded role
+complete effective access on a dedicated page, while workspace Owners can use
+a separate management page to assign Owner, Manager, or Viewer to other
+members. The request tests exercise both the seeded role
 matrix and a separate two-tenant scenario:
 
 ```sh

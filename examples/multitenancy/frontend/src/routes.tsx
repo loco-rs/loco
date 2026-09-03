@@ -7,6 +7,7 @@ import { Applications } from "./pages/Applications";
 import { Billing } from "./pages/Billing";
 import { Dashboard } from "./pages/Dashboard";
 import { Login } from "./pages/Login";
+import { MemberManagement } from "./pages/MemberManagement";
 import { Members } from "./pages/Members";
 import { Register } from "./pages/Register";
 
@@ -28,6 +29,8 @@ export const router = createBrowserRouter([
           { path: "documents", element: <Documents /> },
           { path: "billing", element: <Billing /> },
           { path: "members", element: <Members /> },
+          { path: "members/:memberId", element: <MemberManagement /> },
+          { path: "members/:memberId/edit", element: <MemberManagement edit /> },
           { path: "applications", element: <Applications /> },
         ],
       },

@@ -1188,54 +1188,41 @@ code {
   gap: 0.45rem;
 }
 
-.member-actions button {
+.member-actions a {
   padding: 0.5rem 0.7rem;
   border: 1px solid #d9ddd4;
+  border-radius: 0.65rem;
   color: #596259;
   background: #fff;
   font-size: 0.7rem;
+  font-weight: 750;
+  text-decoration: none;
 }
 
-.member-actions button:hover:not(:disabled) {
+.member-actions a:hover {
   border-color: #bdc7b9;
   color: #172033;
   background: #f5f6f3;
 }
 
-.member-actions button.edit {
+.member-actions a.edit {
   border-color: #f4c5bd;
   color: #bc4535;
   background: #fff7f5;
 }
 
-.member-actions button:disabled {
-  cursor: not-allowed;
-}
-
-.member-modal {
-  position: relative;
-  width: min(100%, 36rem);
-  padding: clamp(1.75rem, 5vw, 2.5rem);
-  box-shadow: 0 32px 90px rgb(23 32 51 / 24%);
-}
-
-.member-modal h2 {
-  margin-bottom: 0.35rem;
-  font-size: 1.75rem;
-}
-
-.member-modal-email {
-  margin-bottom: 1.75rem;
-  color: #7b8278;
-  font-size: 0.85rem;
-  line-height: 1.55;
+.member-management-heading .member-page-link {
+  margin-bottom: 0.25rem;
 }
 
 .member-detail-section {
   display: grid;
   gap: 0.65rem;
-  padding: 1rem 0;
-  border-top: 1px solid #e5e8e2;
+  align-content: start;
+  padding: 1.25rem;
+  border: 1px solid #e5e8e2;
+  border-radius: 0.8rem;
+  background: #fafbfa;
 }
 
 .member-detail-section > strong {
@@ -1245,9 +1232,123 @@ code {
   text-transform: uppercase;
 }
 
-.member-modal form {
+.member-management-panel {
   display: grid;
-  gap: 0.8rem;
+  gap: 1.5rem;
+  padding: 0;
+  overflow: hidden;
+}
+
+.member-profile-heading {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: clamp(1.4rem, 3vw, 2rem);
+  border-bottom: 1px solid #e5e8e2;
+}
+
+.member-profile-heading > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.member-profile-heading strong,
+.member-profile-heading span {
+  display: block;
+}
+
+.member-profile-heading strong {
+  color: #172033;
+  font-size: 1.15rem;
+}
+
+.member-profile-heading div > span {
+  margin-top: 0.2rem;
+  color: #7b8278;
+  font-size: 0.82rem;
+}
+
+.member-profile-avatar {
+  display: grid;
+  width: 3.5rem;
+  height: 3.5rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 0.9rem;
+  color: #71463d;
+  background: #fbe8e3;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.member-page-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  padding: 0.8rem 1rem;
+  border-radius: 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.member-page-link.primary:hover {
+  color: #fff;
+  background: #da4431;
+}
+
+.member-page-link.secondary:hover {
+  color: #172033;
+  background: #dfe3dc;
+}
+
+.member-management-grid {
+  display: grid;
+  grid-template-columns: minmax(12rem, 0.7fr) minmax(0, 1.3fr);
+  gap: 1rem;
+  padding: 0 clamp(1.4rem, 3vw, 2rem) clamp(1.4rem, 3vw, 2rem);
+}
+
+.member-role-form {
+  display: grid;
+  gap: 1.25rem;
+  padding: 0 clamp(1.4rem, 3vw, 2rem) clamp(1.4rem, 3vw, 2rem);
+}
+
+.member-role-form h2 {
+  margin-bottom: 0.4rem;
+}
+
+.member-role-form p {
+  margin-bottom: 0;
+  color: #687067;
+  font-size: 0.85rem;
+}
+
+.member-role-field {
+  display: grid;
+  max-width: 28rem;
+  gap: 0.55rem;
+}
+
+.member-role-actions {
+  margin-top: 0;
+}
+
+.member-management-message {
+  margin: 0 clamp(1.4rem, 3vw, 2rem) clamp(1.4rem, 3vw, 2rem);
+  padding: 1.2rem;
+  border-radius: 0.8rem;
+  color: #626a60;
+  background: #f2f4ef;
+}
+
+.member-management-message p,
+.member-not-found p {
+  margin: 0.35rem 0 1rem;
+  color: #737b71;
 }
 
 .permission-list {
@@ -1424,6 +1525,19 @@ code {
 
   .member-table {
     min-width: 48rem;
+  }
+
+  .member-management-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .member-profile-heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .member-profile-heading .member-page-link {
+    width: 100%;
   }
 
   h1 {
