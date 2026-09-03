@@ -1,11 +1,7 @@
-import type { DashboardApplication } from "./bindings/DashboardApplication";
-
-const CORE_APPLICATIONS = new Set(["Documents", "Billing"]);
+import type { DashboardAddon } from "./bindings/DashboardAddon";
 
 export function addonsFrom(
-  applications: DashboardApplication[] | undefined,
-): DashboardApplication[] {
-  return (applications ?? []).filter(
-    (application) => !CORE_APPLICATIONS.has(application.name),
-  );
+  addons: DashboardAddon[] | undefined,
+): DashboardAddon[] {
+  return [...(addons ?? [])].sort((left, right) => left.name.localeCompare(right.name));
 }

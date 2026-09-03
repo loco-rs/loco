@@ -1,24 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { addonsFrom } from "./addons";
-import type { DashboardApplication } from "./bindings/DashboardApplication";
+import type { DashboardAddon } from "./bindings/DashboardAddon";
 
-const applications: DashboardApplication[] = [
-  { id: 1, name: "Documents", status: "active", permissions: [] },
-  { id: 2, name: "Billing", status: "active", permissions: [] },
-  {
-    id: 3,
-    name: "Analytics",
-    status: "inactive",
-    permissions: ["analytics:read"],
-  },
+const addons: DashboardAddon[] = [
+  { id: 3, name: "Priority Support", status: "active" },
+  { id: 1, name: "Analytics", status: "inactive" },
 ];
 
 describe("add-ons", () => {
-  it("excludes core workspace applications", () => {
-    expect(addonsFrom(applications)).toEqual([applications[2]]);
+  it("sorts subscription add-ons by name", () => {
+    expect(addonsFrom(addons)).toEqual([addons[1], addons[0]]);
   });
 
-  it("supports dashboards without application data", () => {
+  it("supports dashboards without add-on data", () => {
     expect(addonsFrom(undefined)).toEqual([]);
   });
 });

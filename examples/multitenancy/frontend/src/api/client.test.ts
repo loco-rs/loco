@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { setToken } from "../auth/session";
-import { ApiClientError, get, post } from "./client";
+import { ApiClientError, get, post, put } from "./client";
 
 describe("API client", () => {
   beforeEach(() => {
@@ -55,6 +55,24 @@ describe("API client", () => {
       },
       credentials: "same-origin",
       body: JSON.stringify({ title: "Launch" }),
+    });
+  });
+
+  it("serializes PUT bodies", async () => {
+    setToken("jwt-test");
+    vi.spyOn(window, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ id: 2, title: "Updated" }), { status: 200 }),
+    );
+
+    await put("/api/documents/2", { title: "Updated" });
+    expect(window.fetch).toHaveBeenCalledWith("/api/documents/2", {
+      method: "PUT",
+      headers: {
+        Authorization: "Bearer jwt-test",
+        "Content-Type": "application/json",
+      },
+      credentials: "same-origin",
+      body: JSON.stringify({ title: "Updated" }),
     });
   });
 

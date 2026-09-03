@@ -1,6 +1,6 @@
 import { getToken } from "../auth/session";
 
-export type HttpMethod = "GET" | "POST";
+export type HttpMethod = "GET" | "POST" | "PUT";
 
 interface LocoErrorBody {
   error?: string;
@@ -65,4 +65,8 @@ export function get<T>(path: string): Promise<T> {
 
 export function post<T>(path: string, body: unknown): Promise<T> {
   return request<T>("POST", path, body);
+}
+
+export function put<T>(path: string, body: unknown): Promise<T> {
+  return request<T>("PUT", path, body);
 }

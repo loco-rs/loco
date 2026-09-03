@@ -35,7 +35,7 @@ function AddonList({ workspace }: { workspace: SelectedWorkspace }) {
     return <p className="error" role="alert">{dashboard.error.message}</p>;
   }
 
-  const addons = addonsFrom(dashboard.data?.applications);
+  const addons = addonsFrom(dashboard.data?.addons);
 
   return (
     <section className="console-page">
@@ -68,13 +68,6 @@ function AddonList({ workspace }: { workspace: SelectedWorkspace }) {
                 {ADDON_DESCRIPTIONS[addon.name] ??
                   "Extend this workspace with an optional feature."}
               </p>
-              {active && addon.permissions.length > 0 && (
-                <div className="permission-list">
-                  {addon.permissions.map((permission) => (
-                    <span key={permission}>{permission}</span>
-                  ))}
-                </div>
-              )}
               <span className="application-availability">
                 {active
                   ? "Available through this workspace subscription"

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useOutletContext } from "react-router";
 import { useDashboard } from "../api/dashboard";
 import { useCreateInvoice, useInvoices } from "../api/invoices";
+import { hasPermission } from "../auth/permissions";
 import type { SelectedWorkspace } from "../auth/session";
 import type { WorkspaceOutletContext } from "../auth/workspace-context";
 import { NoWorkspace } from "./Dashboard";
@@ -13,9 +14,7 @@ export function Billing() {
   if (context.isLoading) return <div className="panel page-state">Loading your workspace…</div>;
   if (context.error) return <p className="error" role="alert">{context.error.message}</p>;
   if (!context.selected) return <NoWorkspace onCreate={context.openWorkspaceCreator} />;
-  const billing = context.options.find((option) => option.tenantId === context.selected?.tenantId && option.applicationName === "Billing");
-  if (!billing) return <div className="panel empty-state">Billing is not active for this workspace.</div>;
-  return <BillingWorkspace workspace={billing} />;
+  return <BillingWorkspace workspace={context.selected} />;
 }
 
 function BillingWorkspace({ workspace }: { workspace: SelectedWorkspace }) {
@@ -24,10 +23,9 @@ function BillingWorkspace({ workspace }: { workspace: SelectedWorkspace }) {
   const dashboard = useDashboard(workspace.tenantId);
   const [number, setNumber] = useState("");
   const [amount, setAmount] = useState("");
-  const canManage = dashboard.data?.current_member.permissions.some(
-    (permission) =>
-      permission.application_id === workspace.applicationId &&
-      permission.key === "billing:manage",
+  const canManage = hasPermission(
+    dashboard.data?.current_member.permissions,
+    "billing:create",
   );
 
   function submit(event: FormEvent<HTMLFormElement>) {

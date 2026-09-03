@@ -4,8 +4,6 @@ const WORKSPACE_KEY = "loco_multitenancy_workspace";
 export interface SelectedWorkspace {
   tenantId: number;
   tenantName: string;
-  applicationId: number;
-  applicationName: string;
 }
 
 export function getToken(): string | null {
@@ -26,11 +24,7 @@ export function isSelectedWorkspace(value: unknown): value is SelectedWorkspace 
     typeof workspace.tenantId === "number" &&
     Number.isInteger(workspace.tenantId) &&
     workspace.tenantId > 0 &&
-    typeof workspace.tenantName === "string" &&
-    typeof workspace.applicationId === "number" &&
-    Number.isInteger(workspace.applicationId) &&
-    workspace.applicationId > 0 &&
-    typeof workspace.applicationName === "string"
+    typeof workspace.tenantName === "string"
   );
 }
 

@@ -7,14 +7,10 @@ export const CREATE_WORKSPACE_VALUE = "create-workspace";
 export function flattenWorkspaces(
   workspaces: Workspace[] | undefined,
 ): SelectedWorkspace[] {
-  return (workspaces ?? []).flatMap((workspace) =>
-    workspace.applications.map((application) => ({
-      tenantId: workspace.tenant_id,
-      tenantName: workspace.tenant_name,
-      applicationId: application.id,
-      applicationName: application.name,
-    })),
-  );
+  return (workspaces ?? []).map((workspace) => ({
+    tenantId: workspace.tenant_id,
+    tenantName: workspace.tenant_name,
+  }));
 }
 
 export function resolveWorkspace(
@@ -24,24 +20,16 @@ export function resolveWorkspace(
   return (
     options.find(
       (option) =>
-        option.tenantId === saved?.tenantId &&
-        option.applicationId === saved.applicationId,
+        option.tenantId === saved?.tenantId,
     ) ?? options[0]
   );
 }
 
-export function workspaceSelection(
-  workspace: Workspace,
-): SelectedWorkspace | undefined {
-  const application = workspace.applications[0];
-  return application
-    ? {
-        tenantId: workspace.tenant_id,
-        tenantName: workspace.tenant_name,
-        applicationId: application.id,
-        applicationName: application.name,
-      }
-    : undefined;
+export function workspaceSelection(workspace: Workspace): SelectedWorkspace {
+  return {
+    tenantId: workspace.tenant_id,
+    tenantName: workspace.tenant_name,
+  };
 }
 
 export interface WorkspaceOutletContext {
@@ -50,5 +38,4 @@ export interface WorkspaceOutletContext {
   isLoading: boolean;
   error: ApiClientError | null;
   openWorkspaceCreator: () => void;
-  selectApplication: (applicationName: string) => void;
 }

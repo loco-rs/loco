@@ -161,7 +161,7 @@ function MemberProfile({
               <strong>Effective permissions</strong>
               <div className="permission-list">
                 {member.permissions.map((permission) => (
-                  <span key={`${permission.application_id}:${permission.key}`}>
+                  <span key={permission.key}>
                     {permission.key}
                   </span>
                 ))}
@@ -283,7 +283,7 @@ function MemberRoleForm({
               />
               <span>
                 <strong>{permission.key}</strong>
-                <small>{permission.application_name}</small>
+                <small>Tenant permission</small>
               </span>
             </label>
           ))}

@@ -27,7 +27,7 @@ function MemberList({ workspace }: { workspace: SelectedWorkspace }) {
   return (
     <section className="console-page">
       <header className="console-heading">
-        <div><span className="eyebrow">Access directory</span><h1>Members</h1><p>Roles and effective application permissions for this workspace.</p></div>
+        <div><span className="eyebrow">Access directory</span><h1>Members</h1><p>Roles and effective tenant permissions for this workspace.</p></div>
       </header>
       <div className="panel table-panel">
         <div className="member-table" role="table">
@@ -38,7 +38,7 @@ function MemberList({ workspace }: { workspace: SelectedWorkspace }) {
             <div className="member-row" role="row" key={member.member_id}>
               <div className="member-identity"><span className="avatar">{member.name.charAt(0)}</span><div><strong>{member.name}</strong><small>{member.email}</small></div></div>
               <div>{member.roles.map((role) => <span className="role-badge" key={role}>{role}</span>)}</div>
-              <div className="permission-list">{member.permissions.map((permission) => <span key={`${permission.application_id}:${permission.key}`}>{permission.key}</span>)}</div>
+              <div className="permission-list">{member.permissions.map((permission) => <span key={permission.key}>{permission.key}</span>)}</div>
               <div className="member-actions">
                 <Link to={`/members/${member.member_id}`}>View</Link>
                 {canEdit && (

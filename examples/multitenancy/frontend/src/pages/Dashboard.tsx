@@ -37,14 +37,16 @@ function DashboardDetails({ workspace }: { workspace: SelectedWorkspace }) {
   }
 
   const { stats, current_member: currentMember } = dashboard.data;
-  const addons = addonsFrom(dashboard.data.applications);
+  const addons = addonsFrom(dashboard.data.addons);
+  const canViewClients = hasPermission(currentMember.permissions, "clients:view");
+  const canViewProjects = hasPermission(currentMember.permissions, "projects:view");
   const canViewDocuments = hasPermission(
     currentMember.permissions,
-    "documents:read",
+    "documents:view",
   );
   const canViewBilling = hasPermission(
     currentMember.permissions,
-    "billing:read",
+    "billing:view",
   );
   return (
     <section className="console-page">
@@ -61,9 +63,11 @@ function DashboardDetails({ workspace }: { workspace: SelectedWorkspace }) {
 
       <div className="stat-grid">
         <Stat label="Members" value={stats.member_count} />
-        <Stat label="Add-ons" value={addons.length} />
+        {canViewClients && <Stat label="Clients" value={stats.client_count} />}
+        {canViewProjects && <Stat label="Projects" value={stats.project_count} />}
         {canViewDocuments && <Stat label="Documents" value={stats.document_count} />}
         {canViewBilling && <Stat label="Invoices" value={stats.invoice_count} />}
+        <Stat label="Add-ons" value={stats.addon_count} />
       </div>
 
       <div className="overview-grid">

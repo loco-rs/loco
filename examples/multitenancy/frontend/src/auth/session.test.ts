@@ -13,8 +13,6 @@ import {
 const workspace: SelectedWorkspace = {
   tenantId: 1,
   tenantName: "Acme",
-  applicationId: 2,
-  applicationName: "Documents",
 };
 
 describe("authenticated tenant session", () => {
@@ -55,10 +53,6 @@ describe("authenticated tenant session", () => {
     { ...workspace, tenantId: 1.5 },
     { ...workspace, tenantId: 0 },
     { ...workspace, tenantName: 1 },
-    { ...workspace, applicationId: "2" },
-    { ...workspace, applicationId: 2.5 },
-    { ...workspace, applicationId: 0 },
-    { ...workspace, applicationName: 1 },
   ])("rejects invalid workspace %#", (value) => {
     expect(isSelectedWorkspace(value)).toBe(false);
   });

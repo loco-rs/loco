@@ -8,15 +8,18 @@ import {
 import type { SelectedWorkspace } from "../auth/session";
 import type { CreateDocument } from "../bindings/CreateDocument";
 import type { DocumentDto } from "../bindings/DocumentDto";
-import { ApiClientError, get, post } from "./client";
+import type { UpdateDocument } from "../bindings/UpdateDocument";
+import { ApiClientError, get, post, put } from "./client";
 
 export function documentsPath(workspace: SelectedWorkspace): string {
-  return `/api/tenants/${workspace.tenantId}/applications/${workspace.applicationId}/documents`;
+  return `/api/tenants/${workspace.tenantId}/documents`;
 }
 
 export const documentKeys = {
   list: (workspace: SelectedWorkspace) =>
-    ["documents", workspace.tenantId, workspace.applicationId] as const,
+    ["documents", workspace.tenantId] as const,
+  detail: (workspace: SelectedWorkspace, id: number) =>
+    ["documents", workspace.tenantId, id] as const,
 };
 
 export function useDocuments(
@@ -25,6 +28,17 @@ export function useDocuments(
   return useQuery({
     queryKey: documentKeys.list(workspace),
     queryFn: () => get<DocumentDto[]>(documentsPath(workspace)),
+  });
+}
+
+export function useDocument(
+  workspace: SelectedWorkspace,
+  id: number,
+): UseQueryResult<DocumentDto, ApiClientError> {
+  return useQuery({
+    queryKey: documentKeys.detail(workspace, id),
+    queryFn: () => get<DocumentDto>(`${documentsPath(workspace)}/${id}`),
+    enabled: Number.isInteger(id),
   });
 }
 
@@ -39,6 +53,21 @@ export function useCreateDocument(
       void queryClient.invalidateQueries({
         queryKey: documentKeys.list(workspace),
       });
+    },
+  });
+}
+
+export function useUpdateDocument(
+  workspace: SelectedWorkspace,
+  id: number,
+): UseMutationResult<DocumentDto, ApiClientError, UpdateDocument> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (document) =>
+      put<DocumentDto>(`${documentsPath(workspace)}/${id}`, document),
+    onSuccess: (document) => {
+      queryClient.setQueryData(documentKeys.detail(workspace, id), document);
+      void queryClient.invalidateQueries({ queryKey: documentKeys.list(workspace) });
     },
   });
 }

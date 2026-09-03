@@ -45,8 +45,10 @@ export function App() {
     authenticated ? selectedWorkspace?.tenantId : undefined,
   );
   const currentPermissions = dashboard.data?.current_member.permissions;
-  const canViewDocuments = hasPermission(currentPermissions, "documents:read");
-  const canViewBilling = hasPermission(currentPermissions, "billing:read");
+  const canViewClients = hasPermission(currentPermissions, "clients:view");
+  const canViewProjects = hasPermission(currentPermissions, "projects:view");
+  const canViewDocuments = hasPermission(currentPermissions, "documents:view");
+  const canViewBilling = hasPermission(currentPermissions, "billing:view");
 
   useEffect(() => {
     if (promptWorkspaceCreation) {
@@ -74,10 +76,8 @@ export function App() {
 
   function chooseWorkspace(workspace: Workspace) {
     const next = workspaceSelection(workspace);
-    if (next) {
-      saveWorkspace(next);
-      setSavedWorkspace(next);
-    }
+    saveWorkspace(next);
+    setSavedWorkspace(next);
     workspaceMenuRef.current?.removeAttribute("open");
   }
 
@@ -88,24 +88,9 @@ export function App() {
 
   function activateWorkspace(workspace: Workspace) {
     const next = workspaceSelection(workspace);
-    if (!next) {
-      return;
-    }
     saveWorkspace(next);
     setSavedWorkspace(next);
     setWorkspaceCreatorOpen(false);
-  }
-
-  function selectApplication(applicationName: string) {
-    const next = workspaceOptions.find(
-      (option) =>
-        option.tenantId === selectedWorkspace?.tenantId &&
-        option.applicationName === applicationName,
-    );
-    if (next) {
-      saveWorkspace(next);
-      setSavedWorkspace(next);
-    }
   }
 
   function logout() {
@@ -122,7 +107,6 @@ export function App() {
     isLoading: workspaces.isLoading,
     error: workspaces.error,
     openWorkspaceCreator: () => setWorkspaceCreatorOpen(true),
-    selectApplication,
   };
   const userInitials =
     currentUser.data?.name
@@ -237,21 +221,13 @@ export function App() {
             <aside className="sidebar">
               <nav className="sidebar-nav" aria-label="Workspace navigation">
                 <NavLink to="/dashboard">Overview</NavLink>
+                {canViewClients && <NavLink to="/clients">Clients</NavLink>}
+                {canViewProjects && <NavLink to="/projects">Projects</NavLink>}
                 {canViewDocuments && (
-                  <NavLink
-                    to="/documents"
-                    onClick={() => selectApplication("Documents")}
-                  >
-                    Documents
-                  </NavLink>
+                  <NavLink to="/documents">Documents</NavLink>
                 )}
                 {canViewBilling && (
-                  <NavLink
-                    to="/billing"
-                    onClick={() => selectApplication("Billing")}
-                  >
-                    Billing
-                  </NavLink>
+                  <NavLink to="/billing">Billing</NavLink>
                 )}
                 <NavLink to="/members">Members</NavLink>
                 <NavLink to="/addons">Add-ons</NavLink>
@@ -270,7 +246,7 @@ export function App() {
         )}
       </main>
       <footer>
-        Tenant-aware sessions · application RBAC · powered by Loco
+        Tenant-aware sessions · workspace RBAC · powered by Loco
       </footer>
       {authenticated && workspaceCreatorOpen && (
         <WorkspaceCreator

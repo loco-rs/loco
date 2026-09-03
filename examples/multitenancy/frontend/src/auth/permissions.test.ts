@@ -5,22 +5,20 @@ import { hasPermission } from "./permissions";
 const permissions: PermissionAccess[] = [
   {
     id: 1,
-    application_id: 1,
-    application_name: "Documents",
-    key: "documents:read",
+    key: "documents:view",
   },
 ];
 
 describe("permissions", () => {
   it("finds an effective permission", () => {
-    expect(hasPermission(permissions, "documents:read")).toBe(true);
+    expect(hasPermission(permissions, "documents:view")).toBe(true);
   });
 
   it("rejects a missing permission", () => {
-    expect(hasPermission(permissions, "billing:read")).toBe(false);
+    expect(hasPermission(permissions, "billing:view")).toBe(false);
   });
 
   it("supports permissions that have not loaded", () => {
-    expect(hasPermission(undefined, "documents:read")).toBe(false);
+    expect(hasPermission(undefined, "documents:view")).toBe(false);
   });
 });

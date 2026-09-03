@@ -12,12 +12,12 @@ import { dashboardKeys } from "./dashboard";
 import { ApiClientError, get, post } from "./client";
 
 export function invoicesPath(workspace: SelectedWorkspace): string {
-  return `/api/tenants/${workspace.tenantId}/applications/${workspace.applicationId}/invoices`;
+  return `/api/tenants/${workspace.tenantId}/invoices`;
 }
 
 export const invoiceKeys = {
   list: (workspace: SelectedWorkspace) =>
-    ["invoices", workspace.tenantId, workspace.applicationId] as const,
+    ["invoices", workspace.tenantId] as const,
 };
 
 export function useInvoices(
