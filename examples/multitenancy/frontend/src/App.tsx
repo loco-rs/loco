@@ -220,22 +220,54 @@ export function App() {
           <div className="dashboard-layout">
             <aside className="sidebar">
               <nav className="sidebar-nav" aria-label="Workspace navigation">
-                <NavLink to="/dashboard">Overview</NavLink>
-                {canViewClients && <NavLink to="/clients">Clients</NavLink>}
-                {canViewProjects && <NavLink to="/projects">Projects</NavLink>}
-                {canViewDocuments && (
-                  <NavLink to="/documents">Documents</NavLink>
-                )}
-                {canViewBilling && (
-                  <NavLink to="/billing">Billing</NavLink>
-                )}
-                <NavLink to="/members">Members</NavLink>
-                <NavLink to="/addons">Add-ons</NavLink>
+                <div className="sidebar-group overview-group">
+                  <NavLink to="/dashboard">
+                    <SidebarIcon name="overview" />
+                    <span>Overview</span>
+                  </NavLink>
+                </div>
+                <div className="sidebar-group">
+                  <span className="sidebar-label">Core</span>
+                  {canViewClients && (
+                    <NavLink to="/clients">
+                      <SidebarIcon name="clients" />
+                      <span>Clients</span>
+                    </NavLink>
+                  )}
+                  {canViewProjects && (
+                    <NavLink to="/projects">
+                      <SidebarIcon name="projects" />
+                      <span>Projects</span>
+                    </NavLink>
+                  )}
+                  {canViewDocuments && (
+                    <NavLink to="/documents">
+                      <SidebarIcon name="documents" />
+                      <span>Documents</span>
+                    </NavLink>
+                  )}
+                </div>
+                <div className="sidebar-group">
+                  <span className="sidebar-label">Settings</span>
+                  <NavLink to="/staff">
+                    <SidebarIcon name="staff" />
+                    <span>Staff</span>
+                  </NavLink>
+                </div>
+                <div className="sidebar-group">
+                  <span className="sidebar-label">Billing</span>
+                  {canViewBilling && (
+                    <NavLink to="/billing">
+                      <SidebarIcon name="invoices" />
+                      <span>Invoices</span>
+                    </NavLink>
+                  )}
+                  <NavLink to="/addons">
+                    <SidebarIcon name="addons" />
+                    <span>Add-ons</span>
+                  </NavLink>
+                </div>
               </nav>
-              <div className="sidebar-note">
-                <span className="status-dot" />
-                Tenant scope enforced
-              </div>
             </aside>
             <div className="dashboard-content">
               <Outlet context={workspaceContext} />
@@ -270,6 +302,41 @@ function SignOutIcon() {
   return (
     <svg className="sign-out-icon" viewBox="0 0 24 24" aria-hidden="true">
       <path d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6A2.25 2.25 0 0 0 5.25 5.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M18 15l3-3m0 0-3-3m3 3H9" />
+    </svg>
+  );
+}
+
+type SidebarIconName =
+  | "overview"
+  | "clients"
+  | "projects"
+  | "documents"
+  | "staff"
+  | "invoices"
+  | "addons";
+
+const SIDEBAR_ICON_PATHS: Record<SidebarIconName, string[]> = {
+  overview: ["M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"],
+  clients: [
+    "M16 20v-1.5a4.5 4.5 0 0 0-4.5-4.5h-3A4.5 4.5 0 0 0 4 18.5V20",
+    "M10 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6M17 8a2.5 2.5 0 1 0 0-5M18 13a4 4 0 0 1 3 3.87V20",
+  ],
+  projects: ["M3 7.5h7l2-2h9v14H3z"],
+  documents: ["M6 3h8l4 4v14H6zM14 3v5h4M9 12h6M9 16h6"],
+  staff: [
+    "M16 20v-1.5a4.5 4.5 0 0 0-4.5-4.5h-3A4.5 4.5 0 0 0 4 18.5V20",
+    "M10 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6M17 10a3 3 0 1 0 0-6M18 14a4 4 0 0 1 3 3.87V20",
+  ],
+  invoices: ["M6 3h12v18l-2.5-1.5L13 21l-2.5-1.5L8 21l-2-1.5zM9 8h6M9 12h6M9 16h3"],
+  addons: ["M8.5 3v3M15.5 3v3M8.5 18v3M15.5 18v3M3 8.5h3M18 8.5h3M3 15.5h3M18 15.5h3M7 7h10v10H7z"],
+};
+
+function SidebarIcon({ name }: { name: SidebarIconName }) {
+  return (
+    <svg className="sidebar-icon" viewBox="0 0 24 24" aria-hidden="true">
+      {SIDEBAR_ICON_PATHS[name].map((path) => (
+        <path d={path} key={path} />
+      ))}
     </svg>
   );
 }

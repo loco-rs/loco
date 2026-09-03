@@ -59,10 +59,10 @@ function MemberManagementPage({
   if (!Number.isInteger(memberId) || !member) {
     return (
       <section className="panel page-state member-not-found">
-        <h2>Member not found</h2>
-        <p>This member does not belong to the selected workspace.</p>
-        <Link className="secondary member-page-link" to="/members">
-          Back to members
+        <h2>Staff member not found</h2>
+        <p>This staff member does not belong to the selected workspace.</p>
+        <Link className="secondary member-page-link" to="/staff">
+          Back to staff
         </Link>
       </section>
     );
@@ -105,12 +105,12 @@ function MemberProfile({
     <section className="console-page member-management-page">
       <header className="console-heading member-management-heading">
         <div>
-          <span className="eyebrow">Member management</span>
+          <span className="eyebrow">Staff management</span>
           <h1>{edit ? `Edit ${member.name}` : member.name}</h1>
           <p>{member.email}</p>
         </div>
-        <Link className="secondary member-page-link" to="/members">
-          ← Back to members
+        <Link className="secondary member-page-link" to="/staff">
+          ← Back to staff
         </Link>
       </header>
 
@@ -126,7 +126,7 @@ function MemberProfile({
           {!edit && canEdit && (
             <Link
               className="primary member-page-link"
-              to={`/members/${member.member_id}/edit`}
+              to={`/staff/${member.member_id}/edit`}
             >
               Edit role
             </Link>
@@ -229,7 +229,7 @@ function MemberRoleForm({
         <div>
           <span className="eyebrow">Workspace role</span>
           <h2>Change member access</h2>
-          <p>Select the role that controls this member’s effective permissions.</p>
+          <p>Select the role that controls this staff member’s effective permissions.</p>
         </div>
         <div className="member-role-field">
           <label htmlFor="member-role">Role</label>
@@ -254,7 +254,7 @@ function MemberRoleForm({
         <div className="button-row member-role-actions">
           <Link
             className="secondary member-page-link"
-            to={`/members/${member.member_id}`}
+            to={`/staff/${member.member_id}`}
           >
             Cancel
           </Link>

@@ -58,7 +58,7 @@ function DashboardDetails({ workspace }: { workspace: SelectedWorkspace }) {
       </header>
 
       <div className="stat-grid">
-        <Stat label="Members" value={stats.member_count} />
+        <Stat label="Staff" value={stats.member_count} />
         {canViewClients && <Stat label="Clients" value={stats.client_count} />}
         {canViewProjects && <Stat label="Projects" value={stats.project_count} />}
         {canViewDocuments && <Stat label="Documents" value={stats.document_count} />}
@@ -67,8 +67,8 @@ function DashboardDetails({ workspace }: { workspace: SelectedWorkspace }) {
       <div className="overview-grid">
         <section className="panel overview-panel">
           <div className="panel-heading">
-            <div><span className="eyebrow">Team access</span><h2>Members</h2></div>
-            <Link to="/members">View all</Link>
+            <div><span className="eyebrow">Team access</span><h2>Staff</h2></div>
+            <Link to="/staff">View all</Link>
           </div>
           <div className="compact-list">
             {dashboard.data.members.map((member) => (
