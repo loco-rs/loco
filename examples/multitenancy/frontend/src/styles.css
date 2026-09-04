@@ -1173,6 +1173,16 @@ code {
   background: #f8e9de;
 }
 
+.addon-icon {
+  width: 1.35rem;
+  height: 1.35rem;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
 .role-badge,
 .active-badge,
 .permission-list span,
@@ -1545,11 +1555,100 @@ code {
   margin-top: auto;
 }
 
+.addon-open-link {
+  width: 100%;
+  margin-top: auto;
+  text-align: center;
+}
+
 .addon-purchase-note {
   margin-top: auto;
   color: #858c82;
   font-size: 0.74rem;
   line-height: 1.5;
+}
+
+.addon-detail-page {
+  max-width: 72rem;
+}
+
+.addon-detail-hero {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.addon-detail-hero .application-icon {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 1rem;
+}
+
+.addon-detail-hero .addon-icon {
+  width: 2rem;
+  height: 2rem;
+}
+
+.addon-detail-hero h2 {
+  margin: 0.75rem 0 0.5rem;
+}
+
+.addon-detail-hero p,
+.addon-highlight-card p,
+.addon-demo-note,
+.addon-unavailable p {
+  color: #6d746a;
+  line-height: 1.65;
+}
+
+.addon-detail-hero p {
+  max-width: 48rem;
+  margin: 0;
+}
+
+.addon-highlight-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.addon-highlight-card {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.addon-highlight-card h3,
+.addon-highlight-card p {
+  margin: 0;
+}
+
+.addon-highlight-check {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: 50%;
+  color: #28614f;
+  background: #e3f2eb;
+  font-weight: 800;
+}
+
+.addon-demo-note {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.addon-unavailable {
+  display: grid;
+  max-width: 38rem;
+  justify-items: start;
+  gap: 0.75rem;
+}
+
+.addon-unavailable h2,
+.addon-unavailable p {
+  margin: 0;
 }
 
 .invoice-history-panel {
@@ -1745,6 +1844,14 @@ code {
 }
 
 @media (max-width: 760px) {
+  .addon-highlight-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .addon-detail-hero {
+    flex-direction: column;
+  }
+
   .staff-form-grid {
     grid-template-columns: 1fr;
   }

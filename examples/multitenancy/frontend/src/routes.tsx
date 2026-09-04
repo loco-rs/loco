@@ -2,9 +2,10 @@ import { Navigate, createBrowserRouter } from "react-router";
 import { App } from "./App";
 import { PublicOnly, RequireAuth } from "./auth/RequireAuth";
 import { getToken } from "./auth/session";
+import { AddonDetails } from "./pages/AddonDetails";
+import { Addons } from "./pages/Addons";
 import { Documents } from "./pages/Documents";
 import { DocumentManagement } from "./pages/DocumentManagement";
-import { Addons } from "./pages/Addons";
 import { Billing } from "./pages/Billing";
 import { ClientManagement } from "./pages/ClientManagement";
 import { Clients } from "./pages/Clients";
@@ -54,6 +55,7 @@ export const router = createBrowserRouter([
           { path: "members/:memberId", element: <MemberManagement /> },
           { path: "members/:memberId/edit", element: <MemberManagement edit /> },
           { path: "addons", element: <Addons /> },
+          { path: "addons/:addonId", element: <AddonDetails /> },
           { path: "applications", element: <Navigate to="/addons" replace /> },
         ],
       },

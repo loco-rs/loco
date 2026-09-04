@@ -18,6 +18,7 @@ import {
   type WorkspaceOutletContext,
 } from "./auth/workspace-context";
 import type { Workspace } from "./bindings/Workspace";
+import { AddonIcon } from "./components/AddonIcon";
 import { WorkspaceCreator } from "./components/WorkspaceCreator";
 
 export function App() {
@@ -264,7 +265,7 @@ export function App() {
                       <span>Invoices</span>
                     </NavLink>
                   )}
-                  <NavLink to="/addons">
+                  <NavLink to="/addons" end>
                     <SidebarIcon name="addons" />
                     <span>Add-ons</span>
                   </NavLink>
@@ -273,10 +274,10 @@ export function App() {
                   <div className="sidebar-group paid-addon-group">
                     <span className="sidebar-label">Paid</span>
                     {paidAddons.map((addon) => (
-                      <Link to={`/addons#addon-${addon.id}`} key={addon.id}>
-                        <SidebarIcon name="paid" />
+                      <NavLink to={`/addons/${addon.id}`} key={addon.id}>
+                        <AddonIcon name={addon.name} variant="sidebar" />
                         <span>{addon.name}</span>
-                      </Link>
+                      </NavLink>
                     ))}
                   </div>
                 )}
@@ -326,8 +327,7 @@ type SidebarIconName =
   | "documents"
   | "staff"
   | "invoices"
-  | "addons"
-  | "paid";
+  | "addons";
 
 const SIDEBAR_ICON_PATHS: Record<SidebarIconName, string[]> = {
   overview: ["M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"],
@@ -343,7 +343,6 @@ const SIDEBAR_ICON_PATHS: Record<SidebarIconName, string[]> = {
   ],
   invoices: ["M6 3h12v18l-2.5-1.5L13 21l-2.5-1.5L8 21l-2-1.5zM9 8h6M9 12h6M9 16h3"],
   addons: ["M8.5 3v3M15.5 3v3M8.5 18v3M15.5 18v3M3 8.5h3M18 8.5h3M3 15.5h3M18 15.5h3M7 7h10v10H7z"],
-  paid: ["m5 12 4 4L19 6"],
 };
 
 function SidebarIcon({ name }: { name: SidebarIconName }) {

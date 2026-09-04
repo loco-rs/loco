@@ -4,6 +4,7 @@ import { addonsFrom } from "../addons";
 import type { SelectedWorkspace } from "../auth/session";
 import type { WorkspaceOutletContext } from "../auth/workspace-context";
 import { hasPermission } from "../auth/permissions";
+import { AddonIcon } from "../components/AddonIcon";
 
 export function Dashboard() {
   const context = useOutletContext<WorkspaceOutletContext>();
@@ -89,9 +90,7 @@ function DashboardDetails({ workspace }: { workspace: SelectedWorkspace }) {
           <div className="application-list">
             {addons.map((addon) => (
               <div key={addon.id}>
-                <span className={`application-icon ${addon.name.toLowerCase().replace(/ /g, "-")}`}>
-                  {addon.name.charAt(0)}
-                </span>
+                <AddonIcon name={addon.name} />
                 <div><strong>{addon.name}</strong><small>{addon.status === "active" ? "Included in subscription" : "Available to purchase"}</small></div>
                 <span className={`active-badge ${addon.status}`}>{addon.status}</span>
               </div>

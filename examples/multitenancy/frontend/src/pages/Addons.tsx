@@ -1,18 +1,13 @@
-import { useOutletContext } from "react-router";
+import { Link, useOutletContext } from "react-router";
+import { addonDetailsFor } from "../addon-catalog";
 import { usePurchaseAddon } from "../api/addons";
 import { useDashboard } from "../api/dashboard";
 import { addonsFrom } from "../addons";
 import { hasPermission } from "../auth/permissions";
 import type { SelectedWorkspace } from "../auth/session";
 import type { WorkspaceOutletContext } from "../auth/workspace-context";
+import { AddonIcon } from "../components/AddonIcon";
 import { NoWorkspace } from "./Dashboard";
-
-const ADDON_DESCRIPTIONS: Record<string, string> = {
-  Analytics: "Explore workspace activity and usage trends.",
-  "Approval Workflows": "Route work through review and sign-off stages.",
-  "Feature Flags": "Control staged feature releases across environments.",
-  "Priority Support": "Get expedited help from the support team.",
-};
 
 const ADDON_PRICES: Record<string, string> = {
   Analytics: "$49",
@@ -66,7 +61,7 @@ function AddonList({ workspace }: { workspace: SelectedWorkspace }) {
       <div className="application-grid addon-grid">
         {addons.map((addon) => {
           const active = addon.status === "active";
-          const iconClass = addon.name.toLowerCase().replace(/ /g, "-");
+          const details = addonDetailsFor(addon.name);
           return (
             <article
               className="panel application-card"
@@ -74,18 +69,13 @@ function AddonList({ workspace }: { workspace: SelectedWorkspace }) {
               key={addon.id}
             >
               <div className="application-card-heading">
-                <span className={`application-icon ${iconClass}`}>
-                  {addon.name.charAt(0)}
-                </span>
+                <AddonIcon name={addon.name} />
                 <span className={`active-badge ${addon.status}`}>
                   {active ? "Included" : "Not included"}
                 </span>
               </div>
               <h2>{addon.name}</h2>
-              <p>
-                {ADDON_DESCRIPTIONS[addon.name] ??
-                  "Extend this workspace with an optional feature."}
-              </p>
+              <p>{details.description}</p>
               <span className="application-availability">
                 {active
                   ? "Available through this workspace subscription"
@@ -102,6 +92,14 @@ function AddonList({ workspace }: { workspace: SelectedWorkspace }) {
                     ? "Completing purchase…"
                     : `Purchase for ${ADDON_PRICES[addon.name] ?? "$19"}`}
                 </button>
+              )}
+              {active && (
+                <Link
+                  className="secondary addon-open-link"
+                  to={`/addons/${addon.id}`}
+                >
+                  Open add-on
+                </Link>
               )}
               {!active && !canPurchase && (
                 <span className="addon-purchase-note">
