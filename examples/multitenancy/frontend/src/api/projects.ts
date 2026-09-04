@@ -18,8 +18,15 @@ export const projectKeys = {
 
 const path = (workspace: SelectedWorkspace) => `/api/tenants/${workspace.tenantId}/projects`;
 
-export function useProjects(workspace: SelectedWorkspace): UseQueryResult<ProjectDto[], ApiClientError> {
-  return useQuery({ queryKey: projectKeys.list(workspace), queryFn: () => get<ProjectDto[]>(path(workspace)) });
+export function useProjects(
+  workspace: SelectedWorkspace,
+  enabled = true,
+): UseQueryResult<ProjectDto[], ApiClientError> {
+  return useQuery({
+    queryKey: projectKeys.list(workspace),
+    queryFn: () => get<ProjectDto[]>(path(workspace)),
+    enabled,
+  });
 }
 
 export function useProject(workspace: SelectedWorkspace, id: number): UseQueryResult<ProjectDto, ApiClientError> {

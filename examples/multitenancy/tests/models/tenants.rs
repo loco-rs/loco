@@ -173,6 +173,22 @@ async fn seed_creates_two_workspaces_with_application_availability() {
 
     assert_eq!(clients::Entity::find().count(db).await.unwrap(), 3);
     assert_eq!(projects::Entity::find().count(db).await.unwrap(), 3);
+    let seeded_projects = projects::Entity::find()
+        .order_by_asc(projects::Column::Id)
+        .all(db)
+        .await
+        .unwrap();
+    assert_eq!(
+        seeded_projects
+            .iter()
+            .map(|project| (project.tenant_id, project.client_id, project.name.as_str()))
+            .collect::<Vec<_>>(),
+        [
+            (1, 1, "Brand refresh"),
+            (1, 2, "Client launch"),
+            (2, 3, "API platform")
+        ]
+    );
 
     let seeded_documents = documents::Entity::find()
         .order_by_asc(documents::Column::Id)

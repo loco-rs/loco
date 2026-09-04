@@ -29,17 +29,21 @@ async fn permissions_control_tenant_scoped_project_crud() {
             list.json::<serde_json::Value>().as_array().unwrap().len(),
             2
         );
+        assert_eq!(
+            list.json::<serde_json::Value>()[0]["client_name"],
+            "Acme Studio"
+        );
 
         let denied = request
             .post("/api/tenants/1/projects")
             .authorization_bearer(&support)
-            .json(&serde_json::json!({ "name": "Denied Project", "description": "Not allowed" }))
+            .json(&serde_json::json!({ "client_id": 1, "name": "Denied Project", "description": "Not allowed" }))
             .await;
         assert_eq!(denied.status_code(), 401);
         let created = request
             .post("/api/tenants/1/projects")
             .authorization_bearer(&owner)
-            .json(&serde_json::json!({ "name": "New Project", "description": "A tenant project" }))
+            .json(&serde_json::json!({ "client_id": 1, "name": "New Project", "description": "A tenant project" }))
             .await;
         assert_eq!(created.status_code(), 200, "{}", created.text());
         let id = created.json::<serde_json::Value>()["id"].as_i64().unwrap();
@@ -47,7 +51,7 @@ async fn permissions_control_tenant_scoped_project_crud() {
             .put(&format!("/api/tenants/1/projects/{id}"))
             .authorization_bearer(&owner)
             .json(
-                &serde_json::json!({ "name": "Updated Project", "description": "Updated details" }),
+                &serde_json::json!({ "client_id": 2, "name": "Updated Project", "description": "Updated details" }),
             )
             .await;
         assert_eq!(updated.status_code(), 200, "{}", updated.text());
@@ -55,6 +59,21 @@ async fn permissions_control_tenant_scoped_project_crud() {
             updated.json::<serde_json::Value>()["name"],
             "Updated Project"
         );
+        assert_eq!(
+            updated.json::<serde_json::Value>()["client_name"],
+            "Northstar Labs"
+        );
+
+        let wrong_client = request
+            .post("/api/tenants/1/projects")
+            .authorization_bearer(&owner)
+            .json(&serde_json::json!({
+                "client_id": 3,
+                "name": "Cross-tenant client",
+                "description": "Must be rejected"
+            }))
+            .await;
+        assert_eq!(wrong_client.status_code(), 404);
 
         let cross_tenant = request
             .get("/api/tenants/1/projects/3")

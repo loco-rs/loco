@@ -11,12 +11,16 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i64,
     pub name: String,
+    #[sea_orm(unique_key = "email")]
     pub email: String,
+    #[sea_orm(unique_key = "email")]
     pub tenant_id: i64,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
+    #[sea_orm(has_many = "super::projects::Entity")]
+    Projects,
     #[sea_orm(
         belongs_to = "super::tenants::Entity",
         from = "Column::TenantId",
@@ -25,6 +29,12 @@ pub enum Relation {
         on_delete = "Cascade"
     )]
     Tenants,
+}
+
+impl Related<super::projects::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Projects.def()
+    }
 }
 
 impl Related<super::tenants::Entity> for Entity {

@@ -8,6 +8,9 @@ pub struct ProjectDto {
     pub id: i64,
     #[ts(type = "number")]
     pub tenant_id: i64,
+    #[ts(type = "number")]
+    pub client_id: i64,
+    pub client_name: String,
     pub name: String,
     pub description: String,
     #[ts(type = "string")]
@@ -16,11 +19,17 @@ pub struct ProjectDto {
     pub updated_at: DateTimeWithTimeZone,
 }
 
-impl From<crate::models::_entities::projects::Model> for ProjectDto {
-    fn from(model: crate::models::_entities::projects::Model) -> Self {
+impl ProjectDto {
+    #[must_use]
+    pub fn from_models(
+        model: crate::models::_entities::projects::Model,
+        client: crate::models::_entities::clients::Model,
+    ) -> Self {
         Self {
             id: model.id,
             tenant_id: model.tenant_id,
+            client_id: model.client_id,
+            client_name: client.name,
             name: model.name,
             description: model.description,
             created_at: model.created_at,
@@ -32,6 +41,9 @@ impl From<crate::models::_entities::projects::Model> for ProjectDto {
 #[derive(Debug, serde::Serialize, serde::Deserialize, validator::Validate, TS)]
 #[ts(export, export_to = "../frontend/src/bindings/")]
 pub struct CreateProject {
+    #[validate(range(min = 1))]
+    #[ts(type = "number")]
+    pub client_id: i64,
     #[validate(length(min = 2, max = 120))]
     pub name: String,
     #[validate(length(min = 2, max = 1_000))]
@@ -41,6 +53,9 @@ pub struct CreateProject {
 #[derive(Debug, serde::Serialize, serde::Deserialize, validator::Validate, TS)]
 #[ts(export, export_to = "../frontend/src/bindings/")]
 pub struct UpdateProject {
+    #[validate(range(min = 1))]
+    #[ts(type = "number")]
+    pub client_id: i64,
     #[validate(length(min = 2, max = 120))]
     pub name: String,
     #[validate(length(min = 2, max = 1_000))]
