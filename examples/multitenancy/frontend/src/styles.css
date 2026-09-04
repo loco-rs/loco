@@ -1,4 +1,5 @@
 :root {
+  --page-gutter: clamp(1.25rem, 5vw, 5rem);
   color: #172033;
   background: #f3f5f1;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
@@ -54,7 +55,7 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 2rem;
-  padding: 1.25rem clamp(1.25rem, 5vw, 5rem);
+  padding: 1.25rem var(--page-gutter);
   border-bottom: 1px solid #d9ddd4;
   background: rgb(255 255 255 / 76%);
   backdrop-filter: blur(18px);
@@ -939,9 +940,8 @@ code {
 }
 
 .authenticated-main {
-  width: min(1380px, calc(100% - 2rem));
-  margin-inline: auto;
-  padding: 2rem 0 4rem;
+  width: 100%;
+  padding: 2rem var(--page-gutter) 4rem;
 }
 
 .dashboard-layout {
