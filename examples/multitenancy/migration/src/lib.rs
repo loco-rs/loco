@@ -17,6 +17,7 @@ mod m20260903_203228_invoices;
 mod m20260903_203352_add_invoice_indexes;
 mod m20260903_223852_clients;
 mod m20260903_223949_projects;
+mod m20260904_000344_add_client_ref_to_projects;
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -38,6 +39,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260903_203352_add_invoice_indexes::Migration),
             Box::new(m20260903_223852_clients::Migration),
             Box::new(m20260903_223949_projects::Migration),
+            Box::new(m20260904_000344_add_client_ref_to_projects::Migration),
             // inject-above (do not remove this comment)
         ]
     }

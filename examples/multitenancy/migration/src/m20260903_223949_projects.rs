@@ -15,15 +15,14 @@ impl MigrationTrait for Migration {
                 ("name", ColType::String),
                 ("description", ColType::Text),
             ],
-            &[("tenant", ""), ("client", "")],
+            &[("tenant", "")],
         )
         .await?;
         m.create_index(
             Index::create()
-                .name("uidx-projects-tenant-client-name")
+                .name("uidx-projects-tenant-name")
                 .table(Alias::new("projects"))
                 .col(Alias::new("tenant_id"))
-                .col(Alias::new("client_id"))
                 .col(Alias::new("name"))
                 .unique()
                 .to_owned(),
