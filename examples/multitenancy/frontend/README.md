@@ -32,12 +32,15 @@ and its effective tenant permissions.
 Each non-owner member links to a dedicated access page, and workspace Owners
 can open a separate role-management page from the table. That page assigns a
 member's role and configures the selected role's permissions for core resources;
-role permission changes affect every member with that role.
+role permission changes affect every member with that role. Owners can also
+create staff accounts and assign an Administrator, Manager, or Support role.
 Clients, Projects, Documents, and Billing are core areas provisioned for every tenant and are not
 part of a subscription. Their
 navigation and overview metrics appear only when the current member has the
 matching read permission, and their write forms remain hidden for read-only
-members. Document create and edit forms require both a title and description.
+members. Every project belongs to a client from the same tenant, and project
+forms require a client selection. Document create and edit forms require both a
+title and description.
 Core resources do not appear in the Add-ons catalog. That page derives optional
 product availability from the workspace's purchased subscription. Designer
 includes Approval Workflows and Priority Support, while Developer includes Feature

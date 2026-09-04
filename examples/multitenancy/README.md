@@ -10,13 +10,15 @@ complete domain from [issue #1640](https://github.com/loco-rs/loco/issues/1640):
 - users join tenants through memberships;
 - memberships have many tenant-owned roles;
 - roles receive tenant-level permissions for core resources;
-- tenant-owned clients, projects, documents, and invoices are isolated on reads and writes.
+- tenant-owned clients, projects, documents, and invoices are isolated on reads and writes;
+- clients have many projects, and every project belongs to one client in the same tenant.
 
 The schema lives in [`migration/src`](migration/src). Generated Sea-ORM
 entities are under [`src/models/_entities`](src/models/_entities), while the
 hand-written modules in [`src/models`](src/models) implement `TenantEntity`.
 `permissions::Model::user_can` is the RBAC query, and
-[`src/controllers/documents.rs`](src/controllers/documents.rs) and
+[`src/controllers/documents.rs`](src/controllers/documents.rs),
+[`src/controllers/projects.rs`](src/controllers/projects.rs), and
 [`src/controllers/invoices.rs`](src/controllers/invoices.rs) show APIs
 that check a login JWT, tenant membership, role, and
 permission before accessing tenant-scoped rows. The dashboard endpoint assembles the
@@ -81,6 +83,7 @@ POST /api/auth/login
 GET  /api/auth/workspaces
 POST /api/auth/workspaces
 GET  /api/tenants/{tenant_id}/dashboard
+POST /api/tenants/{tenant_id}/dashboard/members
 POST /api/tenants/{tenant_id}/dashboard/members/{member_id}/role
 POST /api/tenants/{tenant_id}/dashboard/roles/{role_id}/permissions
 GET|POST /api/tenants/{tenant_id}/clients
@@ -115,7 +118,10 @@ tenant-level `billing:purchase` permission. The Staff table can display
 each member's complete effective access on a dedicated page, while workspace
 Owners can use a separate management page to assign Owner, Administrator,
 Manager, or Support to other members and configure each role's permissions.
-Permission changes apply to every workspace member with that role. The request
+Permission changes apply to every workspace member with that role. Project
+create and update bodies include `client_id`, and the API rejects clients from
+another tenant. Owners can create staff accounts with an Administrator,
+Manager, or Support role; those accounts can sign in immediately. The request
 tests exercise both the seeded role matrix and a separate two-tenant scenario:
 
 ```sh
