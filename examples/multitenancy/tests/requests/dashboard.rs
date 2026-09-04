@@ -22,7 +22,7 @@ async fn token_for(ctx: &loco_rs::app::AppContext, user_id: i64) -> String {
 async fn owner_sees_seeded_tenant_resources_roles_and_addons() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
-        let token = token_for(&ctx, 1).await;
+        let token = token_for(&ctx, 2).await;
         let response = request
             .get("/api/tenants/1/dashboard")
             .authorization_bearer(&token)
@@ -31,7 +31,7 @@ async fn owner_sees_seeded_tenant_resources_roles_and_addons() {
         let body: serde_json::Value = response.json();
 
         assert_eq!(body["tenant_name"], "Designer");
-        assert_eq!(body["stats"]["member_count"], 3);
+        assert_eq!(body["stats"]["member_count"], 2);
         assert_eq!(body["stats"]["addon_count"], 4);
         assert_eq!(body["stats"]["client_count"], 2);
         assert_eq!(body["stats"]["project_count"], 2);
@@ -55,9 +55,9 @@ async fn owner_sees_seeded_tenant_resources_roles_and_addons() {
             .all(|addon| addon.get("permissions").is_none()));
 
         let members = body["members"].as_array().unwrap();
-        assert_eq!(members.len(), 3);
+        assert_eq!(members.len(), 2);
         assert!(members.iter().any(|member| member["name"] == "Jane Smith"
-            && member["roles"] == serde_json::json!(["Manager"])));
+            && member["roles"] == serde_json::json!(["Owner"])));
         assert!(members.iter().any(|member| member["name"] == "Sam Lee"
             && member["roles"] == serde_json::json!(["Support"])));
     })
@@ -69,7 +69,7 @@ async fn owner_sees_seeded_tenant_resources_roles_and_addons() {
 async fn workspace_list_contains_tenants_once_and_developer_has_expected_addons() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
-        let token = token_for(&ctx, 1).await;
+        let token = token_for(&ctx, 2).await;
         let workspaces = request
             .get("/api/auth/workspaces")
             .authorization_bearer(&token)
@@ -116,13 +116,13 @@ async fn workspace_list_contains_tenants_once_and_developer_has_expected_addons(
 async fn owner_can_change_member_role_and_role_permissions() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
-        let owner_token = token_for(&ctx, 1).await;
-        let manager_token = token_for(&ctx, 2).await;
+        let owner_token = token_for(&ctx, 2).await;
+        let non_owner_token = token_for(&ctx, 3).await;
 
         let role_update = request
-            .post("/api/tenants/1/dashboard/members/2/role")
+            .post("/api/tenants/1/dashboard/members/3/role")
             .authorization_bearer(&owner_token)
-            .json(&serde_json::json!({ "role": "Support" }))
+            .json(&serde_json::json!({ "role": "Manager" }))
             .await;
         assert_eq!(role_update.status_code(), 200, "{}", role_update.text());
 
@@ -152,7 +152,7 @@ async fn owner_can_change_member_role_and_role_permissions() {
 
         let forbidden = request
             .post("/api/tenants/1/dashboard/roles/4/permissions")
-            .authorization_bearer(&manager_token)
+            .authorization_bearer(&non_owner_token)
             .json(&serde_json::json!({ "permission_ids": [] }))
             .await;
         assert_eq!(forbidden.status_code(), 401);
@@ -197,8 +197,8 @@ async fn non_member_cannot_view_dashboard() {
 async fn owner_can_create_staff_and_non_owner_cannot() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
-        let owner_token = token_for(&ctx, 1).await;
-        let manager_token = token_for(&ctx, 2).await;
+        let owner_token = token_for(&ctx, 2).await;
+        let non_owner_token = token_for(&ctx, 3).await;
         let payload = serde_json::json!({
             "name": "Alex Rivera",
             "email": "alex@example.com",
@@ -208,7 +208,7 @@ async fn owner_can_create_staff_and_non_owner_cannot() {
 
         let forbidden = request
             .post("/api/tenants/1/dashboard/members")
-            .authorization_bearer(&manager_token)
+            .authorization_bearer(&non_owner_token)
             .json(&payload)
             .await;
         assert_eq!(forbidden.status_code(), 401);
@@ -228,7 +228,7 @@ async fn owner_can_create_staff_and_non_owner_cannot() {
             .authorization_bearer(&owner_token)
             .await;
         let dashboard: serde_json::Value = dashboard.json();
-        assert_eq!(dashboard["stats"]["member_count"], 4);
+        assert_eq!(dashboard["stats"]["member_count"], 3);
         assert!(dashboard["members"]
             .as_array()
             .unwrap()
@@ -259,7 +259,7 @@ async fn owner_can_create_staff_and_non_owner_cannot() {
                 .count(&ctx.db)
                 .await
                 .unwrap(),
-            4
+            3
         );
 
         let owner_role = request

@@ -18,7 +18,7 @@ async fn token_for(ctx: &loco_rs::app::AppContext, user_id: i64) -> String {
 async fn fake_addon_purchase_activates_subscription_and_generates_invoice() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
-        let token = token_for(&ctx, 1).await;
+        let token = token_for(&ctx, 2).await;
 
         let purchase = request
             .post("/api/tenants/1/addons/1/purchase")
@@ -67,7 +67,7 @@ async fn fake_addon_purchase_activates_subscription_and_generates_invoice() {
 async fn invoices_cannot_be_created_directly_or_for_an_active_addon() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
-        let token = token_for(&ctx, 1).await;
+        let token = token_for(&ctx, 2).await;
 
         let direct = request
             .post("/api/tenants/1/invoices")
@@ -91,7 +91,22 @@ async fn invoices_cannot_be_created_directly_or_for_an_active_addon() {
 async fn manager_can_read_invoices_but_cannot_purchase_addons() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
-        let token = token_for(&ctx, 2).await;
+        let owner = token_for(&ctx, 2).await;
+        let manager = request
+            .post("/api/tenants/1/dashboard/members")
+            .authorization_bearer(&owner)
+            .json(&serde_json::json!({
+                "name": "Billing Manager",
+                "email": "billing-manager@example.com",
+                "password": "staff-password",
+                "role": "Manager"
+            }))
+            .await;
+        assert_eq!(manager.status_code(), 200, "{}", manager.text());
+        let manager_id = manager.json::<serde_json::Value>()["user_id"]
+            .as_i64()
+            .unwrap();
+        let token = token_for(&ctx, manager_id).await;
 
         let list = request
             .get("/api/tenants/1/invoices")

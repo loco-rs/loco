@@ -16,9 +16,9 @@ async fn seed_creates_two_workspaces_with_application_availability() {
     seed::<App>(&boot.app_context).await.unwrap();
     let db = &boot.app_context.db;
 
-    let user = users::Entity::find_by_id(1).one(db).await.unwrap().unwrap();
-    assert_eq!(user.name, "John Doe");
-    assert_eq!(user.email, "john@example.com");
+    let user = users::Entity::find_by_id(2).one(db).await.unwrap().unwrap();
+    assert_eq!(user.name, "Jane Smith");
+    assert_eq!(user.email, "jane@example.com");
     assert!(user.verify_password("password"));
 
     let seeded_tenants = tenants::Entity::find()
@@ -78,12 +78,12 @@ async fn seed_creates_two_workspaces_with_application_availability() {
         ]
     );
 
-    let member = tenant_members::Entity::find_by_id(1)
+    let member = tenant_members::Entity::find_by_id(2)
         .one(db)
         .await
         .unwrap()
         .unwrap();
-    assert_eq!((member.tenant_id, member.user_id), (1, 1));
+    assert_eq!((member.tenant_id, member.user_id), (1, 2));
 
     let role_names: Vec<String> = roles::Entity::find()
         .order_by_asc(roles::Column::Id)
@@ -112,7 +112,7 @@ async fn seed_creates_two_workspaces_with_application_availability() {
         .all(db)
         .await
         .unwrap();
-    assert_eq!(members.len(), 4);
+    assert_eq!(members.len(), 3);
 
     let assigned_roles = tenant_member_roles::Entity::find()
         .order_by_asc(tenant_member_roles::Column::Id)
@@ -122,7 +122,7 @@ async fn seed_creates_two_workspaces_with_application_availability() {
         .into_iter()
         .map(|assignment| (assignment.tenant_member_id, assignment.role_id))
         .collect::<Vec<_>>();
-    assert_eq!(assigned_roles, [(1, 1), (2, 3), (3, 4), (4, 5)]);
+    assert_eq!(assigned_roles, [(2, 1), (3, 4), (4, 5)]);
 
     let permission_keys: Vec<String> = permissions::Entity::find()
         .filter(permissions::Column::TenantId.eq(1))

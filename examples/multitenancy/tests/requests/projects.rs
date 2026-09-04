@@ -18,7 +18,7 @@ async fn token_for(ctx: &loco_rs::app::AppContext, id: i64) -> String {
 async fn permissions_control_tenant_scoped_project_crud() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
-        let owner = token_for(&ctx, 1).await;
+        let owner = token_for(&ctx, 2).await;
         let support = token_for(&ctx, 3).await;
         let list = request
             .get("/api/tenants/1/projects")

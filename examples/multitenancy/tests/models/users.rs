@@ -82,7 +82,7 @@ async fn handle_create_with_password_with_duplicate() {
     let new_user = Model::create_with_password(
         &boot.app_context.db,
         &RegisterParams {
-            email: "john@example.com".to_string(),
+            email: "jane@example.com".to_string(),
             password: "1234".to_string(),
             name: "framework".to_string(),
         },
@@ -104,7 +104,7 @@ async fn can_find_by_email() {
         .await
         .expect("Failed to seed database");
 
-    let existing_user = Model::find_by_email(&boot.app_context.db, "john@example.com").await;
+    let existing_user = Model::find_by_email(&boot.app_context.db, "jane@example.com").await;
     let non_existing_user_results =
         Model::find_by_email(&boot.app_context.db, "un@existing-email.com").await;
 
@@ -126,7 +126,7 @@ async fn can_find_by_pid() {
         .expect("Failed to seed database");
 
     let existing_user =
-        Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111").await;
+        Model::find_by_pid(&boot.app_context.db, "22222222-2222-2222-2222-222222222222").await;
     let non_existing_user_results =
         Model::find_by_pid(&boot.app_context.db, "23232323-2323-2323-2323-232323232323").await;
 
@@ -147,7 +147,7 @@ async fn can_verification_token() {
         .await
         .expect("Failed to seed database");
 
-    let user = Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111")
+    let user = Model::find_by_pid(&boot.app_context.db, "22222222-2222-2222-2222-222222222222")
         .await
         .expect("Failed to find user by PID");
 
@@ -167,7 +167,7 @@ async fn can_verification_token() {
 
     assert!(result.is_ok(), "Failed to set email verification sent");
 
-    let user = Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111")
+    let user = Model::find_by_pid(&boot.app_context.db, "22222222-2222-2222-2222-222222222222")
         .await
         .expect("Failed to find user by PID after setting verification sent");
 
@@ -193,7 +193,7 @@ async fn can_set_forgot_password_sent() {
         .await
         .expect("Failed to seed database");
 
-    let user = Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111")
+    let user = Model::find_by_pid(&boot.app_context.db, "22222222-2222-2222-2222-222222222222")
         .await
         .expect("Failed to find user by PID");
 
@@ -210,7 +210,7 @@ async fn can_set_forgot_password_sent() {
 
     assert!(result.is_ok(), "Failed to set forgot password sent");
 
-    let user = Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111")
+    let user = Model::find_by_pid(&boot.app_context.db, "22222222-2222-2222-2222-222222222222")
         .await
         .expect("Failed to find user by PID after setting forgot password sent");
 
@@ -236,7 +236,7 @@ async fn can_verified() {
         .await
         .expect("Failed to seed database");
 
-    let user = Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111")
+    let user = Model::find_by_pid(&boot.app_context.db, "22222222-2222-2222-2222-222222222222")
         .await
         .expect("Failed to find user by PID");
 
@@ -252,7 +252,7 @@ async fn can_verified() {
 
     assert!(result.is_ok(), "Failed to mark email as verified");
 
-    let user = Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111")
+    let user = Model::find_by_pid(&boot.app_context.db, "22222222-2222-2222-2222-222222222222")
         .await
         .expect("Failed to find user by PID after verification");
 
@@ -274,7 +274,7 @@ async fn can_reset_password() {
         .await
         .expect("Failed to seed database");
 
-    let user = Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111")
+    let user = Model::find_by_pid(&boot.app_context.db, "22222222-2222-2222-2222-222222222222")
         .await
         .expect("Failed to find user by PID");
 
@@ -291,7 +291,7 @@ async fn can_reset_password() {
 
     assert!(result.is_ok(), "Failed to reset password");
 
-    let user = Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111")
+    let user = Model::find_by_pid(&boot.app_context.db, "22222222-2222-2222-2222-222222222222")
         .await
         .expect("Failed to find user by PID after password reset");
 
@@ -307,7 +307,7 @@ async fn magic_link() {
     let boot = boot_test::<App>().await.unwrap();
     seed::<App>(&boot.app_context).await.unwrap();
 
-    let user = Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111")
+    let user = Model::find_by_pid(&boot.app_context.db, "22222222-2222-2222-2222-222222222222")
         .await
         .unwrap();
 
@@ -332,7 +332,7 @@ async fn magic_link() {
     );
 
     let updated_user =
-        Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111")
+        Model::find_by_pid(&boot.app_context.db, "22222222-2222-2222-2222-222222222222")
             .await
             .expect("Failed to refetch user after magic link creation");
 

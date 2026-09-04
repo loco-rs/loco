@@ -576,7 +576,7 @@ async fn can_auth_with_magic_link() {
         seed::<App>(&ctx).await.unwrap();
 
         let payload = serde_json::json!({
-            "email": "john@example.com",
+            "email": "jane@example.com",
         });
         let response = request.post("/api/auth/magic-link").json(&payload).await;
         assert_eq!(
@@ -599,7 +599,7 @@ async fn can_auth_with_magic_link() {
         //     assert_debug_snapshot!(deliveries.messages);
         // });
 
-        let user = users::Model::find_by_email(&ctx.db, "john@example.com")
+        let user = users::Model::find_by_email(&ctx.db, "jane@example.com")
             .await
             .expect("User should be found");
 

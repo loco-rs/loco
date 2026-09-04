@@ -1,12 +1,4 @@
 ---
-- id: 1
-  pid: 11111111-1111-1111-1111-111111111111
-  email: john@example.com
-  password: "$argon2id$v=19$m=19456,t=2,p=1$mEg37f7DK7vf72cLdW/RCg$c7WOnw9X6+HGddx100iEs3W6jKAOr5K0kBbbfzO6CnY"
-  api_key: lo-95ec80d7-cb60-4b70-9b4b-9ef74cb88758
-  name: John Doe
-  created_at: "2023-11-12T12:34:56.789Z"
-  updated_at: "2023-11-12T12:34:56.789Z"
 - id: 2
   pid: 22222222-2222-2222-2222-222222222222
   email: jane@example.com

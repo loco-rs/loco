@@ -4,7 +4,7 @@ expression: "existing_user.map(|user| (user.email, user.name))"
 ---
 Ok(
     (
-        "john@example.com",
-        "John Doe",
+        "jane@example.com",
+        "Jane Smith",
     ),
 )
