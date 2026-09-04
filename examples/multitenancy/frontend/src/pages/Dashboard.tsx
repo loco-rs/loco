@@ -39,6 +39,9 @@ function DashboardDetails({ workspace }: { workspace: SelectedWorkspace }) {
 
   const { stats, current_member: currentMember } = dashboard.data;
   const addons = addonsFrom(dashboard.data.addons);
+  const staff = dashboard.data.members.filter(
+    (member) => !member.roles.includes("Owner"),
+  );
   const canViewClients = hasPermission(currentMember.permissions, "clients:view");
   const canViewProjects = hasPermission(currentMember.permissions, "projects:view");
   const canViewDocuments = hasPermission(
@@ -59,7 +62,7 @@ function DashboardDetails({ workspace }: { workspace: SelectedWorkspace }) {
       </header>
 
       <div className="stat-grid">
-        <Stat label="Staff" value={stats.member_count} />
+        <Stat label="Staff" value={staff.length} />
         {canViewClients && <Stat label="Clients" value={stats.client_count} />}
         {canViewProjects && <Stat label="Projects" value={stats.project_count} />}
         {canViewDocuments && <Stat label="Documents" value={stats.document_count} />}
@@ -72,7 +75,7 @@ function DashboardDetails({ workspace }: { workspace: SelectedWorkspace }) {
             <Link to="/staff">View all</Link>
           </div>
           <div className="compact-list">
-            {dashboard.data.members.map((member) => (
+            {staff.map((member) => (
               <div key={member.member_id}>
                 <span className="avatar">{member.name.charAt(0)}</span>
                 <div><strong>{member.name}</strong><small>{member.email}</small></div>
@@ -80,6 +83,9 @@ function DashboardDetails({ workspace }: { workspace: SelectedWorkspace }) {
               </div>
             ))}
           </div>
+          {staff.length === 0 && (
+            <div className="empty-state">No staff have been added yet.</div>
+          )}
         </section>
 
         <section className="panel overview-panel">
