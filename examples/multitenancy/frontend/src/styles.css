@@ -821,6 +821,15 @@ code {
   margin-bottom: 0.3rem;
 }
 
+.project-client-control {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.project-client-control .hint {
+  margin: 0;
+}
+
 .create-icon {
   display: grid;
   width: 2.6rem;

@@ -100,14 +100,16 @@ function ProjectList({ workspace }: { workspace: SelectedWorkspace }) {
               </div>
             </div>
             <label htmlFor="project-client">Client</label>
-            <select id="project-client" value={clientId} onChange={(event) => setClientId(event.target.value)} required>
-              <option value="">Select a client</option>
-              {clients.data?.map((client) => (
-                <option value={client.id} key={client.id}>{client.name}</option>
-              ))}
-            </select>
-            {clients.error && <p className="error" role="alert">{clients.error.message}</p>}
-            {clients.data?.length === 0 && <p className="hint">Create a client before adding a project.</p>}
+            <div className="project-client-control">
+              <select id="project-client" value={clientId} onChange={(event) => setClientId(event.target.value)} required>
+                <option value="">Select a client</option>
+                {clients.data?.map((client) => (
+                  <option value={client.id} key={client.id}>{client.name}</option>
+                ))}
+              </select>
+              {clients.error && <p className="error" role="alert">{clients.error.message}</p>}
+              {clients.data?.length === 0 && <p className="hint">Create a client before adding a project.</p>}
+            </div>
             <label htmlFor="project-name">Name</label>
             <input id="project-name" value={name} onChange={(event) => setName(event.target.value)} required />
             <label htmlFor="project-description">Description</label>
