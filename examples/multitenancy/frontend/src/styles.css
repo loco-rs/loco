@@ -714,7 +714,7 @@ code {
 }
 
 .documents-panel {
-  min-height: 26rem;
+  min-height: 0;
 }
 
 .panel-heading {
@@ -940,6 +940,7 @@ code {
 
 .authenticated-main {
   width: min(1380px, calc(100% - 2rem));
+  margin-inline: auto;
   padding: 2rem 0 4rem;
 }
 
