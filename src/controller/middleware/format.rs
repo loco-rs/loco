@@ -54,8 +54,11 @@ where
 {
     type Rejection = Error;
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Error> {
-        Ok(Self(get_respond_to(&parts.headers)))
+    fn from_request_parts(
+        parts: &mut Parts,
+        _state: &S,
+    ) -> impl Future<Output = Result<Self, Error>> {
+        std::future::ready(Ok(Self(get_respond_to(&parts.headers))))
     }
 }
 
@@ -65,7 +68,10 @@ where
 {
     type Rejection = Error;
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Error> {
-        Ok(get_respond_to(&parts.headers))
+    fn from_request_parts(
+        parts: &mut Parts,
+        _state: &S,
+    ) -> impl Future<Output = Result<Self, Error>> {
+        std::future::ready(Ok(get_respond_to(&parts.headers)))
     }
 }

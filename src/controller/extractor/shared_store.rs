@@ -11,19 +11,19 @@ where
 {
     type Rejection = Error;
 
-    async fn from_request_parts(
+    fn from_request_parts(
         _: &mut Parts,
         state: &AppContext,
-    ) -> Result<Self, Self::Rejection> {
-        let instance = state.shared_store.get::<T>().ok_or_else(|| {
+    ) -> impl Future<Output = Result<Self, Self::Rejection>> {
+        let instance = state.shared_store.get::<T>().map(Self).ok_or_else(|| {
             let type_name = std::any::type_name::<T>();
             tracing::error!(
                 "Could not find service of type `{}` in shared store",
                 type_name
             );
             Error::InternalServerError
-        })?;
+        });
 
-        Ok(Self(instance))
+        std::future::ready(instance)
     }
 }

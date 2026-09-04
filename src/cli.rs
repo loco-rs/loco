@@ -798,7 +798,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             let boot_result =
                 create_app::<H, M>(start_mode, &environment, app_context.config).await?;
             let serve_params = ServeParams {
-                port: port.map_or(boot_result.app_context.config.server.port, |p| p),
+                port: port.unwrap_or(boot_result.app_context.config.server.port),
                 binding: binding
                     .unwrap_or_else(|| boot_result.app_context.config.server.binding.clone()),
             };

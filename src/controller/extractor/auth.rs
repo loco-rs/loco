@@ -110,8 +110,11 @@ where
 {
     type Rejection = Error;
 
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Error> {
-        extract_jwt_from_request_parts(parts, state)
+    fn from_request_parts(
+        parts: &mut Parts,
+        state: &S,
+    ) -> impl Future<Output = Result<Self, Error>> {
+        std::future::ready(extract_jwt_from_request_parts(parts, state))
     }
 }
 
@@ -126,11 +129,11 @@ where
 {
     type Rejection = std::convert::Infallible;
 
-    async fn from_request_parts(
+    fn from_request_parts(
         parts: &mut Parts,
         state: &S,
-    ) -> Result<Option<Self>, Self::Rejection> {
-        Ok(extract_jwt_from_request_parts(parts, state).ok())
+    ) -> impl Future<Output = Result<Option<Self>, Self::Rejection>> {
+        std::future::ready(Ok(extract_jwt_from_request_parts(parts, state).ok()))
     }
 }
 
