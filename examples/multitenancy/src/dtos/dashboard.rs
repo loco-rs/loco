@@ -8,6 +8,14 @@ fn validate_role(role: &str) -> Result<(), validator::ValidationError> {
     }
 }
 
+fn validate_staff_role(role: &str) -> Result<(), validator::ValidationError> {
+    if matches!(role, "Administrator" | "Manager" | "Support") {
+        Ok(())
+    } else {
+        Err(validator::ValidationError::new("role"))
+    }
+}
+
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, TS)]
 #[ts(export, export_to = "../frontend/src/bindings/")]
 pub struct PermissionAccess {
@@ -36,6 +44,31 @@ pub struct MemberAccess {
     pub email: String,
     pub roles: Vec<String>,
     pub permissions: Vec<PermissionAccess>,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, validator::Validate, TS)]
+#[ts(export, export_to = "../frontend/src/bindings/")]
+pub struct CreateStaff {
+    #[validate(length(min = 2, max = 100))]
+    pub name: String,
+    #[validate(email)]
+    pub email: String,
+    #[validate(length(min = 8, max = 128))]
+    pub password: String,
+    #[validate(custom(function = "validate_staff_role"))]
+    pub role: String,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, TS)]
+#[ts(export, export_to = "../frontend/src/bindings/")]
+pub struct StaffCreated {
+    #[ts(type = "number")]
+    pub member_id: i64,
+    #[ts(type = "number")]
+    pub user_id: i64,
+    pub name: String,
+    pub email: String,
+    pub role: String,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, TS)]

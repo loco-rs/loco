@@ -1,6 +1,10 @@
+use loco_rs::prelude::TenantQueryExt;
 use loco_rs::testing::prelude::*;
-use multitenancy::{app::App, models::users};
-use sea_orm::EntityTrait;
+use multitenancy::{
+    app::App,
+    models::{_entities::tenant_members, users},
+};
+use sea_orm::{EntityTrait, PaginatorTrait};
 use serial_test::serial;
 
 async fn token_for(ctx: &loco_rs::app::AppContext, user_id: i64) -> String {
@@ -184,6 +188,91 @@ async fn non_member_cannot_view_dashboard() {
             .authorization_bearer(&token)
             .await;
         assert_eq!(response.status_code(), 401);
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn owner_can_create_staff_and_non_owner_cannot() {
+    request::<App, _, _>(|request, ctx| async move {
+        seed::<App>(&ctx).await.unwrap();
+        let owner_token = token_for(&ctx, 1).await;
+        let manager_token = token_for(&ctx, 2).await;
+        let payload = serde_json::json!({
+            "name": "Alex Rivera",
+            "email": "alex@example.com",
+            "password": "staff-password",
+            "role": "Administrator"
+        });
+
+        let forbidden = request
+            .post("/api/tenants/1/dashboard/members")
+            .authorization_bearer(&manager_token)
+            .json(&payload)
+            .await;
+        assert_eq!(forbidden.status_code(), 401);
+
+        let created = request
+            .post("/api/tenants/1/dashboard/members")
+            .authorization_bearer(&owner_token)
+            .json(&payload)
+            .await;
+        assert_eq!(created.status_code(), 200, "{}", created.text());
+        let member = created.json::<serde_json::Value>();
+        assert_eq!(member["name"], "Alex Rivera");
+        assert_eq!(member["role"], "Administrator");
+
+        let dashboard = request
+            .get("/api/tenants/1/dashboard")
+            .authorization_bearer(&owner_token)
+            .await;
+        let dashboard: serde_json::Value = dashboard.json();
+        assert_eq!(dashboard["stats"]["member_count"], 4);
+        assert!(dashboard["members"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|staff| {
+                staff["email"] == "alex@example.com"
+                    && staff["roles"] == serde_json::json!(["Administrator"])
+            }));
+
+        let login = request
+            .post("/api/auth/login")
+            .json(&serde_json::json!({
+                "email": "alex@example.com",
+                "password": "staff-password"
+            }))
+            .await;
+        assert_eq!(login.status_code(), 200, "{}", login.text());
+
+        let duplicate = request
+            .post("/api/tenants/1/dashboard/members")
+            .authorization_bearer(&owner_token)
+            .json(&payload)
+            .await;
+        assert_eq!(duplicate.status_code(), 409);
+        assert_eq!(
+            tenant_members::Entity::find()
+                .in_tenant(1)
+                .count(&ctx.db)
+                .await
+                .unwrap(),
+            4
+        );
+
+        let owner_role = request
+            .post("/api/tenants/1/dashboard/members")
+            .authorization_bearer(&owner_token)
+            .json(&serde_json::json!({
+                "name": "Second Owner",
+                "email": "owner-two@example.com",
+                "password": "staff-password",
+                "role": "Owner"
+            }))
+            .await;
+        assert_eq!(owner_role.status_code(), 400);
     })
     .await;
 }

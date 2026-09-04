@@ -15,6 +15,7 @@ import { Members } from "./pages/Members";
 import { ProjectManagement } from "./pages/ProjectManagement";
 import { Projects } from "./pages/Projects";
 import { Register } from "./pages/Register";
+import { StaffCreate } from "./pages/StaffCreate";
 
 export const router = createBrowserRouter([
   {
@@ -46,6 +47,7 @@ export const router = createBrowserRouter([
           { path: "documents/:documentId/edit", element: <DocumentManagement edit /> },
           { path: "billing", element: <Billing /> },
           { path: "staff", element: <Members /> },
+          { path: "staff/new", element: <StaffCreate /> },
           { path: "staff/:memberId", element: <MemberManagement /> },
           { path: "staff/:memberId/edit", element: <MemberManagement edit /> },
           { path: "members", element: <Navigate to="/staff" replace /> },

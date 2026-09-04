@@ -1638,6 +1638,10 @@ code {
   padding: clamp(1.5rem, 4vw, 2.5rem);
 }
 
+.client-projects {
+  max-width: 58rem;
+}
+
 .resource-detail > div {
   min-width: 0;
   flex: 1;
@@ -1658,6 +1662,32 @@ code {
   display: grid;
   width: min(100%, 38rem);
   gap: 0.75rem;
+}
+
+.project-client-name {
+  color: #586b61;
+  font-weight: 750;
+}
+
+.staff-create-form {
+  display: grid;
+  max-width: 58rem;
+  gap: 1.5rem;
+}
+
+.staff-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+.staff-form-grid > div {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.staff-create-actions {
+  justify-content: flex-end;
 }
 
 .resource-form input,
@@ -1715,6 +1745,10 @@ code {
 }
 
 @media (max-width: 760px) {
+  .staff-form-grid {
+    grid-template-columns: 1fr;
+  }
+
   .topbar,
   .workspace-heading {
     align-items: flex-start;

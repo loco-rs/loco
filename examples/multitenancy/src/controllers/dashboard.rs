@@ -6,14 +6,15 @@ use sea_orm::PaginatorTrait;
 
 use crate::{
     dtos::dashboard::{
-        DashboardAddon, DashboardDto, DashboardStats, MemberAccess, MemberRoleUpdate,
-        PermissionAccess, RoleAccess, RolePermissionsUpdate, UpdateMemberRole,
+        CreateStaff, DashboardAddon, DashboardDto, DashboardStats, MemberAccess, MemberRoleUpdate,
+        PermissionAccess, RoleAccess, RolePermissionsUpdate, StaffCreated, UpdateMemberRole,
         UpdateRolePermissions,
     },
     models::_entities::{
         applications, clients, documents, invoices, permissions, projects, role_permissions, roles,
         tenant_applications, tenant_member_roles, tenant_members, tenants, users,
     },
+    models::users::RegisterParams,
 };
 
 fn member_access(
@@ -230,8 +231,59 @@ async fn ensure_owner(ctx: &AppContext, tenant_id: i64, user_id: i64) -> Result<
     if is_owner {
         Ok(())
     } else {
-        unauthorized("only workspace owners can manage roles and permissions")
+        unauthorized("only workspace owners can manage staff, roles, and permissions")
     }
+}
+
+#[debug_handler]
+pub async fn create_staff(
+    State(ctx): State<AppContext>,
+    auth: auth::JWTWithUser<users::Model>,
+    Path(tenant_id): Path<i64>,
+    JsonValidate(params): JsonValidate<CreateStaff>,
+) -> Result<Response> {
+    ensure_owner(&ctx, tenant_id, auth.user.id).await?;
+    let role = roles::Entity::find()
+        .in_tenant(tenant_id)
+        .filter(roles::Column::Name.eq(&params.role))
+        .one(&ctx.db)
+        .await?
+        .ok_or(ModelError::EntityNotFound)?;
+
+    let txn = ctx.db.begin().await?;
+    let user = users::Model::create_with_password_on(
+        &txn,
+        &RegisterParams {
+            name: params.name,
+            email: params.email,
+            password: params.password,
+        },
+    )
+    .await?;
+    let member = tenant_members::ActiveModel {
+        user_id: Set(user.id),
+        ..Default::default()
+    }
+    .set_tenant(tenant_id)?
+    .insert(&txn)
+    .await?;
+    tenant_member_roles::ActiveModel {
+        tenant_member_id: Set(member.id),
+        role_id: Set(role.id),
+        ..Default::default()
+    }
+    .set_tenant(tenant_id)?
+    .insert(&txn)
+    .await?;
+    txn.commit().await?;
+
+    format::json(StaffCreated {
+        member_id: member.id,
+        user_id: user.id,
+        name: user.name,
+        email: user.email,
+        role: role.name,
+    })
 }
 
 #[debug_handler]
@@ -418,6 +470,7 @@ pub fn routes() -> Routes {
     Routes::new()
         .prefix("api/tenants/{tenant_id}/dashboard/")
         .add("/", get(show))
+        .add("/members", post(create_staff))
         .add("/members/{member_id}/role", post(update_member_role))
         .add(
             "/roles/{role_id}/permissions",

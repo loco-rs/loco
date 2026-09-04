@@ -28,6 +28,7 @@ function MemberList({ workspace }: { workspace: SelectedWorkspace }) {
     <section className="console-page">
       <header className="console-heading">
         <div><span className="eyebrow">Access directory</span><h1>Staff</h1><p>Roles and effective tenant permissions for this workspace.</p></div>
+        {canEdit && <Link className="primary member-page-link" to="/staff/new">+ Add staff</Link>}
       </header>
       <div className="panel table-panel">
         <div className="member-table" role="table">

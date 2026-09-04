@@ -71,7 +71,10 @@ impl Authenticable for Model {
 }
 
 impl Model {
-    async fn create_with_password_on<C>(db: &C, params: &RegisterParams) -> ModelResult<Self>
+    pub(crate) async fn create_with_password_on<C>(
+        db: &C,
+        params: &RegisterParams,
+    ) -> ModelResult<Self>
     where
         C: ConnectionTrait,
     {

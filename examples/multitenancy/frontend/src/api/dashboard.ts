@@ -6,8 +6,10 @@ import {
   type UseQueryResult,
 } from "@tanstack/react-query";
 import type { DashboardDto } from "../bindings/DashboardDto";
+import type { CreateStaff } from "../bindings/CreateStaff";
 import type { MemberRoleUpdate } from "../bindings/MemberRoleUpdate";
 import type { RolePermissionsUpdate } from "../bindings/RolePermissionsUpdate";
+import type { StaffCreated } from "../bindings/StaffCreated";
 import type { UpdateMemberRole } from "../bindings/UpdateMemberRole";
 import type { UpdateRolePermissions } from "../bindings/UpdateRolePermissions";
 import { ApiClientError, get, post } from "./client";
@@ -27,6 +29,21 @@ export function useDashboard(
     queryKey: dashboardKeys.detail(tenantId),
     queryFn: () => get<DashboardDto>(dashboardPath(tenantId ?? 0)),
     enabled: tenantId !== undefined,
+  });
+}
+
+export function useCreateStaff(
+  tenantId: number,
+): UseMutationResult<StaffCreated, ApiClientError, CreateStaff> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params) =>
+      post<StaffCreated>(`${dashboardPath(tenantId)}/members`, params),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: dashboardKeys.detail(tenantId),
+      });
+    },
   });
 }
 
