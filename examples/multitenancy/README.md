@@ -43,17 +43,10 @@ cargo loco start
 The example inherits the framework from the repository root through a local
 path dependency, so it always exercises the code in the current checkout.
 Open <http://localhost:5150> and register an account. No users, memberships, or
-member-role assignments are seeded; the prompted workspace setup creates the
-user's first owned workspace. The Designer and Developer fixtures demonstrate
-tenant-scoped sample data for tests. Both workspaces have the core Clients,
-Projects, Documents, and Billing areas. Their optional add-on subscriptions differ: Designer has
-Approval Workflows and Priority Support, Developer has Feature Flags and Priority
-Support, and Analytics is active only for Developer. Approval Workflows, Feature
-Flags, and Priority Support demonstrate add-on subscription availability without
-creating permissions or role grants. Designer has two clients, two projects,
-and one document; Developer has one of each seeded content resource. Invoices
-start empty and are generated only by add-on purchases. You can also register an
-account with your name, email, and password. After registration, the
+member-role assignments, tenants, subscriptions, clients, projects, or documents
+are seeded. Seeding installs only the global Analytics, Approval Workflows,
+Feature Flags, and Priority Support add-on catalog. Register an account with your
+name, email, and password. After registration, the
 workspace modal opens so you can name your first tenant; its slug is generated
 automatically and scoped by the tenant ID. Workspace creation atomically adds
 the tenant, Owner,
@@ -62,18 +55,16 @@ provisions the core Clients, Projects, Documents, and Billing permissions with r
 permissions. These core features are always available and are not part of a
 subscription.
 
-`db reset` recreates the demo schema before loading the fixed-ID fixtures. It
-deletes accounts and tenants you previously created in this example. This is
-required when moving from an earlier version of the example whose permission
-or invoice tables still referenced an application. For an already-current
-schema, `cargo loco db seed --reset` is sufficient. If you want to preserve
-existing demo data, skip both reset and seed and run `cargo loco start`.
+`db reset` recreates the demo schema and deletes accounts and tenants you
+previously created in this example. Use it only when you intentionally want a
+clean database. For an already-current schema, `cargo loco db seed` ensures the
+global add-on catalog exists without creating tenant-owned data.
 
 For frontend development, run Loco on port 5150 and `pnpm dev` from
 `frontend`; Vite serves <http://localhost:5173> and proxies `/api` to Loco.
-The navbar workspace menu lists Designer and Developer once each. Core feature
-access is permission-based, while add-on availability is derived from active
-`tenant_applications` rows.
+The navbar workspace menu lists the workspaces created by the signed-in user.
+Core feature access is permission-based, while add-on availability is derived
+from active `tenant_applications` rows.
 
 The API endpoints are:
 
@@ -122,7 +113,8 @@ Permission changes apply to every workspace member with that role. Project
 create and update bodies include `client_id`, and the API rejects clients from
 another tenant. Owners can create staff accounts with an Administrator,
 Manager, or Support role; those accounts can sign in immediately. The request
-tests exercise both the seeded role matrix and a separate two-tenant scenario:
+tests build isolated tenant fixtures through the production workspace-creation
+path:
 
 ```sh
 cargo test --test mod

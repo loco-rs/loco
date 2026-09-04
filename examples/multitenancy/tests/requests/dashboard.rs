@@ -21,7 +21,7 @@ async fn token_for(ctx: &loco_rs::app::AppContext, user_id: i64) -> String {
 
 #[tokio::test]
 #[serial]
-async fn owner_sees_seeded_tenant_resources_roles_and_addons() {
+async fn owner_sees_workspace_resources_roles_and_addons() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
         let users = prepare_data::init_workspace_users(&ctx).await;
@@ -69,7 +69,7 @@ async fn owner_sees_seeded_tenant_resources_roles_and_addons() {
 
 #[tokio::test]
 #[serial]
-async fn workspace_list_contains_tenants_once_and_developer_has_expected_addons() {
+async fn workspace_list_contains_each_tenant_once_and_developer_has_expected_addons() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
         let users = prepare_data::init_workspace_users(&ctx).await;
@@ -179,6 +179,7 @@ async fn owner_can_change_member_role_and_role_permissions() {
 async fn non_member_cannot_view_dashboard() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
+        prepare_data::init_workspace_users(&ctx).await;
         let outsider = users::Model::create_with_password(
             &ctx.db,
             &users::RegisterParams {

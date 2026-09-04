@@ -239,22 +239,6 @@ impl Model {
         txn.commit().await?;
         Ok(workspace)
     }
-
-    /// Creates the default tenant-level permissions and role grants for fixtures.
-    ///
-    /// # Errors
-    ///
-    /// Returns a model error when roles cannot be loaded or grants cannot be inserted.
-    pub async fn seed_access_defaults(db: &DatabaseConnection) -> ModelResult<()> {
-        let txn = db.begin().await?;
-        let seeded_tenants = tenants::Entity::find().all(&txn).await?;
-        for tenant in seeded_tenants {
-            let tenant_roles = roles::Entity::find().in_tenant(tenant.id).all(&txn).await?;
-            provision_permissions(&txn, tenant.id, &tenant_roles).await?;
-        }
-        txn.commit().await?;
-        Ok(())
-    }
 }
 
 // implement your write-oriented logic here

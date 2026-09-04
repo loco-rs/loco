@@ -6,30 +6,15 @@ use multitenancy::{
         tenant_applications, tenant_member_roles, tenant_members, tenants, users,
     },
 };
-use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder};
+use sea_orm::{EntityTrait, PaginatorTrait, QueryOrder};
 use serial_test::serial;
 
 #[tokio::test]
 #[serial]
-async fn seed_creates_two_workspaces_with_application_availability() {
+async fn seed_creates_only_the_global_addon_catalog() {
     let boot = boot_test::<App>().await.unwrap();
     seed::<App>(&boot.app_context).await.unwrap();
     let db = &boot.app_context.db;
-
-    assert_eq!(users::Entity::find().count(db).await.unwrap(), 0);
-
-    let seeded_tenants = tenants::Entity::find()
-        .order_by_asc(tenants::Column::Id)
-        .all(db)
-        .await
-        .unwrap();
-    assert_eq!(
-        seeded_tenants
-            .iter()
-            .map(|tenant| (tenant.name.as_str(), tenant.slug.as_str()))
-            .collect::<Vec<_>>(),
-        [("Designer", "designer"), ("Developer", "developer")]
-    );
 
     let application_names = applications::Entity::find()
         .order_by_asc(applications::Column::Id)
@@ -49,150 +34,21 @@ async fn seed_creates_two_workspaces_with_application_availability() {
         ]
     );
 
-    let tenant_application_rows = tenant_applications::Entity::find()
-        .order_by_asc(tenant_applications::Column::Id)
-        .all(db)
-        .await
-        .unwrap();
+    assert_eq!(users::Entity::find().count(db).await.unwrap(), 0);
+    assert_eq!(tenants::Entity::find().count(db).await.unwrap(), 0);
+    assert_eq!(tenant_members::Entity::find().count(db).await.unwrap(), 0);
     assert_eq!(
-        tenant_application_rows
-            .iter()
-            .map(|tenant_application| (
-                tenant_application.tenant_id,
-                tenant_application.application_id,
-                tenant_application.status.as_str()
-            ))
-            .collect::<Vec<_>>(),
-        [
-            (1, 1, "inactive"),
-            (1, 2, "active"),
-            (1, 3, "inactive"),
-            (1, 4, "active"),
-            (2, 1, "active"),
-            (2, 2, "inactive"),
-            (2, 3, "active"),
-            (2, 4, "active")
-        ]
+        tenant_member_roles::Entity::find().count(db).await.unwrap(),
+        0
     );
-
-    let role_names: Vec<String> = roles::Entity::find()
-        .order_by_asc(roles::Column::Id)
-        .all(db)
-        .await
-        .unwrap()
-        .into_iter()
-        .map(|role| role.name)
-        .collect();
+    assert_eq!(roles::Entity::find().count(db).await.unwrap(), 0);
+    assert_eq!(permissions::Entity::find().count(db).await.unwrap(), 0);
+    assert_eq!(role_permissions::Entity::find().count(db).await.unwrap(), 0);
     assert_eq!(
-        role_names,
-        [
-            "Owner",
-            "Administrator",
-            "Manager",
-            "Support",
-            "Owner",
-            "Administrator",
-            "Manager",
-            "Support"
-        ]
+        tenant_applications::Entity::find().count(db).await.unwrap(),
+        0
     );
-
-    let members = tenant_members::Entity::find()
-        .order_by_asc(tenant_members::Column::Id)
-        .all(db)
-        .await
-        .unwrap();
-    assert!(members.is_empty());
-
-    let assigned_roles = tenant_member_roles::Entity::find()
-        .order_by_asc(tenant_member_roles::Column::Id)
-        .all(db)
-        .await
-        .unwrap()
-        .into_iter()
-        .map(|assignment| (assignment.tenant_member_id, assignment.role_id))
-        .collect::<Vec<_>>();
-    assert!(assigned_roles.is_empty());
-
-    let permission_keys: Vec<String> = permissions::Entity::find()
-        .filter(permissions::Column::TenantId.eq(1))
-        .order_by_asc(permissions::Column::Key)
-        .all(db)
-        .await
-        .unwrap()
-        .into_iter()
-        .map(|permission| permission.key)
-        .collect();
-    assert_eq!(
-        permission_keys,
-        [
-            "billing:purchase",
-            "billing:view",
-            "clients:create",
-            "clients:edit",
-            "clients:view",
-            "documents:create",
-            "documents:edit",
-            "documents:view",
-            "projects:create",
-            "projects:edit",
-            "projects:view"
-        ]
-    );
-
-    assert_eq!(permissions::Entity::find().count(db).await.unwrap(), 22);
-    for (role_id, expected_grants) in [
-        (1, 11),
-        (2, 11),
-        (3, 10),
-        (4, 3),
-        (5, 11),
-        (6, 11),
-        (7, 10),
-        (8, 3),
-    ] {
-        assert_eq!(
-            role_permissions::Entity::find()
-                .filter(role_permissions::Column::RoleId.eq(role_id))
-                .count(db)
-                .await
-                .unwrap(),
-            expected_grants
-        );
-    }
-
-    assert_eq!(clients::Entity::find().count(db).await.unwrap(), 3);
-    assert_eq!(projects::Entity::find().count(db).await.unwrap(), 3);
-    let seeded_projects = projects::Entity::find()
-        .order_by_asc(projects::Column::Id)
-        .all(db)
-        .await
-        .unwrap();
-    assert_eq!(
-        seeded_projects
-            .iter()
-            .map(|project| (project.tenant_id, project.client_id, project.name.as_str()))
-            .collect::<Vec<_>>(),
-        [
-            (1, 1, "Brand refresh"),
-            (1, 2, "Client launch"),
-            (2, 3, "API platform")
-        ]
-    );
-
-    let seeded_documents = documents::Entity::find()
-        .order_by_asc(documents::Column::Id)
-        .all(db)
-        .await
-        .unwrap();
-    assert_eq!(
-        seeded_documents
-            .iter()
-            .map(|document| (document.tenant_id, document.title.as_str()))
-            .collect::<Vec<_>>(),
-        [
-            (1, "Designer onboarding"),
-            (2, "Developer architecture notes")
-        ]
-    );
+    assert_eq!(clients::Entity::find().count(db).await.unwrap(), 0);
+    assert_eq!(projects::Entity::find().count(db).await.unwrap(), 0);
+    assert_eq!(documents::Entity::find().count(db).await.unwrap(), 0);
 }

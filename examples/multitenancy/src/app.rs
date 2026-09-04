@@ -19,7 +19,6 @@ use crate::{
         applications, clients, documents, invoices, permissions, projects, role_permissions, roles,
         tenant_applications, tenant_member_roles, tenant_members, tenants, users,
     },
-    models::tenants as tenants_model,
     tasks,
     workers::downloader::DownloadWorker,
 };
@@ -91,31 +90,9 @@ impl Hooks for App {
         Ok(())
     }
     async fn seed(ctx: &AppContext, base: &Path) -> Result<()> {
-        db::seed::<tenants::ActiveModel>(&ctx.db, &base.join("tenants.yaml").display().to_string())
-            .await?;
         db::seed::<applications::ActiveModel>(
             &ctx.db,
             &base.join("applications.yaml").display().to_string(),
-        )
-        .await?;
-        db::seed::<tenant_applications::ActiveModel>(
-            &ctx.db,
-            &base.join("tenant_applications.yaml").display().to_string(),
-        )
-        .await?;
-        db::seed::<roles::ActiveModel>(&ctx.db, &base.join("roles.yaml").display().to_string())
-            .await?;
-        tenants_model::Model::seed_access_defaults(&ctx.db).await?;
-        db::seed::<clients::ActiveModel>(&ctx.db, &base.join("clients.yaml").display().to_string())
-            .await?;
-        db::seed::<projects::ActiveModel>(
-            &ctx.db,
-            &base.join("projects.yaml").display().to_string(),
-        )
-        .await?;
-        db::seed::<documents::ActiveModel>(
-            &ctx.db,
-            &base.join("documents.yaml").display().to_string(),
         )
         .await?;
         Ok(())
