@@ -84,6 +84,11 @@ function ProjectList({ workspace }: { workspace: SelectedWorkspace }) {
               </article>
             ))}
           </div>
+          {projects.data?.length === 0 && (
+            <div className="empty-state">
+              No projects exist in this tenant yet.
+            </div>
+          )}
         </section>
         {canCreate && (
           <form className="panel create-form" onSubmit={submit}>

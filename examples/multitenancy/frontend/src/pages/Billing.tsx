@@ -64,9 +64,7 @@ function InvoiceHistory({ workspace }: { workspace: SelectedWorkspace }) {
           ))}
         </div>
         {invoices.data?.length === 0 && (
-          <div className="empty-state">
-            No purchases have generated an invoice yet.
-          </div>
+          <div className="empty-state">No invoices exist in this tenant yet.</div>
         )}
       </section>
     </section>
