@@ -146,10 +146,6 @@ axum-client-ip = { version = "1.3", features = ["forwarded-header"] }
 semver = "1"
 url = "2"
 cargo-lock = { version = "11", default-features = false }
-# tinyvec 1.13.0 fails to compile with its `alloc` feature because the `vec`
-# module import shadows the `vec!` macro. Keep transitive resolution on the
-# last working release until the upstream fix is published.
-tinyvec = { version = "=1.12.0", default-features = false }
 
 axum-test = { version = "17.0.1", optional = true }
 tree-fs = { version = "0.3", optional = true }
