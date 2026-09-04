@@ -68,7 +68,7 @@ jobs:
         uses: mozilla-actions/sccache-action@v0.0.11
 
       - name: Install seaorm cli
-        run: cargo install sea-orm-cli
+        run: cargo install sea-orm-cli --locked
 
       - name: Free Disk Space
         if: ${{ matrix.os == 'ubuntu-latest' }}

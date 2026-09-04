@@ -30,7 +30,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Install seaorm cli
-        run: cargo install sea-orm-cli
+        run: cargo install sea-orm-cli --locked
 
       - name: install 'loco new'
         run: |
@@ -43,4 +43,3 @@ jobs:
       - name:
         run: cargo loco generate deployment docker && docker build -t demo .
         working-directory: ./myapp
-
