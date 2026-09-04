@@ -1745,7 +1745,7 @@ code {
 .create-form textarea,
 .resource-form textarea {
   min-height: 7rem;
-  resize: vertical;
+  resize: none;
 }
 
 .resource-detail {
