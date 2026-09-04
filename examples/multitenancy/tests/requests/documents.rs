@@ -3,6 +3,8 @@ use multitenancy::{app::App, models::_entities::users};
 use sea_orm::EntityTrait;
 use serial_test::serial;
 
+use super::prepare_data;
+
 async fn token_for(ctx: &loco_rs::app::AppContext, user_id: i64) -> String {
     let user = users::Entity::find_by_id(user_id)
         .one(&ctx.db)
@@ -18,7 +20,8 @@ async fn token_for(ctx: &loco_rs::app::AppContext, user_id: i64) -> String {
 async fn owner_can_list_create_view_and_edit_documents() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
-        let token = token_for(&ctx, 2).await;
+        let users = prepare_data::init_workspace_users(&ctx).await;
+        let token = token_for(&ctx, users.owner_id).await;
         let base = "/api/tenants/1/documents";
 
         let list = request.get(base).authorization_bearer(&token).await;
@@ -75,7 +78,8 @@ async fn owner_can_list_create_view_and_edit_documents() {
 async fn support_can_view_but_cannot_create_or_edit_documents() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
-        let token = token_for(&ctx, 3).await;
+        let users = prepare_data::init_workspace_users(&ctx).await;
+        let token = token_for(&ctx, users.support_id).await;
 
         let list = request
             .get("/api/tenants/1/documents")
@@ -111,7 +115,8 @@ async fn support_can_view_but_cannot_create_or_edit_documents() {
 async fn tenant_scope_prevents_cross_workspace_document_access() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
-        let token = token_for(&ctx, 2).await;
+        let users = prepare_data::init_workspace_users(&ctx).await;
+        let token = token_for(&ctx, users.owner_id).await;
 
         let response = request
             .get("/api/tenants/1/documents/2")

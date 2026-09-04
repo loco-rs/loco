@@ -42,10 +42,10 @@ cargo loco start
 
 The example inherits the framework from the repository root through a local
 path dependency, so it always exercises the code in the current checkout.
-Open <http://localhost:5150> and log in with `jane@example.com` / `password`.
-Jane Smith is the seeded Owner of both Designer and Developer. The Designer
-dashboard includes Sam Lee as Support so their effective permissions can be
-compared. Both workspaces have the core Clients,
+Open <http://localhost:5150> and register an account. No users, memberships, or
+member-role assignments are seeded; the prompted workspace setup creates the
+user's first owned workspace. The Designer and Developer fixtures demonstrate
+tenant-scoped sample data for tests. Both workspaces have the core Clients,
 Projects, Documents, and Billing areas. Their optional add-on subscriptions differ: Designer has
 Approval Workflows and Priority Support, Developer has Feature Flags and Priority
 Support, and Analytics is active only for Developer. Approval Workflows, Feature

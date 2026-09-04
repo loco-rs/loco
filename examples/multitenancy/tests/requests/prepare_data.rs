@@ -1,6 +1,12 @@
 use axum::http::{HeaderName, HeaderValue};
-use loco_rs::{app::AppContext, TestServer};
-use multitenancy::{models::users, views::auth::LoginResponse};
+use loco_rs::{app::AppContext, prelude::*, TestServer};
+use multitenancy::{
+    models::{
+        _entities::{tenant_member_roles, tenant_members},
+        users,
+    },
+    views::auth::LoginResponse,
+};
 
 const USER_EMAIL: &str = "test@loco.com";
 const USER_PASSWORD: &str = "1234";
@@ -8,6 +14,73 @@ const USER_PASSWORD: &str = "1234";
 pub struct LoggedInUser {
     pub user: users::Model,
     pub token: String,
+}
+
+pub struct WorkspaceUsers {
+    pub owner_id: i64,
+    pub support_id: i64,
+    pub support_member_id: i64,
+}
+
+pub async fn init_workspace_users(ctx: &AppContext) -> WorkspaceUsers {
+    let owner = users::Model::create_with_password(
+        &ctx.db,
+        &users::RegisterParams {
+            name: "Test Owner".to_owned(),
+            email: "owner@example.com".to_owned(),
+            password: "password".to_owned(),
+        },
+    )
+    .await
+    .unwrap();
+    let support = users::Model::create_with_password(
+        &ctx.db,
+        &users::RegisterParams {
+            name: "Test Support".to_owned(),
+            email: "support@example.com".to_owned(),
+            password: "password".to_owned(),
+        },
+    )
+    .await
+    .unwrap();
+
+    add_member(ctx, 1, owner.id, 1).await;
+    let support_member = add_member(ctx, 1, support.id, 4).await;
+    add_member(ctx, 2, owner.id, 5).await;
+
+    WorkspaceUsers {
+        owner_id: owner.id,
+        support_id: support.id,
+        support_member_id: support_member.id,
+    }
+}
+
+async fn add_member(
+    ctx: &AppContext,
+    tenant_id: i64,
+    user_id: i64,
+    role_id: i64,
+) -> tenant_members::Model {
+    let member = tenant_members::ActiveModel {
+        user_id: Set(user_id),
+        ..Default::default()
+    }
+    .set_tenant(tenant_id)
+    .unwrap()
+    .insert(&ctx.db)
+    .await
+    .unwrap();
+    tenant_member_roles::ActiveModel {
+        tenant_member_id: Set(member.id),
+        role_id: Set(role_id),
+        ..Default::default()
+    }
+    .set_tenant(tenant_id)
+    .unwrap()
+    .insert(&ctx.db)
+    .await
+    .unwrap();
+    member
 }
 
 #[allow(clippy::future_not_send)]

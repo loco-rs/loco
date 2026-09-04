@@ -7,6 +7,8 @@ use multitenancy::{
 use sea_orm::{EntityTrait, PaginatorTrait};
 use serial_test::serial;
 
+use super::prepare_data;
+
 async fn token_for(ctx: &loco_rs::app::AppContext, user_id: i64) -> String {
     let user = users::Entity::find_by_id(user_id)
         .one(&ctx.db)
@@ -22,7 +24,8 @@ async fn token_for(ctx: &loco_rs::app::AppContext, user_id: i64) -> String {
 async fn owner_sees_seeded_tenant_resources_roles_and_addons() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
-        let token = token_for(&ctx, 2).await;
+        let users = prepare_data::init_workspace_users(&ctx).await;
+        let token = token_for(&ctx, users.owner_id).await;
         let response = request
             .get("/api/tenants/1/dashboard")
             .authorization_bearer(&token)
@@ -56,9 +59,9 @@ async fn owner_sees_seeded_tenant_resources_roles_and_addons() {
 
         let members = body["members"].as_array().unwrap();
         assert_eq!(members.len(), 2);
-        assert!(members.iter().any(|member| member["name"] == "Jane Smith"
+        assert!(members.iter().any(|member| member["name"] == "Test Owner"
             && member["roles"] == serde_json::json!(["Owner"])));
-        assert!(members.iter().any(|member| member["name"] == "Sam Lee"
+        assert!(members.iter().any(|member| member["name"] == "Test Support"
             && member["roles"] == serde_json::json!(["Support"])));
     })
     .await;
@@ -69,7 +72,8 @@ async fn owner_sees_seeded_tenant_resources_roles_and_addons() {
 async fn workspace_list_contains_tenants_once_and_developer_has_expected_addons() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
-        let token = token_for(&ctx, 2).await;
+        let users = prepare_data::init_workspace_users(&ctx).await;
+        let token = token_for(&ctx, users.owner_id).await;
         let workspaces = request
             .get("/api/auth/workspaces")
             .authorization_bearer(&token)
@@ -116,11 +120,15 @@ async fn workspace_list_contains_tenants_once_and_developer_has_expected_addons(
 async fn owner_can_change_member_role_and_role_permissions() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
-        let owner_token = token_for(&ctx, 2).await;
-        let non_owner_token = token_for(&ctx, 3).await;
+        let users = prepare_data::init_workspace_users(&ctx).await;
+        let owner_token = token_for(&ctx, users.owner_id).await;
+        let non_owner_token = token_for(&ctx, users.support_id).await;
 
         let role_update = request
-            .post("/api/tenants/1/dashboard/members/3/role")
+            .post(&format!(
+                "/api/tenants/1/dashboard/members/{}/role",
+                users.support_member_id
+            ))
             .authorization_bearer(&owner_token)
             .json(&serde_json::json!({ "role": "Manager" }))
             .await;
@@ -197,8 +205,9 @@ async fn non_member_cannot_view_dashboard() {
 async fn owner_can_create_staff_and_non_owner_cannot() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
-        let owner_token = token_for(&ctx, 2).await;
-        let non_owner_token = token_for(&ctx, 3).await;
+        let users = prepare_data::init_workspace_users(&ctx).await;
+        let owner_token = token_for(&ctx, users.owner_id).await;
+        let non_owner_token = token_for(&ctx, users.support_id).await;
         let payload = serde_json::json!({
             "name": "Alex Rivera",
             "email": "alex@example.com",

@@ -91,8 +91,6 @@ impl Hooks for App {
         Ok(())
     }
     async fn seed(ctx: &AppContext, base: &Path) -> Result<()> {
-        db::seed::<users::ActiveModel>(&ctx.db, &base.join("users.yaml").display().to_string())
-            .await?;
         db::seed::<tenants::ActiveModel>(&ctx.db, &base.join("tenants.yaml").display().to_string())
             .await?;
         db::seed::<applications::ActiveModel>(
@@ -105,18 +103,8 @@ impl Hooks for App {
             &base.join("tenant_applications.yaml").display().to_string(),
         )
         .await?;
-        db::seed::<tenant_members::ActiveModel>(
-            &ctx.db,
-            &base.join("tenant_members.yaml").display().to_string(),
-        )
-        .await?;
         db::seed::<roles::ActiveModel>(&ctx.db, &base.join("roles.yaml").display().to_string())
             .await?;
-        db::seed::<tenant_member_roles::ActiveModel>(
-            &ctx.db,
-            &base.join("tenant_member_roles.yaml").display().to_string(),
-        )
-        .await?;
         tenants_model::Model::seed_access_defaults(&ctx.db).await?;
         db::seed::<clients::ActiveModel>(&ctx.db, &base.join("clients.yaml").display().to_string())
             .await?;

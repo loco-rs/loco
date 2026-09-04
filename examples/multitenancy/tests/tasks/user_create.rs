@@ -35,9 +35,17 @@ async fn test_can_run_user_create() {
 #[serial]
 async fn test_user_email_already_exists() {
     let boot = boot_test::<App>().await.unwrap();
-    seed::<App>(&boot.app_context).await.unwrap();
-
-    let email = "jane@example.com";
+    let email = "existing@example.com";
+    users::Model::create_with_password(
+        &boot.app_context.db,
+        &users::RegisterParams {
+            email: email.to_owned(),
+            name: "Existing User".to_owned(),
+            password: "password".to_owned(),
+        },
+    )
+    .await
+    .unwrap();
 
     let vars = task::Vars::from_cli_args(vec![
         ("email".to_string(), email.to_string()),

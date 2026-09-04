@@ -5,7 +5,7 @@ use multitenancy::{
     app::App,
     models::users::{self, Model, RegisterParams},
 };
-use sea_orm::{ActiveModelTrait, ActiveValue, IntoActiveModel};
+use sea_orm::{ActiveModelTrait, ActiveValue, DatabaseConnection, IntoActiveModel};
 use serial_test::serial;
 
 macro_rules! configure_insta {
@@ -15,6 +15,19 @@ macro_rules! configure_insta {
         settings.set_snapshot_suffix("users");
         let _guard = settings.bind_to_scope();
     };
+}
+
+async fn create_test_user(db: &DatabaseConnection) -> Model {
+    Model::create_with_password(
+        db,
+        &RegisterParams {
+            email: "user@example.com".to_owned(),
+            password: "password".to_owned(),
+            name: "Test User".to_owned(),
+        },
+    )
+    .await
+    .unwrap()
 }
 
 #[tokio::test]
@@ -75,14 +88,12 @@ async fn handle_create_with_password_with_duplicate() {
     let boot = boot_test::<App>()
         .await
         .expect("Failed to boot test application");
-    seed::<App>(&boot.app_context)
-        .await
-        .expect("Failed to seed database");
+    let existing_user = create_test_user(&boot.app_context.db).await;
 
     let new_user = Model::create_with_password(
         &boot.app_context.db,
         &RegisterParams {
-            email: "jane@example.com".to_string(),
+            email: existing_user.email,
             password: "1234".to_string(),
             name: "framework".to_string(),
         },
@@ -100,17 +111,16 @@ async fn can_find_by_email() {
     let boot = boot_test::<App>()
         .await
         .expect("Failed to boot test application");
-    seed::<App>(&boot.app_context)
-        .await
-        .expect("Failed to seed database");
+    let expected = create_test_user(&boot.app_context.db).await;
 
-    let existing_user = Model::find_by_email(&boot.app_context.db, "jane@example.com").await;
+    let existing_user = Model::find_by_email(&boot.app_context.db, &expected.email).await;
     let non_existing_user_results =
         Model::find_by_email(&boot.app_context.db, "un@existing-email.com").await;
 
-    // Narrowed on purpose — see `can_create_with_password` above.
-    assert_debug_snapshot!(existing_user.map(|user| (user.email, user.name)));
-    assert_debug_snapshot!(non_existing_user_results.map(|user| (user.email, user.name)));
+    let existing_user = existing_user.unwrap();
+    assert_eq!(existing_user.email, expected.email);
+    assert_eq!(existing_user.name, expected.name);
+    assert!(non_existing_user_results.is_err());
 }
 
 #[tokio::test]
@@ -121,18 +131,16 @@ async fn can_find_by_pid() {
     let boot = boot_test::<App>()
         .await
         .expect("Failed to boot test application");
-    seed::<App>(&boot.app_context)
-        .await
-        .expect("Failed to seed database");
+    let expected = create_test_user(&boot.app_context.db).await;
 
-    let existing_user =
-        Model::find_by_pid(&boot.app_context.db, "22222222-2222-2222-2222-222222222222").await;
+    let existing_user = Model::find_by_pid(&boot.app_context.db, &expected.pid.to_string()).await;
     let non_existing_user_results =
         Model::find_by_pid(&boot.app_context.db, "23232323-2323-2323-2323-232323232323").await;
 
-    // Narrowed on purpose — see `can_create_with_password` above.
-    assert_debug_snapshot!(existing_user.map(|user| (user.pid, user.email)));
-    assert_debug_snapshot!(non_existing_user_results.map(|user| (user.pid, user.email)));
+    let existing_user = existing_user.unwrap();
+    assert_eq!(existing_user.pid, expected.pid);
+    assert_eq!(existing_user.email, expected.email);
+    assert!(non_existing_user_results.is_err());
 }
 
 #[tokio::test]
@@ -143,13 +151,8 @@ async fn can_verification_token() {
     let boot = boot_test::<App>()
         .await
         .expect("Failed to boot test application");
-    seed::<App>(&boot.app_context)
-        .await
-        .expect("Failed to seed database");
-
-    let user = Model::find_by_pid(&boot.app_context.db, "22222222-2222-2222-2222-222222222222")
-        .await
-        .expect("Failed to find user by PID");
+    let user = create_test_user(&boot.app_context.db).await;
+    let pid = user.pid.to_string();
 
     assert!(
         user.email_verification_sent_at.is_none(),
@@ -167,7 +170,7 @@ async fn can_verification_token() {
 
     assert!(result.is_ok(), "Failed to set email verification sent");
 
-    let user = Model::find_by_pid(&boot.app_context.db, "22222222-2222-2222-2222-222222222222")
+    let user = Model::find_by_pid(&boot.app_context.db, &pid)
         .await
         .expect("Failed to find user by PID after setting verification sent");
 
@@ -189,13 +192,8 @@ async fn can_set_forgot_password_sent() {
     let boot = boot_test::<App>()
         .await
         .expect("Failed to boot test application");
-    seed::<App>(&boot.app_context)
-        .await
-        .expect("Failed to seed database");
-
-    let user = Model::find_by_pid(&boot.app_context.db, "22222222-2222-2222-2222-222222222222")
-        .await
-        .expect("Failed to find user by PID");
+    let user = create_test_user(&boot.app_context.db).await;
+    let pid = user.pid.to_string();
 
     assert!(
         user.reset_sent_at.is_none(),
@@ -210,7 +208,7 @@ async fn can_set_forgot_password_sent() {
 
     assert!(result.is_ok(), "Failed to set forgot password sent");
 
-    let user = Model::find_by_pid(&boot.app_context.db, "22222222-2222-2222-2222-222222222222")
+    let user = Model::find_by_pid(&boot.app_context.db, &pid)
         .await
         .expect("Failed to find user by PID after setting forgot password sent");
 
@@ -232,13 +230,8 @@ async fn can_verified() {
     let boot = boot_test::<App>()
         .await
         .expect("Failed to boot test application");
-    seed::<App>(&boot.app_context)
-        .await
-        .expect("Failed to seed database");
-
-    let user = Model::find_by_pid(&boot.app_context.db, "22222222-2222-2222-2222-222222222222")
-        .await
-        .expect("Failed to find user by PID");
+    let user = create_test_user(&boot.app_context.db).await;
+    let pid = user.pid.to_string();
 
     assert!(
         user.email_verified_at.is_none(),
@@ -252,7 +245,7 @@ async fn can_verified() {
 
     assert!(result.is_ok(), "Failed to mark email as verified");
 
-    let user = Model::find_by_pid(&boot.app_context.db, "22222222-2222-2222-2222-222222222222")
+    let user = Model::find_by_pid(&boot.app_context.db, &pid)
         .await
         .expect("Failed to find user by PID after verification");
 
@@ -270,13 +263,8 @@ async fn can_reset_password() {
     let boot = boot_test::<App>()
         .await
         .expect("Failed to boot test application");
-    seed::<App>(&boot.app_context)
-        .await
-        .expect("Failed to seed database");
-
-    let user = Model::find_by_pid(&boot.app_context.db, "22222222-2222-2222-2222-222222222222")
-        .await
-        .expect("Failed to find user by PID");
+    let user = create_test_user(&boot.app_context.db).await;
+    let pid = user.pid.to_string();
 
     assert!(
         user.verify_password("password"),
@@ -291,7 +279,7 @@ async fn can_reset_password() {
 
     assert!(result.is_ok(), "Failed to reset password");
 
-    let user = Model::find_by_pid(&boot.app_context.db, "22222222-2222-2222-2222-222222222222")
+    let user = Model::find_by_pid(&boot.app_context.db, &pid)
         .await
         .expect("Failed to find user by PID after password reset");
 
@@ -305,11 +293,8 @@ async fn can_reset_password() {
 #[serial]
 async fn magic_link() {
     let boot = boot_test::<App>().await.unwrap();
-    seed::<App>(&boot.app_context).await.unwrap();
-
-    let user = Model::find_by_pid(&boot.app_context.db, "22222222-2222-2222-2222-222222222222")
-        .await
-        .unwrap();
+    let user = create_test_user(&boot.app_context.db).await;
+    let pid = user.pid.to_string();
 
     assert!(
         user.magic_link_token.is_none(),
@@ -331,10 +316,9 @@ async fn magic_link() {
         create_result.unwrap_err()
     );
 
-    let updated_user =
-        Model::find_by_pid(&boot.app_context.db, "22222222-2222-2222-2222-222222222222")
-            .await
-            .expect("Failed to refetch user after magic link creation");
+    let updated_user = Model::find_by_pid(&boot.app_context.db, &pid)
+        .await
+        .expect("Failed to refetch user after magic link creation");
 
     assert!(
         updated_user.magic_link_token.is_some(),

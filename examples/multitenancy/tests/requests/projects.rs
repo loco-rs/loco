@@ -3,6 +3,8 @@ use multitenancy::{app::App, models::_entities::users};
 use sea_orm::EntityTrait;
 use serial_test::serial;
 
+use super::prepare_data;
+
 async fn token_for(ctx: &loco_rs::app::AppContext, id: i64) -> String {
     let user = users::Entity::find_by_id(id)
         .one(&ctx.db)
@@ -18,8 +20,9 @@ async fn token_for(ctx: &loco_rs::app::AppContext, id: i64) -> String {
 async fn permissions_control_tenant_scoped_project_crud() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
-        let owner = token_for(&ctx, 2).await;
-        let support = token_for(&ctx, 3).await;
+        let users = prepare_data::init_workspace_users(&ctx).await;
+        let owner = token_for(&ctx, users.owner_id).await;
+        let support = token_for(&ctx, users.support_id).await;
         let list = request
             .get("/api/tenants/1/projects")
             .authorization_bearer(&support)

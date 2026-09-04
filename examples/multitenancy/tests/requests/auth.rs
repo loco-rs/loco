@@ -573,10 +573,19 @@ async fn can_get_current_user() {
 async fn can_auth_with_magic_link() {
     configure_insta!();
     request::<App, _, _>(|request, ctx| async move {
-        seed::<App>(&ctx).await.unwrap();
+        let user = users::Model::create_with_password(
+            &ctx.db,
+            &users::RegisterParams {
+                name: "Magic Link User".to_owned(),
+                email: "magic@example.com".to_owned(),
+                password: "password".to_owned(),
+            },
+        )
+        .await
+        .unwrap();
 
         let payload = serde_json::json!({
-            "email": "jane@example.com",
+            "email": user.email,
         });
         let response = request.post("/api/auth/magic-link").json(&payload).await;
         assert_eq!(
@@ -599,7 +608,7 @@ async fn can_auth_with_magic_link() {
         //     assert_debug_snapshot!(deliveries.messages);
         // });
 
-        let user = users::Model::find_by_email(&ctx.db, "jane@example.com")
+        let user = users::Model::find_by_email(&ctx.db, "magic@example.com")
             .await
             .expect("User should be found");
 
@@ -647,9 +656,7 @@ async fn can_reject_invalid_email() {
 #[serial]
 async fn can_reject_invalid_magic_link_token() {
     configure_insta!();
-    request::<App, _, _>(|request, ctx| async move {
-        seed::<App>(&ctx).await.unwrap();
-
+    request::<App, _, _>(|request, _ctx| async move {
         let magic_link_response = request.get("/api/auth/magic-link/invalid-token").await;
         assert_eq!(
             magic_link_response.status_code(),
