@@ -1556,9 +1556,28 @@ code {
 }
 
 .addon-open-link {
-  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: start;
+  width: fit-content;
   margin-top: auto;
-  text-align: center;
+  padding: 0.72rem 1rem;
+  border: 1px solid #cad0c6;
+  border-radius: 0.65rem;
+  color: #34473d;
+  background: #f4f6f2;
+  font-size: 0.78rem;
+  font-weight: 750;
+  line-height: 1;
+  text-decoration: none;
+  transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+}
+
+.addon-open-link:hover {
+  border-color: #9dab9f;
+  color: #24382e;
+  background: #e6ece7;
 }
 
 .addon-purchase-note {
