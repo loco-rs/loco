@@ -50,17 +50,6 @@ function DashboardDetails({ workspace }: { workspace: SelectedWorkspace }) {
   );
   return (
     <section className="console-page">
-      <header className="console-heading">
-        <div>
-          <span className="eyebrow">Workspace overview</span>
-          <h1>{dashboard.data.tenant_name}</h1>
-          <p>
-            People, add-ons, and tenant-scoped records in one place. You
-            are signed in as {currentMember.roles.join(" · ")}.
-          </p>
-        </div>
-      </header>
-
       <div className="stat-grid">
         <Stat label="Staff" value={staff.length} />
         {canViewClients && <Stat label="Clients" value={stats.client_count} />}
