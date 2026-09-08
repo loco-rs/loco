@@ -81,6 +81,16 @@ impl QueueProvider for PgQueue {
         ))
     }
 
+    async fn enqueue_batch(
+        &self,
+        class: String,
+        _queue: Option<String>,
+        jobs: Vec<(serde_json::Value, Option<i32>)>,
+        tags: Option<Vec<String>>,
+    ) -> Result<Vec<JobId>> {
+        enqueue_batch(&self.pool, &class, jobs, chrono::Utc::now(), tags).await
+    }
+
     async fn register_handler(&self, name: String, handler: JobHandler) -> Result<()> {
         let mut registry = self.registry.lock().await;
         registry.insert_handler(name, handler)
@@ -285,6 +295,70 @@ pub async fn enqueue(
     .execute(pool)
     .await?;
     Ok(id)
+}
+
+/// Maximum number of jobs per INSERT statement. Each row binds 7 parameters,
+/// so this stays well under Postgres's 65535 bind-parameter cap and bounds the
+/// statement size (mirrors Sidekiq's bulk-push chunking). Larger batches are
+/// split across multiple statements that all run inside one transaction, so
+/// the whole batch is still enqueued atomically regardless of how many chunks
+/// it spans.
+const ENQUEUE_BATCH_CHUNK_SIZE: usize = 5_000;
+
+/// Enqueue multiple jobs in a single atomic batch.
+///
+/// Each entry of `jobs` is one job's data paired with its priority (`None`
+/// for the default); `tags` apply to every job. The returned IDs are in the
+/// same order as `jobs`.
+///
+/// Every job is inserted inside one transaction: either all of them are
+/// enqueued or none are. A failure mid-batch rolls back, so the batch leaves
+/// nothing behind and is safe to retry without duplicating jobs.
+///
+/// # Errors
+///
+/// This function will return an error if it fails
+pub async fn enqueue_batch(
+    pool: &PgPool,
+    name: &str,
+    jobs: Vec<(JobData, Option<i32>)>,
+    run_at: DateTime<Utc>,
+    tags: Option<Vec<String>>,
+) -> Result<Vec<JobId>> {
+    if jobs.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let tags_json = match &tags {
+        Some(tags) => Some(serde_json::to_value(tags)?),
+        None => None,
+    };
+    let mut ids = Vec::with_capacity(jobs.len());
+
+    debug!(count = jobs.len(), job_name = %name, run_at = %run_at, tags = ?tags, "Batch enqueueing jobs");
+    let mut tx = pool.begin().await?;
+    for chunk in jobs.chunks(ENQUEUE_BATCH_CHUNK_SIZE) {
+        let mut query_builder = sqlx::query_builder::QueryBuilder::<sqlx::Postgres>::new(
+            "INSERT INTO pg_loco_queue (id, task_data, name, run_at, interval, tags, priority) ",
+        );
+
+        query_builder.push_values(chunk.iter(), |mut b, (data, priority)| {
+            let id = Ulid::new().to_string();
+            b.push_bind(id.clone())
+                .push_bind(data.clone())
+                .push_bind(name.to_string())
+                .push_bind(run_at)
+                .push_bind(None::<i64>)
+                .push_bind(tags_json.clone())
+                .push_bind(priority.unwrap_or(0));
+            ids.push(id);
+        });
+
+        query_builder.build().execute(&mut *tx).await?;
+    }
+    tx.commit().await?;
+
+    Ok(ids)
 }
 
 async fn dequeue(client: &PgPool, worker_tags: &[String]) -> Result<Option<Job>> {
@@ -751,6 +825,95 @@ mod tests {
         (pattern, replacement)),     }, {
                 assert_debug_snapshot!(jobs);
             });
+    }
+
+    #[tokio::test]
+    async fn can_enqueue_batch() {
+        let (pool, _container) = setup_pg_test().await;
+        assert_eq!(get_all_jobs(&pool).await.len(), 0);
+
+        // Mixed per-job priorities: the default (None → 0), a high and a low
+        // value. Dequeue order must follow priority, not insertion order.
+        let run_at = Utc::now() - chrono::Duration::minutes(1);
+        let jobs = vec![
+            (serde_json::json!({"user_id": 1}), None),
+            (serde_json::json!({"user_id": 2}), Some(10)),
+            (serde_json::json!({"user_id": 3}), Some(-5)),
+        ];
+        let ids = enqueue_batch(&pool, "BatchJob", jobs, run_at, None)
+            .await
+            .expect("batch enqueue");
+        assert_eq!(ids.len(), 3);
+        assert_eq!(get_all_jobs(&pool).await.len(), 3);
+
+        // Returned ids are in input order and carry each job's own priority.
+        assert_eq!(get_job(&pool, &ids[0]).await.priority, 0);
+        assert_eq!(get_job(&pool, &ids[1]).await.priority, 10);
+        assert_eq!(get_job(&pool, &ids[2]).await.priority, -5);
+
+        for expected_user in [2, 1, 3] {
+            let job = dequeue(&pool, &[])
+                .await
+                .expect("dequeue ok")
+                .expect("a batched job must be dequeueable");
+            assert_eq!(
+                job.data.get("user_id"),
+                Some(&serde_json::json!(expected_user)),
+                "batched jobs must be dequeued by priority"
+            );
+            complete_job(&pool, &job.id, None)
+                .await
+                .expect("complete job");
+        }
+        assert!(dequeue(&pool, &[]).await.expect("dequeue ok").is_none());
+
+        // Tagged batches bind tags_json for every row; a worker carrying the
+        // tag must see them and a tagless worker must not.
+        let tagged = enqueue_batch(
+            &pool,
+            "BatchJob",
+            vec![(serde_json::json!({"user_id": 4}), None)],
+            run_at,
+            Some(vec!["email".to_string()]),
+        )
+        .await
+        .expect("tagged batch enqueue");
+        assert_eq!(tagged.len(), 1);
+        assert!(
+            dequeue(&pool, &[]).await.expect("dequeue ok").is_none(),
+            "an untagged worker must not see tagged jobs"
+        );
+        let job = dequeue(&pool, &["email".to_string()])
+            .await
+            .expect("dequeue ok")
+            .expect("a tagged batched job must be dequeueable by a matching worker");
+        assert_eq!(job.id, tagged[0]);
+        assert_eq!(job.tags, Some(vec!["email".to_string()]));
+    }
+
+    #[tokio::test]
+    async fn can_enqueue_batch_across_chunks() {
+        let (pool, _container) = setup_pg_test().await;
+        assert_eq!(get_all_jobs(&pool).await.len(), 0);
+
+        // Span more than two chunks so the multi-statement path runs inside one
+        // transaction. All rows must commit together (atomic batch) and every
+        // generated id must be unique.
+        let count = ENQUEUE_BATCH_CHUNK_SIZE * 2 + 1;
+        let jobs = (0..count)
+            .map(|i| (serde_json::json!({ "user_id": i }), None))
+            .collect::<Vec<_>>();
+
+        let ids = enqueue_batch(&pool, "BatchJob", jobs, Utc::now(), None)
+            .await
+            .expect("batch enqueue");
+        assert_eq!(ids.len(), count);
+        assert_eq!(
+            ids.iter().collect::<std::collections::HashSet<_>>().len(),
+            count,
+            "every batched job id must be unique"
+        );
+        assert_eq!(get_all_jobs(&pool).await.len(), count);
     }
 
     #[tokio::test]

@@ -115,17 +115,47 @@ DownloadWorker::perform_later(
 .await?;
 ```
 
-`perform_later` returns `Result<String>` — the job id, not `Result<()>`. In `BackgroundQueue` mode the id is assigned by the queue provider; in `ForegroundBlocking`/`BackgroundAsync` mode (or when no provider is configured) Loco generates a fresh UUID so you always get a stable handle back:
+`perform_later` returns `Result<String>` — the job id, not `Result<()>`. In `BackgroundQueue` mode the id is assigned by the queue provider; in `ForegroundBlocking`/`BackgroundAsync` mode Loco generates a fresh UUID so you always get a stable handle back:
 
 ```rust
 let job_id: String = DownloadWorker::perform_later(&ctx, args).await?;
 ```
+
+If `workers.mode` is `BackgroundQueue` but no queue provider is available, `perform_later` returns `Error::QueueProviderMissing` and the job is not run. A `BackgroundQueue` config without a `queue:` section fails at boot, so you normally see this at startup rather than at the call site.
 
 If you need higher/lower priority for this particular job, use `perform_later_with_priority` instead — see [Choose a queue backend](/docs/how-to/choose-queue-backend#priority-queues) for priority semantics shared across all three backends:
 
 ```rust
 DownloadWorker::perform_later_with_priority(&ctx, args, Some(50)).await?;
 ```
+
+### Enqueue many jobs at once
+
+When one action fans out into many jobs — a notification to every member of a team, an import that spawns one job per row — use `perform_all_later` instead of calling `perform_later` in a loop. It takes a `Vec` of arguments and enqueues the whole batch in one round trip to the queue, the way Rails' `ActiveJob.perform_all_later` does:
+
+```rust
+let args_list: Vec<DownloadWorkerArgs> = team
+    .members
+    .iter()
+    .map(|member| DownloadWorkerArgs { user_guid: member.guid.clone() })
+    .collect();
+
+let job_ids: Vec<String> = DownloadWorker::perform_all_later(&ctx, args_list).await?;
+```
+
+It returns one job id per argument, in the same order. The batch is atomic on all three built-in backends: either every job is enqueued or none are, so a failed call is safe to retry without duplicating jobs. An empty `Vec` is a no-op.
+
+To give each job its own priority, pair every argument with an `Option<i32>` and call `perform_all_later_with_priority` (`None` means the default priority):
+
+```rust
+DownloadWorker::perform_all_later_with_priority(
+    &ctx,
+    vec![(urgent_args, Some(100)), (normal_args, None)],
+)
+.await?;
+```
+
+The worker's `queue()` and `tags()` apply to every job in the batch, exactly as they do for `perform_later`. In `ForegroundBlocking` mode the jobs run one after another in input order and the first error returns early; in `BackgroundAsync` mode one task is spawned per job. Priority has no effect in those two modes.
 
 ## 5. Run the worker process
 

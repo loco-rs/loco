@@ -14,13 +14,16 @@ Loco lets you write one `BackgroundWorker` implementation and one `perform_later
 pub trait BackgroundWorker<A> {
     fn build(ctx: &AppContext) -> Self;
     async fn perform(&self, args: A) -> Result<()>;
-    // + queue(), tags(), class_name(), perform_later(), perform_later_with_priority()
+    // + queue(), tags(), class_name(), perform_later(), perform_later_with_priority(),
+    //   perform_all_later(), perform_all_later_with_priority()
 }
 ```
 
 You implement `perform`, register the worker in `connect_workers`, and enqueue work with `MyWorker::perform_later(&ctx, args).await?`. Nothing in that call references which backend is active — that's decided entirely by `queue.kind` in config (`Redis` | `Postgres` | `Sqlite`), read at boot by `create_queue_provider`. This is the same "config over code" bias covered in [Why batteries included](/docs/explanation/why-batteries-included), applied to durability and delivery semantics: swapping backends is an operational decision (what's already running in your infrastructure, what latency/throughput profile you need), not a rewrite.
 
 `perform_later` (and its sibling `perform_later_with_priority`) returns `Result<String>` — the job's id — rather than `Result<()>`. That return value matters because it's what you'd hand to `cargo loco jobs cancel`/`requeue` or log for later correlation; treat any `perform_later` call site that discards its return value as intentionally choosing not to track the job, not as the only option.
+
+The batch pair, `perform_all_later` and `perform_all_later_with_priority`, follows the same contract for many jobs at once: one `Vec` of ids back, in input order, and one round trip to the queue instead of one per job. Each built-in provider implements `QueueProvider::enqueue_batch` atomically — a single transaction on Postgres/SQLite, a `MULTI`/`EXEC` pipeline on Redis — so a batch either fully enqueues or leaves nothing behind. The trait has a default `enqueue_batch` that loops over `enqueue`, so a third-party provider keeps compiling and gets the batch semantics without the atomicity until it overrides the method. This mirrors Rails' `ActiveJob.perform_all_later`, which falls back to individual enqueues on adapters without bulk support.
 
 ## The two SQL backends share one implementation
 
