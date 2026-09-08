@@ -690,9 +690,17 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
     /// Enqueue (or run) the job with an explicit priority and return its ID.
     ///
     /// In `BackgroundQueue` mode the ID is the one assigned by the queue
-    /// provider. In foreground/async modes (or when no provider is configured)
-    /// a fresh ID is generated so callers always get a stable handle back.
-    /// Higher `priority` values are dequeued first (see [`Queue::enqueue`]).
+    /// provider. In foreground/async modes a fresh ID is generated so callers
+    /// always get a stable handle back. Higher `priority` values are dequeued
+    /// first (see [`Queue::enqueue`]).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::QueueProviderMissing`] when `BackgroundQueue` mode is
+    /// selected but no queue provider is populated in the context — the job
+    /// is not run and no ID is fabricated for it. Otherwise returns the
+    /// provider's enqueue error, or (in `ForegroundBlocking` mode) the
+    /// job's own error.
     async fn perform_later_with_priority(
         ctx: &AppContext,
         args: A,
@@ -716,11 +724,7 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
                     .await?
                     .unwrap_or_else(|| uuid::Uuid::new_v4().to_string())
                 } else {
-                    tracing::error!(
-                        "perform_later: background queue is selected, but queue was not populated \
-                         in context"
-                    );
-                    uuid::Uuid::new_v4().to_string()
+                    return Err(Error::QueueProviderMissing);
                 }
             }
             WorkerMode::ForegroundBlocking => {
@@ -791,11 +795,18 @@ pub async fn converge(queue: &Queue, config: &QueueConfig) -> Result<()> {
     Ok(())
 }
 
-/// Create a provider
+/// Create a provider from the `queue` config when `workers.mode` is
+/// `BackgroundQueue`; returns `None` in the other worker modes, which need no
+/// provider.
 ///
 /// # Errors
 ///
-/// This function will return an error if fails to build
+/// Returns an error if the provider fails to build, if the configured queue
+/// kind was not compiled in, or if `workers.mode` is `BackgroundQueue` but the
+/// config has no `queue` section. That last case used to yield `Ok(None)`:
+/// the app booted, and in a server-only process every `perform_later` then
+/// dropped its job while returning a fabricated id. Failing at boot surfaces
+/// the misconfiguration before any job is lost.
 #[allow(clippy::missing_panics_doc)]
 pub async fn create_queue_provider(config: &Config) -> Result<Option<Arc<Queue>>> {
     if config.workers.mode == config::WorkerMode::BackgroundQueue {
@@ -824,8 +835,10 @@ pub async fn create_queue_provider(config: &Config) -> Result<Option<Arc<Queue>>
                 )),
             }
         } else {
-            // tracing::warn!("Worker mode is BackgroundQueue but no queue configuration is present");
-            Ok(None)
+            Err(Error::string(
+                "workers.mode is BackgroundQueue but no `queue` configuration is present; add a \
+                 `queue` section with the connection details or change `workers.mode`",
+            ))
         }
     } else {
         // tracing::debug!("Worker mode is not BackgroundQueue, skipping queue provider creation");
@@ -932,5 +945,64 @@ mod tests {
             .unwrap();
 
         assert_eq!(count, 14);
+    }
+
+    #[tokio::test]
+    async fn perform_later_without_provider_in_background_queue_mode_is_an_error() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        static PERFORMED: AtomicUsize = AtomicUsize::new(0);
+
+        struct CountingWorker;
+        #[async_trait]
+        impl BackgroundWorker<()> for CountingWorker {
+            fn build(_ctx: &AppContext) -> Self {
+                Self
+            }
+            async fn perform(&self, (): ()) -> Result<()> {
+                PERFORMED.fetch_add(1, Ordering::SeqCst);
+                Ok(())
+            }
+        }
+
+        // `BackgroundQueue` selected, but nothing to enqueue into. This must
+        // surface as an error, not as a fabricated id for a job that is gone.
+        let mut ctx = tests_cfg::app::get_app_context().await;
+        ctx.config.workers.mode = WorkerMode::BackgroundQueue;
+        ctx.queue_provider = None;
+
+        let err = CountingWorker::perform_later(&ctx, ())
+            .await
+            .expect_err("perform_later without a provider must fail");
+        assert!(matches!(err, Error::QueueProviderMissing), "{err:?}");
+
+        assert_eq!(
+            PERFORMED.load(Ordering::SeqCst),
+            0,
+            "no job may run inline when the queue is missing"
+        );
+    }
+
+    #[tokio::test]
+    async fn create_queue_provider_rejects_background_queue_without_queue_config() {
+        let mut config = tests_cfg::config::test_config();
+        config.workers.mode = WorkerMode::BackgroundQueue;
+        config.queue = None;
+
+        let Err(err) = create_queue_provider(&config).await else {
+            panic!("BackgroundQueue without a `queue` section must fail at boot");
+        };
+        assert!(
+            err.to_string().contains("no `queue` configuration"),
+            "unexpected error: {err}"
+        );
+
+        // The other modes need no provider and must keep returning `None`.
+        for mode in [WorkerMode::ForegroundBlocking, WorkerMode::BackgroundAsync] {
+            config.workers.mode = mode;
+            assert!(create_queue_provider(&config)
+                .await
+                .expect("non-queue modes need no provider")
+                .is_none());
+        }
     }
 }

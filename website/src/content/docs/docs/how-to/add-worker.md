@@ -115,11 +115,13 @@ DownloadWorker::perform_later(
 .await?;
 ```
 
-`perform_later` returns `Result<String>` — the job id, not `Result<()>`. In `BackgroundQueue` mode the id is assigned by the queue provider; in `ForegroundBlocking`/`BackgroundAsync` mode (or when no provider is configured) Loco generates a fresh UUID so you always get a stable handle back:
+`perform_later` returns `Result<String>` — the job id, not `Result<()>`. In `BackgroundQueue` mode the id is assigned by the queue provider; in `ForegroundBlocking`/`BackgroundAsync` mode Loco generates a fresh UUID so you always get a stable handle back:
 
 ```rust
 let job_id: String = DownloadWorker::perform_later(&ctx, args).await?;
 ```
+
+If `workers.mode` is `BackgroundQueue` but no queue provider is available, `perform_later` returns `Error::QueueProviderMissing` and the job is not run. A `BackgroundQueue` config without a `queue:` section fails at boot, so you normally see this at startup rather than at the call site.
 
 If you need higher/lower priority for this particular job, use `perform_later_with_priority` instead — see [Choose a queue backend](/docs/how-to/choose-queue-backend#priority-queues) for priority semantics shared across all three backends:
 
