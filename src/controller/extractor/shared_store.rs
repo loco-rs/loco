@@ -11,19 +11,22 @@ where
 {
     type Rejection = Error;
 
-    fn from_request_parts(
+    // A `DiContainer` lookup, no I/O — see `extractor/auth.rs` for why the
+    // `async fn` shape stays anyway.
+    #[allow(clippy::unused_async_trait_impl)]
+    async fn from_request_parts(
         _: &mut Parts,
         state: &AppContext,
-    ) -> impl Future<Output = Result<Self, Self::Rejection>> {
-        let instance = state.shared_store.get::<T>().map(Self).ok_or_else(|| {
+    ) -> Result<Self, Self::Rejection> {
+        let instance = state.shared_store.get::<T>().ok_or_else(|| {
             let type_name = std::any::type_name::<T>();
             tracing::error!(
                 "Could not find service of type `{}` in shared store",
                 type_name
             );
             Error::InternalServerError
-        });
+        })?;
 
-        std::future::ready(instance)
+        Ok(Self(instance))
     }
 }

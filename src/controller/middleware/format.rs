@@ -54,11 +54,11 @@ where
 {
     type Rejection = Error;
 
-    fn from_request_parts(
-        parts: &mut Parts,
-        _state: &S,
-    ) -> impl Future<Output = Result<Self, Error>> {
-        std::future::ready(Ok(Self(get_respond_to(&parts.headers))))
+    // Header inspection only — see `extractor/auth.rs` for why the `async fn`
+    // shape stays anyway.
+    #[allow(clippy::unused_async_trait_impl)]
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Error> {
+        Ok(Self(get_respond_to(&parts.headers)))
     }
 }
 
@@ -68,10 +68,9 @@ where
 {
     type Rejection = Error;
 
-    fn from_request_parts(
-        parts: &mut Parts,
-        _state: &S,
-    ) -> impl Future<Output = Result<Self, Error>> {
-        std::future::ready(Ok(get_respond_to(&parts.headers)))
+    // As above.
+    #[allow(clippy::unused_async_trait_impl)]
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Error> {
+        Ok(get_respond_to(&parts.headers))
     }
 }
