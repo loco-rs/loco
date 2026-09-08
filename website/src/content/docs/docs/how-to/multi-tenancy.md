@@ -1,36 +1,32 @@
 ---
 title: Add row-level multi-tenancy
-description: Scope Sea-ORM reads and writes to a trusted tenant, safely assign tenant keys, and model application subscriptions and RBAC.
+description: Enable tenant scoping for Sea-ORM queries and safely assign tenant keys when creating records.
 sidebar:
   order: 3
 ---
 
 **Goal:** isolate tenant-owned rows in one shared database while keeping the active tenant explicit in application code.
 
-Loco's tenant helpers follow the row-level approach popularized by `acts_as_tenant`: each owned table has a tenant foreign key and every read or mutation includes that key. Unlike Rails' request-global `current_tenant`, Loco passes the tenant ID explicitly. This is safe across async requests, workers, tasks, and tests, and makes the security boundary visible during review.
+Loco provides three opt-in traits: `TenantEntity` identifies an entity's tenant column, `TenantQueryExt::in_tenant` filters queries, and `TenantActiveModelExt::set_tenant` assigns the tenant on an active model. The tenant ID is passed explicitly, so these helpers do not depend on request-global or thread-local state.
 
-For a complete runnable implementation, see [`examples/multitenancy`](https://github.com/loco-rs/loco/tree/master/examples/multitenancy). Its request tests build two tenants, tenant-scoped core resources, and optional add-on subscriptions while exercising the isolation and RBAC boundaries below.
+## 1. Enable the feature
 
-## 1. Model the tenancy relationships
+Add `multi-tenancy` to the features of your existing `loco-rs` dependency:
 
-Generate the domain tables your application needs. A multi-application SaaS commonly starts with:
-
-```sh
-$ cargo loco generate model tenants name:string! slug:string^
-$ cargo loco generate model applications name:string^
-$ cargo loco generate model tenant_applications tenant:references application:references status:string!
-$ cargo loco generate model tenant_members tenant:references user:references
-$ cargo loco generate model roles tenant:references name:string!
-$ cargo loco generate model tenant_member_roles tenant:references tenant_member:references role:references
-$ cargo loco generate model permissions tenant:references key:string!
-$ cargo loco generate model role_permissions tenant:references role:references permission:references
+```toml
+loco-rs = { version = "1", features = ["multi-tenancy"] }
 ```
 
-This schema gives tenants and optional add-ons a many-to-many relationship through `tenant_applications`. `tenant_members` manages membership, `tenant_member_roles` lets members hold multiple roles, and each permission governs a tenant-owned core resource. Add the status, invitation, ownership, and audit fields your product requires.
-
-Use migrations to add composite unique constraints and indexes for your access patterns. Typical constraints include `(tenant_id, application_id)` on subscriptions, `(tenant_id, user_id)` on members, `(tenant_id, name)` on roles, `(tenant_id, key)` on permissions, and `(tenant_id, role_id, permission_id)` on role permissions. Tenant-scoped uniqueness belongs in the database; an application-only uniqueness check is vulnerable to races. Keep core-resource permissions separate from optional subscription availability.
+This feature is disabled by default and enables `with-db`. It makes the traits available from both `loco_rs::model` and `loco_rs::prelude`.
 
 ## 2. Mark tenant-owned entities
+
+Generate a tenant table and a resource with a tenant foreign key:
+
+```sh
+$ cargo loco generate model tenants name:string!
+$ cargo loco generate model documents title:string! tenant:references
+```
 
 Implement `TenantEntity` in each hand-written model module. Do not edit the generated `_entities` file:
 
@@ -48,23 +44,13 @@ impl TenantEntity for documents::Entity {
 }
 ```
 
-`TenantId` can match the key type used by your app, such as `i64`, `Uuid`, or `String`. Implement the trait for owned resources and join models (`documents`, `tenant_members`, `roles`, `tenant_applications`, `permissions`, and both role join tables in the example), not for global catalog tables such as `applications`.
+`TenantId` must match the type stored in the tenant column, such as `i64`, `Uuid`, or `String`. Only implement the trait on tenant-owned entities. Use migrations to add indexes and composite unique constraints for tenant-specific values, such as `(tenant_id, title)` when document titles must be unique within a tenant.
 
 ## 3. Resolve a trusted tenant
 
 Resolve the tenant from authenticated data, then verify membership before running a scoped query. Do not trust a tenant ID from a path, header, or request body on its own.
 
-```rust
-let tenant_id = membership::Entity::find()
-    .filter(membership::Column::UserId.eq(auth.user.id))
-    .filter(membership::Column::TenantId.eq(requested_tenant_id))
-    .one(&ctx.db)
-    .await?
-    .ok_or(ModelError::EntityNotFound)?
-    .tenant_id;
-```
-
-The exact resolver is application policy: it might use a URL slug, subdomain, JWT claim, or API-key relationship. Pass the resolved ID into workers as part of their serializable arguments and resolve it again inside the job; there is no ambient request state to leak or clear.
+Tenant resolution and permissions remain application policy. A resolver might use a URL slug, subdomain, JWT claim, or API-key relationship, but must authorize the caller for that tenant. In the examples below, `tenant_id` is the result of this check. Workers can carry the tenant ID in their serializable arguments and validate access when the job runs.
 
 ## 4. Scope reads
 
@@ -128,19 +114,11 @@ let deleted = documents::Entity::delete_many()
 
 Check `rows_affected` when your endpoint must distinguish success from a missing or cross-tenant ID.
 
-## 7. Enforce subscriptions and permissions
+## Scope and limitations
 
-Tenant isolation and authorization are separate checks. First scope tenant-owned tables with `in_tenant`; then verify that:
+These traits do not automatically scope every database operation. Calling Sea-ORM without `.in_tenant(...)` remains unscoped, which is useful for authorized cross-tenant administration, reporting, and migrations. Audit tenant-owned queries for the filter.
 
-1. the user has an active `tenant_members` row,
-2. one of the member's roles has the required tenant-level permission for a core resource, and
-3. when accessing an optional add-on, the tenant has an active `tenant_applications` subscription.
-
-Keep core-resource RBAC and optional subscription availability as separate policies. A role grant references a tenant permission such as `projects:edit`; an add-on lookup checks the tenant/application join independently. Put these lookups in model methods or Axum middleware so controllers share one policy.
-
-## Intentional unscoped access
-
-Calling Sea-ORM directly without `.in_tenant(...)` remains an explicit escape hatch for cross-tenant administration, reporting, and migrations. Keep that code in clearly named admin services and protect it separately. For defense in depth, production systems can also apply database row-level security where supported.
+`in_tenant` filters the target entity; it does not scope joined tables or validate referenced rows. Validate that related records belong to the same tenant and enforce this in the database where possible. Build mutation fields explicitly so clients cannot change tenant ownership through bulk updates. The helpers do not install database row-level security or provide membership, role, or subscription management.
 
 ## Next
 

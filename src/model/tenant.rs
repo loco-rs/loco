@@ -13,9 +13,23 @@ use super::{ModelError, ModelResult};
 /// generated entity remains untouched, while [`TenantQueryExt`] and
 /// [`TenantActiveModelExt`] learn which column carries the tenant key.
 ///
-/// ```rust,ignore
+/// Requires the opt-in `multi-tenancy` feature.
+///
+/// ```rust
 /// use loco_rs::prelude::*;
-/// use crate::models::_entities::notes;
+/// # mod notes {
+/// #     use sea_orm::entity::prelude::*;
+/// #     #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+/// #     #[sea_orm(table_name = "notes")]
+/// #     pub struct Model {
+/// #         #[sea_orm(primary_key)]
+/// #         pub id: i64,
+/// #         pub tenant_id: i64,
+/// #     }
+/// #     #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+/// #     pub enum Relation {}
+/// #     impl ActiveModelBehavior for ActiveModel {}
+/// # }
 ///
 /// impl TenantEntity for notes::Entity {
 ///     type TenantId = i64;
@@ -24,6 +38,12 @@ use super::{ModelError, ModelResult};
 ///         notes::Column::TenantId
 ///     }
 /// }
+///
+/// let query = notes::Entity::find().in_tenant(42);
+/// let note: notes::ActiveModel = Default::default();
+/// let note = note.set_tenant(42)?;
+/// # assert_eq!(note.tenant_id, Set(42));
+/// # Ok::<(), ModelError>(())
 /// ```
 pub trait TenantEntity: EntityTrait {
     /// The value type stored in the entity's tenant column.
@@ -38,6 +58,10 @@ pub trait TenantEntity: EntityTrait {
 /// This trait is implemented for selects, bulk updates, and bulk deletes.
 /// Keeping the scope explicit avoids request-global state leaking between
 /// asynchronous requests and makes write isolation visible at the call site.
+///
+/// Only the target entity is filtered; joined or referenced rows are not scoped.
+/// Callers must authorize the tenant and prevent tenant-key changes in bulk
+/// update fields. Queries without [`Self::in_tenant`] remain unscoped.
 pub trait TenantQueryExt: QueryFilter + Sized {
     /// The tenant-owned entity queried by this builder.
     type Entity: TenantEntity;
@@ -117,8 +141,8 @@ where
 #[cfg(test)]
 mod tests {
     use sea_orm::{
-        entity::prelude::*, sea_query::Expr, ActiveValue::Set, DbBackend, EntityTrait, QueryFilter,
-        QueryTrait,
+        sea_query::Expr, ActiveValue::Set, ConnectOptions, ConnectionTrait, Database,
+        DatabaseConnection, DbBackend, QueryOrder, QueryTrait, Schema,
     };
 
     use super::*;
@@ -172,6 +196,130 @@ mod tests {
         fn tenant_column() -> malformed_documents::Column {
             malformed_documents::Column::TenantId
         }
+    }
+
+    async fn documents_db() -> DatabaseConnection {
+        let mut options = ConnectOptions::new("sqlite::memory:");
+        options.max_connections(1);
+        let db = Database::connect(options).await.unwrap();
+        let schema = Schema::new(DbBackend::Sqlite);
+        db.execute(&schema.create_table_from_entity(documents::Entity))
+            .await
+            .unwrap();
+
+        let documents = [(1, 42, "roadmap"), (2, 42, "notes"), (3, 7, "roadmap")]
+            .into_iter()
+            .map(|(id, tenant_id, title)| {
+                documents::ActiveModel {
+                    id: Set(id),
+                    title: Set(title.to_owned()),
+                    ..Default::default()
+                }
+                .set_tenant(tenant_id)
+                .unwrap()
+            });
+        documents::Entity::insert_many(documents)
+            .exec(&db)
+            .await
+            .unwrap();
+
+        db
+    }
+
+    #[tokio::test]
+    async fn scoped_reads_exclude_other_tenants_even_by_primary_key() {
+        let db = documents_db().await;
+        let documents = documents::Entity::find()
+            .in_tenant(42)
+            .order_by_asc(documents::Column::Id)
+            .all(&db)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            documents
+                .iter()
+                .map(|document| document.id)
+                .collect::<Vec<_>>(),
+            [1, 2]
+        );
+        assert!(documents::Entity::find_by_id(3)
+            .in_tenant(42)
+            .one(&db)
+            .await
+            .unwrap()
+            .is_none());
+        assert_eq!(
+            documents::Entity::find_by_id(3)
+                .in_tenant(7)
+                .one(&db)
+                .await
+                .unwrap()
+                .unwrap()
+                .title,
+            "roadmap"
+        );
+    }
+
+    #[tokio::test]
+    async fn scoped_bulk_updates_leave_other_tenants_unchanged() {
+        let db = documents_db().await;
+        let denied = documents::Entity::update_many()
+            .col_expr(documents::Column::Title, Expr::value("forbidden"))
+            .filter(documents::Column::Id.eq(3))
+            .in_tenant(42)
+            .exec(&db)
+            .await
+            .unwrap();
+        assert_eq!(denied.rows_affected, 0);
+
+        let updated = documents::Entity::update_many()
+            .col_expr(documents::Column::Title, Expr::value("released"))
+            .in_tenant(42)
+            .exec(&db)
+            .await
+            .unwrap();
+        assert_eq!(updated.rows_affected, 2);
+
+        let documents = documents::Entity::find()
+            .order_by_asc(documents::Column::Id)
+            .all(&db)
+            .await
+            .unwrap();
+        assert_eq!(
+            documents
+                .iter()
+                .map(|document| (document.id, document.tenant_id, document.title.as_str()))
+                .collect::<Vec<_>>(),
+            [(1, 42, "released"), (2, 42, "released"), (3, 7, "roadmap")]
+        );
+    }
+
+    #[tokio::test]
+    async fn scoped_bulk_deletes_preserve_other_tenants() {
+        let db = documents_db().await;
+        let denied = documents::Entity::delete_many()
+            .filter(documents::Column::Id.eq(3))
+            .in_tenant(42)
+            .exec(&db)
+            .await
+            .unwrap();
+        assert_eq!(denied.rows_affected, 0);
+
+        let deleted = documents::Entity::delete_many()
+            .in_tenant(42)
+            .exec(&db)
+            .await
+            .unwrap();
+        assert_eq!(deleted.rows_affected, 2);
+        assert_eq!(
+            documents::Entity::find().all(&db).await.unwrap(),
+            [documents::Model {
+                id: 3,
+                tenant_id: 7,
+                title: "roadmap".to_owned(),
+            }]
+        );
     }
 
     #[test]

@@ -20,7 +20,7 @@ use sea_orm::EntityTrait;
 
 `query::condition()` starts a builder; `.build()` finalizes it into a `sea_orm::Condition` you pass to `.filter(..)`.
 
-For tenant-owned data, declare `TenantEntity` once and add `.in_tenant(tenant_id)` to selects and bulk mutations. See [Row-level multi-tenancy](/docs/how-to/multi-tenancy).
+For tenant-owned data, enable the `multi-tenancy` feature, declare `TenantEntity`, and add `.in_tenant(tenant_id)` to selects and bulk mutations. See [Row-level multi-tenancy](/docs/how-to/multi-tenancy).
 
 ## 2. Build a simple filter
 

@@ -999,10 +999,6 @@ mod tests {
             .expect("create temp folder");
         let qcfg = SqliteQueueConfig {
             max_connections: 8,
-            // This test deliberately queues more pollers than the pool can
-            // serve at once. Give them time to acquire a connection while
-            // SQLite serializes the `BEGIN IMMEDIATE` transactions.
-            connect_timeout: 10_000,
             ..config(&tree_fs.root)
         };
         let pool = connect(&qcfg).await.expect("connect");

@@ -1,6 +1,0 @@
-node_modules/
-dist/
-coverage/
-*.log
-*.local
-.DS_Store

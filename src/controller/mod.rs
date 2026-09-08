@@ -268,7 +268,7 @@ impl IntoResponse for Error {
                 StatusCode::CONFLICT,
                 ErrorDetail::new("conflict", "Resource already exists"),
             ),
-            #[cfg(feature = "with-db")]
+            #[cfg(feature = "multi-tenancy")]
             Self::Model(ModelError::TenantMismatch) => (
                 StatusCode::BAD_REQUEST,
                 ErrorDetail::new("tenant_mismatch", "Model belongs to a different tenant"),
@@ -404,7 +404,7 @@ mod tests {
         );
     }
 
-    #[cfg(feature = "with-db")]
+    #[cfg(feature = "multi-tenancy")]
     #[tokio::test]
     async fn model_tenant_mismatch_maps_to_400() {
         let (status, json) = response_json(Error::Model(ModelError::TenantMismatch)).await;

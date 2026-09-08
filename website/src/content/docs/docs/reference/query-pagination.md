@@ -7,11 +7,11 @@ sidebar:
 
 `loco_rs::model::query` (reachable as `loco_rs::prelude::query` or `loco_rs::prelude::model::query`) is a small fluent DSL over Sea-ORM's `Condition`, plus pagination helpers that wrap Sea-ORM's `PaginatorTrait`. The model module also provides explicit tenant scoping for Sea-ORM queries. This page documents `ConditionBuilder`'s full operator surface, tenant traits, `DateRangeBuilder`, `SortDirection`, the pagination types/functions, and the model-layer `ModelError`/`ModelResult`/`Authenticable` types the query and model code return.
 
-All of this module is gated behind the `with-db` feature (`Cargo.toml:44-49` pulls `sea-orm`/`sea-orm-migration`/`sqlx`); `prelude.rs:29-30` and `prelude.rs:52-55` gate `query`, `ModelError`, `ModelResult`, `Authenticable` on the same feature.
+The query and model modules require the `with-db` feature, which enables `sea-orm`, `sea-orm-migration`, and `sqlx`. The tenant helpers additionally require the opt-in `multi-tenancy` feature, which enables `with-db` automatically.
 
 ## Tenant scoping
 
-Three traits are re-exported from `loco_rs::model` and the prelude:
+With `multi-tenancy` enabled, three traits are re-exported from `loco_rs::model` and the prelude:
 
 | Trait | Implemented by | Purpose |
 |---|---|---|
@@ -19,7 +19,7 @@ Three traits are re-exported from `loco_rs::model` and the prelude:
 | `TenantQueryExt` | Loco, for `Select<E>`, `UpdateMany<E>`, and `DeleteMany<E>` where `E: TenantEntity` | Adds `in_tenant(tenant_id)`, an equality filter on the declared tenant column. |
 | `TenantActiveModelExt` | Loco, for active models whose entity implements `TenantEntity` | Adds `set_tenant(tenant_id) -> ModelResult<Self>`; sets an empty key, accepts the same key, and rejects reassignment with `ModelError::TenantMismatch`. |
 
-The scope is explicit rather than stored in thread-local or request-global state, so it remains correct when a future moves between executor threads and when work runs outside HTTP. Direct Sea-ORM builders remain available for intentional cross-tenant operations. See [Add row-level multi-tenancy](/docs/how-to/multi-tenancy) for schema, membership, subscription, RBAC, and mutation examples.
+The scope is explicit rather than stored in thread-local or request-global state, so it can be passed between executor threads and used outside HTTP. Direct Sea-ORM builders remain available for intentional cross-tenant operations. See [Add row-level multi-tenancy](/docs/how-to/multi-tenancy) for feature configuration, trusted tenant resolution, and scoped reads and writes.
 
 ## `ConditionBuilder` — fluent filter DSL
 
@@ -214,6 +214,7 @@ let res = query::fetch_page(&db, Entity::find(), &query::PaginationQuery::page(2
 pub enum ModelError {
     EntityAlreadyExists,
     EntityNotFound,
+    #[cfg(feature = "multi-tenancy")]
     TenantMismatch,
     Validation(ModelValidationErrors),      // #[from]
     #[cfg(feature = "auth")]
@@ -227,7 +228,7 @@ pub type ModelResult<T, E = ModelError> = std::result::Result<T, E>;
 ```
 (`src/model/mod.rs:13-35` for the enum, `:38` for the alias)
 
-`ModelError` is `#[non_exhaustive]`, like the crate-wide `Error`, so downstream matches require a wildcard arm. `TenantMismatch` is returned when `TenantActiveModelExt::set_tenant` would overwrite a different tenant key. `Jwt` only exists when the `auth` feature is enabled.
+`ModelError` is `#[non_exhaustive]`, like the crate-wide `Error`, so downstream matches require a wildcard arm. With `multi-tenancy` enabled, `TenantMismatch` is returned when `TenantActiveModelExt::set_tenant` would overwrite a different tenant key. `Jwt` only exists when the `auth` feature is enabled.
 
 Constructors:
 
@@ -252,4 +253,4 @@ pub trait Authenticable: Clone {
 
 A user model (typically the `users` entity) implements `Authenticable` so the auth extractors (`JWT`, `JWTWithUser`, `ApiToken` under `prelude::auth`, feature `auth`) can look the caller up: `find_by_claims_key` resolves a JWT's claims subject to a model instance; `find_by_api_key` resolves a bearer/API-key header the same way. Both are `async` (the trait itself is `#[async_trait]`) and return `ModelResult<Self>`, so a lookup failure surfaces as a `ModelError` (typically `EntityNotFound` or `DbErr`).
 
-The query module, model errors, `Authenticable`, and all three tenant traits are re-exported from `loco_rs::prelude` behind `with-db`.
+The query module, model errors, and `Authenticable` are re-exported from `loco_rs::prelude` behind `with-db`. The three tenant traits are re-exported behind `multi-tenancy`.

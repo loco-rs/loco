@@ -180,10 +180,10 @@ jobs:
   # booted `AppContext` and a real router. Nothing ran them: `docs.yml` only
   # `cargo build`s demo, to check the docs still compile.
   #
-  # All examples default to SQLite in `config/test.yaml`, so this needs no
-  # services. The clientside examples use `must_exist: true` over
-  # `frontend/dist`, so their frontend must be built before the app will boot —
-  # exactly what the CI a generated clientside app ships does.
+  # Both examples default to SQLite in `config/test.yaml`, so this needs no
+  # services. `reference_spa` is a clientside app whose `static` middleware is
+  # `must_exist: true` over `frontend/dist`, so it must be built before the app
+  # will boot — exactly what the CI a generated clientside app ships does.
   test-examples:
     needs: [check]
     runs-on: ubuntu-latest
@@ -194,7 +194,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        example: [demo, reference_spa, multitenancy]
+        example: [demo, reference_spa]
 
     steps:
       - name: Checkout the code
@@ -211,25 +211,21 @@ jobs:
       # `pnpm.overrides`, which npm ignores — it then fails to resolve vite at
       # all.
       - name: Setup node
-        if: matrix.example != 'demo'
+        if: matrix.example == 'reference_spa'
         uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Setup pnpm
-        if: matrix.example != 'demo'
+        if: matrix.example == 'reference_spa'
         uses: pnpm/action-setup@v6
         with:
           # Read the frontend's own packageManager pin; there is no root
           # package.json for the action to fall back on.
-          package_json_file: examples/${{ matrix.example }}/frontend/package.json
+          package_json_file: examples/reference_spa/frontend/package.json
       - name: Build frontend
-        if: matrix.example != 'demo'
+        if: matrix.example == 'reference_spa'
         run: pnpm install --frozen-lockfile && pnpm run build
-        working-directory: ./examples/${{ matrix.example }}/frontend
-      - name: Test multitenancy frontend
-        if: matrix.example == 'multitenancy'
-        run: pnpm test
-        working-directory: ./examples/multitenancy/frontend
+        working-directory: ./examples/reference_spa/frontend
 
       - name: Run cargo test
         run: cargo test --manifest-path examples/${{ matrix.example }}/Cargo.toml

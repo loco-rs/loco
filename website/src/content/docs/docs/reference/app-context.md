@@ -118,7 +118,8 @@ To read a stashed value from inside a handler, use the extractor of the same nam
 - `#[cfg(feature = "with-db")]`:
   - Sea-ORM traits and types: `ActiveModelBehavior, ActiveModelTrait, ActiveValue, ColumnTrait, ConnectionTrait, DatabaseConnection, DbErr, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter, Set, TransactionTrait`
   - Sea-ORM scalar re-exports: `sea_orm::prelude::{Date, DateTimeUtc, DateTimeWithTimeZone, Decimal, Uuid}`
-  - `model::{query, Authenticable, ModelError, ModelResult, TenantEntity, TenantQueryExt, TenantActiveModelExt}` — plus a nested `pub mod model { pub use crate::model::query; }`, so `query` is reachable both as `loco_rs::prelude::query` and as `loco_rs::prelude::model::query`
+  - `model::{query, Authenticable, ModelError, ModelResult}` — plus a nested `pub mod model { pub use crate::model::query; }`, so `query` is reachable both as `loco_rs::prelude::query` and as `loco_rs::prelude::model::query`
+- `#[cfg(feature = "multi-tenancy")] model::{TenantEntity, TenantQueryExt, TenantActiveModelExt}` — opt-in tenant scoping helpers; this feature also enables `with-db`
 - `#[cfg(feature = "testing")] crate::testing::prelude::*` — pulled in only for apps/tests built with the `testing` feature
 
 Source: `src/prelude.rs` (verified against `HEAD` at authoring time).
