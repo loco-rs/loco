@@ -149,6 +149,26 @@ fn doc_comments_only(source: &str) -> String {
         .join("\n")
 }
 
+/// Expands rustdoc's hidden lines for parsing, keeping their code rather than
+/// dropping it. Escaped hash prefixes lose one hash; attributes stay intact.
+fn rustdoc_code(code: &str) -> String {
+    code.lines()
+        .map(|line| {
+            let trimmed = line.trim_start();
+            if trimmed.starts_with("##") {
+                line.replacen("##", "#", 1)
+            } else if trimmed.trim_end() == "#" {
+                String::new()
+            } else if let Some(hidden) = trimmed.strip_prefix("# ") {
+                hidden.to_owned()
+            } else {
+                line.to_owned()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 fn collect(dir: &Path, out: &mut Vec<Block>) -> Result<()> {
     let fence = Regex::new(r"^\s*```\s*rust\b").expect("static regex");
     // CommonMark lets a closing fence be *longer* than the opening one, and
@@ -209,14 +229,48 @@ fn collect(dir: &Path, out: &mut Vec<Block>) -> Result<()> {
                     opened_at + 1
                 );
             }
+            let code = lines[start..index.min(lines.len())].join("\n");
             out.push(Block {
                 file: path.clone(),
                 line: opened_at + 1,
-                code: lines[start..index.min(lines.len())].join("\n"),
+                code: if extension == "rs" {
+                    rustdoc_code(&code)
+                } else {
+                    code
+                },
                 skipped,
             });
             index += 1;
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_hidden_setup_and_assertions() {
+        let code = "# fn main() {\n    # let value = 42;\n#\nassert_eq!(value, 42);\n# }";
+        assert!(parse(&rustdoc_code(code)).is_ok());
+    }
+
+    #[test]
+    fn rejects_invalid_hidden_code() {
+        assert!(parse(&rustdoc_code("# let value = ;")).is_err());
+    }
+
+    #[test]
+    fn preserves_attributes_and_unescapes_hashes() {
+        let code = "#![allow(unused)]\n#[derive(Debug)]\nstruct Value;";
+        assert_eq!(rustdoc_code(code), code);
+        assert!(parse(&rustdoc_code(code)).is_ok());
+        assert_eq!(rustdoc_code("    ###tag"), "    ##tag");
+    }
+
+    #[test]
+    fn plain_snippets_remain_strict() {
+        assert!(parse("# let value = 42;").is_err());
+    }
 }

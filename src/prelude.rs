@@ -28,6 +28,8 @@ pub use crate::controller::extractor::{
 };
 #[cfg(feature = "with-db")]
 pub use crate::model::{query, Authenticable, ModelError, ModelResult};
+#[cfg(feature = "multi-tenancy")]
+pub use crate::model::{TenantActiveModelExt, TenantEntity, TenantQueryExt};
 pub use crate::{
     app::{AppContext, Initializer},
     bgworker::{BackgroundWorker, Queue},
