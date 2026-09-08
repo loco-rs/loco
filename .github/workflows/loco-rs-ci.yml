@@ -35,7 +35,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
-          components: rustfmt
+          # `clippy` has to be named now that the toolchain is pinned. On
+          # `stable` this step reused the runner's preinstalled toolchain, which
+          # ships clippy; a pinned version installs fresh under the minimal
+          # profile and gets only what is listed here.
+          components: rustfmt, clippy
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
       - name: Run cargo fmt
