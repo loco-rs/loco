@@ -110,6 +110,11 @@ where
 {
     type Rejection = Error;
 
+    // Extraction is pure header/state inspection, so there is nothing to await.
+    // `async fn` stays because the shape is axum's, not ours: dropping it means
+    // spelling the desugared `impl Future` by hand at every extractor in the
+    // framework, which is noisier and no faster at the scale of one header read.
+    #[allow(clippy::unused_async_trait_impl)]
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Error> {
         extract_jwt_from_request_parts(parts, state)
     }
@@ -126,6 +131,8 @@ where
 {
     type Rejection = std::convert::Infallible;
 
+    // See the note on the `FromRequestParts` impl above.
+    #[allow(clippy::unused_async_trait_impl)]
     async fn from_request_parts(
         parts: &mut Parts,
         state: &S,
