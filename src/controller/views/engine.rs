@@ -200,6 +200,45 @@ impl TeraView {
 
         Ok(Self(tera))
     }
+
+    pub fn render_component<S: Serialize>(&self, component: &str, data: S) -> Result<String> {
+        let context = tera::Context::from_serialize(&data)?;
+
+        #[cfg(debug_assertions)]
+        {
+            let mut tera = self
+                .0
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+            // Only create a new Tera instance if the view path files have changed
+            if tera.dirty {
+                tracing::warn!(component, "Hot-reloading Tera view engine");
+
+                tera.dirty = false;
+
+                let new_engine =
+                    Self::create_tera_instance(&tera.view_path, tera.post_process.as_ref())?;
+
+                tera.engine = new_engine;
+            }
+
+            Ok(tera
+                .engine
+                .render_component(component, &context, None, false)
+                .map_err(|err| {
+                    Error::string(&format!("Error rendering component {component}: {err:?}"))
+                })?)
+        }
+
+        #[cfg(not(debug_assertions))]
+        Ok(self
+            .0
+            .render_component(component, &context, None, false)
+            .map_err(|err| {
+                Error::string(&format!("Error rendering component {component}: {err:?}"))
+            })?)
+    }
 }
 
 impl ViewRenderer for TeraView {
