@@ -41,7 +41,7 @@ pub async fn postgres_seed_data(pool: &sqlx::PgPool) {
     }
 }
 
-#[cfg(feature = "worker")]
+#[cfg(all(feature = "worker", feature = "db-sqlite"))]
 /// # Panics
 ///
 /// This function will panic if it fails to prepare or insert the seed data, causing the tests to fail quickly

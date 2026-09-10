@@ -103,6 +103,7 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
     let db = Database::connect(opt).await?;
 
     match db.get_database_backend() {
+        #[cfg(feature = "db-sqlite")]
         DatabaseBackend::Sqlite => {
             db.execute_raw(Statement::from_string(
                 DatabaseBackend::Sqlite,
@@ -120,6 +121,12 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
                 }),
             ))
             .await?;
+        }
+        #[cfg(not(feature = "db-sqlite"))]
+        DatabaseBackend::Sqlite => {
+            return Err(sea_orm::DbErr::Custom(
+                "SQLite support disabled; enable the loco-rs `db-sqlite` feature".into(),
+            ));
         }
         DatabaseBackend::Postgres | DatabaseBackend::MySql => {
             if let Some(run_on_start) = &config.run_on_start {
@@ -237,6 +244,7 @@ mod tests {
     use super::*;
     use crate::tests_cfg::{db::get_value, postgres::setup_postgres_container};
 
+    #[cfg(feature = "db-sqlite")]
     #[tokio::test]
     async fn test_sqlite_connect_success() {
         let (config, _tree_fs) = crate::tests_cfg::config::get_sqlite_test_config("test");
@@ -272,6 +280,7 @@ mod tests {
         assert_eq!(db.get_database_backend(), DatabaseBackend::Postgres);
     }
 
+    #[cfg(feature = "db-sqlite")]
     #[tokio::test]
     async fn test_sqlite_default_run_on_start() {
         let (config, _tree_fs) = crate::tests_cfg::config::get_sqlite_test_config("test");
@@ -300,6 +309,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "db-sqlite")]
     #[tokio::test]
     async fn test_sqlite_custom_run_on_start() {
         let (mut config, _tree_fs) =

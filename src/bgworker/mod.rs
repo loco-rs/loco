@@ -19,15 +19,14 @@ pub mod pg;
 pub mod redis;
 #[cfg(feature = "worker")]
 pub(crate) mod sql;
-#[cfg(feature = "worker")]
+#[cfg(all(feature = "worker", feature = "db-sqlite"))]
 pub mod sqlt;
 
+#[cfg(feature = "db-sqlite")]
+use crate::config::SqliteQueueConfig;
 use crate::{
     app::AppContext,
-    config::{
-        self, Config, PostgresQueueConfig, QueueConfig, RedisQueueConfig, SqliteQueueConfig,
-        WorkerMode,
-    },
+    config::{self, Config, PostgresQueueConfig, QueueConfig, RedisQueueConfig, WorkerMode},
     Error, Result,
 };
 
@@ -763,7 +762,20 @@ pub async fn converge(queue: &Queue, config: &QueueConfig) -> Result<()> {
             min_connections: _,
             reaper: _,
         })
-        | QueueConfig::Sqlite(SqliteQueueConfig {
+        | QueueConfig::Redis(RedisQueueConfig {
+            dangerously_flush,
+            uri: _,
+            queues: _,
+            num_workers: _,
+            reaper: _,
+        }) => {
+            if *dangerously_flush {
+                tracing::warn!("Flush mode enabled - clearing all jobs from queue");
+                queue.clear().await?;
+            }
+        }
+        #[cfg(feature = "db-sqlite")]
+        QueueConfig::Sqlite(SqliteQueueConfig {
             dangerously_flush,
             uri: _,
             max_connections: _,
@@ -773,13 +785,6 @@ pub async fn converge(queue: &Queue, config: &QueueConfig) -> Result<()> {
             poll_interval_sec: _,
             num_workers: _,
             min_connections: _,
-            reaper: _,
-        })
-        | QueueConfig::Redis(RedisQueueConfig {
-            dangerously_flush,
-            uri: _,
-            queues: _,
-            num_workers: _,
             reaper: _,
         }) => {
             if *dangerously_flush {
@@ -811,7 +816,7 @@ pub async fn create_queue_provider(config: &Config) -> Result<Option<Arc<Queue>>
                     tracing::debug!("Creating Postgres queue provider");
                     Ok(Some(Arc::new(pg::create_provider(qcfg).await?)))
                 }
-                #[cfg(feature = "worker")]
+                #[cfg(all(feature = "worker", feature = "db-sqlite"))]
                 config::QueueConfig::Sqlite(qcfg) => {
                     tracing::debug!("Creating SQLite queue provider");
                     Ok(Some(Arc::new(sqlt::create_provider(qcfg).await?)))
@@ -834,6 +839,7 @@ pub async fn create_queue_provider(config: &Config) -> Result<Option<Arc<Queue>>
 }
 
 #[cfg(test)]
+#[cfg(feature = "db-sqlite")]
 mod tests {
 
     use std::path::Path;

@@ -10,7 +10,8 @@ pub enum QueueConfig {
     Redis(RedisQueueConfig),
     /// Postgres queue
     Postgres(PostgresQueueConfig),
-    /// Sqlite queue
+    /// Sqlite queue (requires `db-sqlite` feature)
+    #[cfg(feature = "db-sqlite")]
     Sqlite(SqliteQueueConfig),
 }
 
@@ -22,6 +23,7 @@ impl QueueConfig {
         match self {
             Self::Redis(config) => config.dangerously_flush,
             Self::Postgres(config) => config.dangerously_flush,
+            #[cfg(feature = "db-sqlite")]
             Self::Sqlite(config) => config.dangerously_flush,
         }
     }
@@ -79,6 +81,7 @@ pub struct PostgresQueueConfig {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+#[cfg(feature = "db-sqlite")]
 pub struct SqliteQueueConfig {
     pub uri: String,
 
@@ -146,6 +149,7 @@ fn pgq_poll_interval() -> u32 {
     1
 }
 
+#[cfg(feature = "db-sqlite")]
 fn sqlt_poll_interval() -> u32 {
     1
 }
