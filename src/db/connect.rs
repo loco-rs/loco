@@ -58,6 +58,7 @@ impl MultiDb {
 ///
 /// This function will return an error if IO fails
 #[allow(clippy::match_wildcard_for_single_variants)]
+#[cfg_attr(not(feature = "db-sqlite"), allow(unreachable_patterns))]
 pub async fn verify_access(db: &DatabaseConnection) -> AppResult<()> {
     match db.inner {
         DatabaseConnectionType::SqlxPostgresPoolConnection(_) => {
