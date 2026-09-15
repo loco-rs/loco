@@ -207,7 +207,7 @@ async fn app(configure: impl FnOnce(&mut OAuthConfig)) -> App {
         .add_route(Routes::new().add("/me", get(me)).add("/maybe", get(maybe)))
         .to_router::<AppHook>(ctx, axum::Router::new())
         .unwrap();
-    let server = TestServer::builder().save_cookies().build(router).unwrap();
+    let server = TestServer::builder().save_cookies().build(router);
     App { server, fake }
 }
 

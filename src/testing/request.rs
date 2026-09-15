@@ -55,8 +55,6 @@ pub struct RequestConfig {
     pub save_cookies: bool,
     /// The default content type for all requests.
     pub default_content_type: Option<String>,
-    /// The default scheme to use for requests (e.g., "http" or "https").
-    pub default_scheme: String,
 }
 
 impl Default for RequestConfig {
@@ -69,7 +67,6 @@ impl Default for RequestConfig {
 pub struct RequestConfigBuilder {
     save_cookies: bool,
     default_content_type: Option<String>,
-    default_scheme: String,
 }
 
 impl RequestConfigBuilder {
@@ -79,7 +76,6 @@ impl RequestConfigBuilder {
         Self {
             save_cookies: false,
             default_content_type: Some("application/json".to_string()),
-            default_scheme: "http".to_string(),
         }
     }
 
@@ -97,20 +93,12 @@ impl RequestConfigBuilder {
         self
     }
 
-    /// Sets the default scheme to use for requests.
-    #[must_use]
-    pub fn default_scheme<S: Into<String>>(mut self, scheme: S) -> Self {
-        self.default_scheme = scheme.into();
-        self
-    }
-
     /// Builds and returns a `RequestConfig` instance.
     #[must_use]
     pub fn build(self) -> RequestConfig {
         RequestConfig {
             save_cookies: self.save_cookies,
             default_content_type: self.default_content_type,
-            default_scheme: self.default_scheme,
         }
     }
 }
@@ -127,7 +115,6 @@ impl From<RequestConfig> for TestServerConfig {
         Self {
             default_content_type: request_config.default_content_type,
             save_cookies: request_config.save_cookies,
-            default_scheme: Some(request_config.default_scheme),
             ..Default::default()
         }
     }
@@ -266,8 +253,7 @@ where
     let server = TestServer::new_with_config(
         routes.into_make_service_with_connect_info::<SocketAddr>(),
         test_server_config,
-    )
-    .unwrap();
+    );
 
     callback(server, boot.app_context.clone()).await;
 }

@@ -1631,7 +1631,7 @@ since they restate the trait's own API.
 ## `testing::request`
 
 - `struct` **BootResultWrapper**
-- `struct` **RequestConfig**` { save_cookies: bool, default_content_type: Option<String>, default_scheme: String }` — Configuration for making requests in the test server
+- `struct` **RequestConfig**` { save_cookies: bool, default_content_type: Option<String> }` — Configuration for making requests in the test server
 - `struct` **RequestConfigBuilder** — Builder pattern for constructing [`RequestConfig`] instances
 - `const` **TEST_BINDING_SERVER** — The hostname to which the test server binds
 - `const` **TEST_PORT_SERVER** — The port on which the test server will run
@@ -1653,7 +1653,6 @@ since they restate the trait's own API.
 
 - `fn` **build**`(self: Self) -> RequestConfig` — Builds and returns a `RequestConfig` instance
 - `fn` **default_content_type**`(self: Self, content_type: S) -> Self` — Sets the default content type for requests
-- `fn` **default_scheme**`(self: Self, scheme: S) -> Self` — Sets the default scheme to use for requests
 - `fn` **new**`() -> Self` — Creates a new [`RequestConfigBuilder`] with default values
 - `fn` **save_cookies**`(self: Self, save: bool) -> Self` — Sets whether cookies should be saved for future requests
 ## `testing::selector`
