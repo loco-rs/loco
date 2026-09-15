@@ -79,9 +79,7 @@ request_with_config::<App, _, _>(config, |request, _ctx| async move {
 .await;
 ```
 
-`RequestConfigBuilder` methods: `.save_cookies(bool)`, `.default_content_type(impl Into<String>)`, `.default_scheme(impl Into<String>)`, `.build()`.
-
-> **Gotcha:** `RequestConfig::default_scheme` is *not* forwarded to axum-test's underlying `TestServerConfig` — only `default_content_type` and `save_cookies` are. Setting `.default_scheme(...)` has no observable effect today; don't rely on it to force `https`.
+`RequestConfigBuilder` methods: `.save_cookies(bool)`, `.default_content_type(impl Into<String>)`, `.build()`.
 
 ## 5. Reach for `boot_test` directly when you don't need HTTP
 
