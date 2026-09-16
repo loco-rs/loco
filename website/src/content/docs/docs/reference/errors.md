@@ -29,6 +29,7 @@ sidebar:
 | `Validation(ModelValidationErrors)` | A `validator`-crate validation failure converted `#[from] ModelValidationErrors`. | 400 | `{"errors": <serde_json::Value of the field errors>}` — note `error`/`description` are `None` here; only `errors` is populated |
 | `Model(ModelError::EntityNotFound)` | A model lookup found no row (`with-db`, `mod.rs:261-265`). | 404 | `{"error":"not_found","description":"Resource was not found"}` |
 | `Model(ModelError::EntityAlreadyExists)` | A model insert collided with an existing row (`with-db`, `mod.rs:266-270`). | 409 | `{"error":"conflict","description":"Resource already exists"}` |
+| `Model(ModelError::TenantMismatch)` | `TenantActiveModelExt::set_tenant` was asked to overwrite a different tenant key (`multi-tenancy` feature). | 400 | `{"error":"tenant_mismatch","description":"Model belongs to a different tenant"}` |
 | `Model(ModelError::Validation(..))` | A model-level validation failure (`with-db`, `mod.rs:271-272`); same body as the top-level `Validation`. | 400 | `{"errors": <serde_json::Value of the field errors>}` |
 | **every remaining variant**, each listed by name in the match | The internal/infrastructure variants (`DB`, `IO`, `Redis`, `Sqlx`, `Tera`, `YAML`, `Message`, `Any`, `InternalServerError`, the remaining `Model` variants — `DbErr`, `Any`, `Message`, `Jwt` — etc.; see the full list below) | **500** | `{"error":"internal_server_error","description":"Internal Server Error"}` |
 

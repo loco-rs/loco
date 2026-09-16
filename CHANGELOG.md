@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Opt-in `multi-tenancy` feature (enables `with-db`): `TenantEntity` declares an entity's
+  tenant key, `TenantQueryExt::in_tenant` scopes reads and bulk mutations, and
+  `TenantActiveModelExt::set_tenant` safely assigns new records without
+  allowing tenant reassignment. ([#1640](https://github.com/loco-rs/loco/issues/1640))
+
 ## 1.1.0 - 2026-08-15
 
 Moves the template engine to Tera 2, makes configuration files valid YAML,
