@@ -231,7 +231,12 @@ impl TeraView {
         Ok(tera)
     }
 
-    pub fn render_component<S: Serialize>(&self, component: &str, data: S) -> Result<String> {
+    pub fn render_component<S: Serialize>(
+        &self,
+        component: &str,
+        data: S,
+        body: Option<&str>,
+    ) -> Result<String> {
         let context = tera::Context::from_serialize(&data)?;
         let tera = self.tera(component)?;
 
@@ -239,7 +244,7 @@ impl TeraView {
         let tera = &tera.engine;
 
         Ok(tera
-            .render_component(component, &context, None, false)
+            .render_component(component, &context, body, true)
             .map_err(|err| {
                 Error::string(&format!("Error rendering component {component}: {err:?}"))
             })?)
@@ -304,29 +309,38 @@ mod tests {
         let v = TeraView::from_custom_dir(&tree_fs.root, |_| Ok(())).unwrap();
 
         assert_eq!(
-            v.render_component("test", json!({"foo": "foo-txt"}))
+            v.render_component("test", json!({"foo": "foo-txt"}), None)
                 .unwrap(),
             "foo-txt true"
         );
         assert_eq!(
-            v.render_component("test", json!({"foo": "foo-txt", "bar":false}))
+            v.render_component("test", json!({"foo": "foo-txt", "bar":false}), None)
                 .unwrap(),
             "foo-txt false"
         );
 
         assert_eq!(
-            v.render_component("test2", json!({"foo": "foo-txt", "bar": "hello"}))
+            v.render_component("test2", json!({"foo": "foo-txt", "bar": "hello"}), None)
                 .unwrap(),
             "foo-txt hello"
         );
         assert_eq!(
-            v.render_component("test2", json!({"foo": "foo-txt", "bar": 42}))
+            v.render_component("test2", json!({"foo": "foo-txt", "bar": 42}), None)
                 .unwrap(),
             "foo-txt 42"
         );
+        assert_eq!(
+            v.render_component(
+                "test2",
+                json!({"foo": "foo-txt", "bar": "<script>do_something_dangerous()</script>"}),
+                None
+            )
+            .unwrap(),
+            "foo-txt &lt;script&gt;do_something_dangerous()&lt;/script&gt;"
+        );
 
         assert!(matches!(
-            v.render_component("abc", json!({"foo": "foo-txt", "bar": 42}))
+            v.render_component("abc", json!({"foo": "foo-txt", "bar": 42}), None)
                 .unwrap_err(),
             Error::Message(s) if s.contains("ComponentNotFound(\"abc\")")
         ));
