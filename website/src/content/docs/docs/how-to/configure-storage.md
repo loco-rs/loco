@@ -251,6 +251,7 @@ let upload = ctx
         ttl,
         PresignPutOptions {
             content_type: Some("application/pdf".to_string()),
+            ..Default::default()
         },
     )
     .await?;
@@ -264,14 +265,15 @@ as returned.
 On `ReplicatedStrategy`, presign is **primary-only** — presigned URLs are tied
 to one backend's credentials and never fall back to secondaries.
 
-To exercise presign against a real S3-compatible endpoint in tests:
+To exercise presign against a real S3-compatible endpoint in tests (ignored in
+normal CI; set the env vars and pass `-- --ignored`):
 
 ```sh
 LOCO_TEST_S3_ENDPOINT=http://127.0.0.1:9000 \
 LOCO_TEST_S3_BUCKET=loco-presign-test \
 LOCO_TEST_S3_ACCESS_KEY_ID=minio \
 LOCO_TEST_S3_SECRET_ACCESS_KEY=minio123 \
-cargo test -p loco-rs presign_s3_roundtrip --features storage_aws_s3
+cargo test -p loco-rs presign_s3_roundtrip --features storage_aws_s3 -- --ignored
 ```
 
 ## 8. Verify

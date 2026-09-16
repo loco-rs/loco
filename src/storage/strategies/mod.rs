@@ -8,7 +8,7 @@ use bytes::Bytes;
 use crate::storage::{
     drivers::{ListEntry, PresignPutOptions, PresignedRequest},
     stream::BytesStream,
-    Storage, StorageResult,
+    Storage, StorageError, StorageResult,
 };
 
 #[async_trait::async_trait]
@@ -31,14 +31,24 @@ pub trait StorageStrategy: Sync + Send {
         storage: &Storage,
         path: &Path,
         expire: Duration,
-    ) -> StorageResult<PresignedRequest>;
+    ) -> StorageResult<PresignedRequest> {
+        let _ = (storage, path, expire);
+        Err(StorageError::Any(
+            "presign_get is not supported by this storage driver".into(),
+        ))
+    }
     async fn presign_put(
         &self,
         storage: &Storage,
         path: &Path,
         expire: Duration,
         options: PresignPutOptions,
-    ) -> StorageResult<PresignedRequest>;
+    ) -> StorageResult<PresignedRequest> {
+        let _ = (storage, path, expire, options);
+        Err(StorageError::Any(
+            "presign_put is not supported by this storage driver".into(),
+        ))
+    }
 
     /// Download content as a stream for memory-efficient large file handling.
     ///

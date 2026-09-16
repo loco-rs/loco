@@ -5,7 +5,7 @@
 //! LOCO_TEST_S3_BUCKET=loco-presign-test \
 //! LOCO_TEST_S3_ACCESS_KEY_ID=minio \
 //! LOCO_TEST_S3_SECRET_ACCESS_KEY=minio123 \
-//! cargo test -p loco-rs presign_s3_roundtrip --features storage_aws_s3
+//! cargo test -p loco-rs presign_s3_roundtrip --features storage_aws_s3 -- --ignored
 //! ```
 
 use std::{path::Path, time::Duration};
@@ -34,10 +34,9 @@ fn test_s3_store() -> Option<OpendalAdapter> {
 }
 
 #[tokio::test]
+#[ignore = "needs LOCO_TEST_S3_* env vars; see module docs"]
 async fn presign_s3_roundtrip_get_and_put() {
-    let Some(store) = test_s3_store() else {
-        return;
-    };
+    let store = test_s3_store().expect("set LOCO_TEST_S3_* env vars");
     let path = Path::new("loco-presign-probe.txt");
     let body = Bytes::from("loco presign probe");
     let ttl = Duration::from_secs(300);
@@ -66,6 +65,7 @@ async fn presign_s3_roundtrip_get_and_put() {
             ttl,
             PresignPutOptions {
                 content_type: Some("text/plain".to_string()),
+                ..Default::default()
             },
         )
         .await

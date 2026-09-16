@@ -40,6 +40,7 @@ impl UploadResponse {
 
 /// A presigned HTTP request returned by [`StoreDriver::presign_get`] or
 /// [`StoreDriver::presign_put`].
+#[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct PresignedRequest {
     /// The HTTP method to use (e.g. `GET`, `PUT`).
@@ -72,6 +73,7 @@ impl PresignedRequest {
 }
 
 /// Optional parameters for [`StoreDriver::presign_put`].
+#[non_exhaustive]
 #[derive(Debug, Clone, Default)]
 pub struct PresignPutOptions {
     /// `Content-Type` header included in the signed request.

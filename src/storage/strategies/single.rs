@@ -611,6 +611,7 @@ mod presign_tests {
                 Duration::from_secs(300),
                 PresignPutOptions {
                     content_type: Some("application/octet-stream".to_string()),
+                    ..Default::default()
                 },
             )
             .await

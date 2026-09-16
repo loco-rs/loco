@@ -2,23 +2,18 @@
 
 ## Unreleased
 
-### Breaking Changes
-
-- **`StoreDriver::presign_put` now takes `PresignPutOptions`** so callers can
-  set `Content-Type` on signed uploads. Pass `PresignPutOptions::default()`
-  for the previous behavior.
-- **`StorageStrategy` gains required `presign_get` and `presign_put`
-  methods.** Custom strategy implementations must implement them. Built-in
-  strategies already do.
-
 ### Added
 
 - **`Storage` facade exposes `presign_get` / `presign_put`** (and
   `*_with_policy` siblings), routing through the selected strategy.
-- **`PresignedRequest::url()`** helper and **`PresignPutOptions`** for signed
-  upload metadata.
-- **S3 presign integration test** (`presign_s3_roundtrip_get_and_put`) gated
-  on `LOCO_TEST_S3_*` env vars and the `storage_aws_s3` feature.
+- **`StoreDriver::presign_get` / `presign_put`** with default "not supported"
+  bodies; S3/Azure/GCS backends override via OpenDAL.
+- **`PresignedRequest::url()`** helper and **`PresignPutOptions`** (with
+  optional `content_type`) for signed upload metadata. Both structs are
+  `#[non_exhaustive]`.
+- **S3 presign integration test** (`presign_s3_roundtrip_get_and_put`):
+  `#[ignore]` by default; set `LOCO_TEST_S3_*` env vars and run with
+  `-- --ignored` plus `storage_aws_s3` feature.
 
 ## 1.1.0 - 2026-08-15
 
