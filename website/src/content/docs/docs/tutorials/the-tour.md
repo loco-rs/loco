@@ -20,10 +20,10 @@ Picking a database (<code>--db sqlite</code>) also gives this app a ready-made a
 
 ## Models and controllers: a scaffold, and a plain model with a relation
 
-Generate a `posts` scaffold — model, migration, entity, CRUD controller, and tests in one step:
+Generate a `posts` scaffold — model, migration, entity, CRUD controller, and tests in one step (without authentication):
 
 ```sh
-$ cargo loco generate scaffold posts title:string! content:text
+$ cargo loco generate scaffold posts title:string! content:text --no-auth
 ```
 
 Now generate a `comments` **model only** (no controller yet — you'll hand-write that one) that belongs to a post, using the `references` field type:
@@ -76,10 +76,11 @@ With no action names given, this stubs a single `index` action returning an empt
 
 ```rust
 #![allow(clippy::unused_async)]
+use axum::http::StatusCode;
 use loco_rs::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::models::_entities::comments::{ActiveModel, Entity};
+use crate::models::_entities::comments::ActiveModel;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Params {
@@ -87,24 +88,21 @@ pub struct Params {
     pub post_id: i64,
 }
 
-impl Params {
-    fn update(&self, item: &mut ActiveModel) {
-        item.content = Set(self.content.clone());
-        item.post_id = Set(self.post_id);
-    }
-}
-
-pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Response> {
-    let mut item = ActiveModel { ..Default::default() };
-    params.update(&mut item);
+async fn create(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Response> {
+    let item = ActiveModel { 
+        content: Set(params.content),
+        post_id: Set(params.post_id),
+        ..Default::default()
+    };
     let item = item.insert(&ctx.db).await?;
-    format::json(item)
+
+    Ok((StatusCode::CREATED, format::json(item)).into_response())
 }
 
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("api/comments/")
-        .add("/", post(add))
+        .add("/", post(create))
 }
 ```
 
@@ -114,25 +112,27 @@ Now add the nested read on the `posts` side. In `src/controllers/posts.rs` (gene
 // add to the existing imports
 use crate::models::_entities::comments;
 
-pub async fn comments_for_post(
+async fn comments_for_post(
     Path(id): Path<i64>,
     State(ctx): State<AppContext>,
 ) -> Result<Response> {
-    let item = load_item(&ctx, id).await?;
-    let comments = item.find_related(comments::Entity).all(&ctx.db).await?;
+    let Some(model) = Entity::find_by_id(id).one(&ctx.db).await? else {
+        return Ok(not_found("post not found"));
+    };
+    let comments = model.find_related(comments::Entity).all(&ctx.db).await?;
+
     format::json(comments)
 }
 
 pub fn routes() -> Routes {
     Routes::new()
-        .prefix("api/posts/")
+        .prefix("/api/posts")
         .add("/", get(list))
-        .add("/", post(add))
-        .add("{id}", get(get_one))
-        .add("{id}", delete(remove))
-        .add("{id}", put(update))
-        .add("{id}", patch(update))
-        .add("{id}/comments", get(comments_for_post)) // <- add this
+        .add("/", post(create))
+        .add("/{id}", get(get_one))
+        .add("/{id}", put(update))
+        .add("/{id}", delete(remove))
+        .add("/{id}/comments", get(comments_for_post))
 }
 ```
 
@@ -190,9 +190,13 @@ impl BackgroundWorker<WorkerArgs> for Worker {
 Now enqueue it from `posts::add` in `src/controllers/posts.rs`, right after the post is inserted:
 
 ```rust
-pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Response> {
-    let mut item = ActiveModel { ..Default::default() };
-    params.update(&mut item);
+#[debug_handler]
+async fn create(State(ctx): State<AppContext>, Json(params): Json<CreatePost>) -> Result<Response> {
+    let item = ActiveModel {
+        title: Set(params.title),
+        content: Set(params.content),
+        ..Default::default()
+    };
     let item = item.insert(&ctx.db).await?;
 
     crate::workers::notifier::Worker::perform_later(
@@ -201,7 +205,7 @@ pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> R
     )
     .await?;
 
-    format::json(item)
+    Ok((StatusCode::CREATED, format::json(item)).into_response())
 }
 ```
 

@@ -244,6 +244,54 @@ pub async fn enqueue(
     Ok(job_id)
 }
 
+/// Enqueue multiple jobs in a single atomic pipeline operation.
+///
+/// Each entry of `jobs` is one job's arguments paired with its priority
+/// (`None` for the default); `tags` apply to every job. The returned IDs are
+/// in the same order as `jobs`.
+///
+/// The pipeline runs as a `MULTI`/`EXEC` transaction, so either every job's
+/// payload and queue entry are written or none are. A failure leaves nothing
+/// behind and the batch is safe to retry without duplicating jobs.
+///
+/// # Errors
+///
+/// This function will return an error if it fails
+pub async fn enqueue_batch(
+    client: &RedisPool,
+    class: String,
+    queue: Option<String>,
+    jobs: Vec<(serde_json::Value, Option<i32>)>,
+    tags: Option<Vec<String>>,
+) -> Result<Vec<JobId>> {
+    if jobs.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut conn = get_connection(client).await?;
+    let queue_name = queue.unwrap_or_else(|| "default".to_string());
+    let queue_key = format!("{QUEUE_KEY_PREFIX}{queue_name}");
+
+    let mut ids = Vec::with_capacity(jobs.len());
+    let mut pipe = redis::pipe();
+    pipe.atomic();
+    for (args_json, priority) in jobs {
+        let job_id = Ulid::new().to_string();
+        let mut job = Job::new(job_id, class.clone(), args_json);
+        job.tags = tags.clone();
+        job.priority = priority.unwrap_or(0);
+        let job_json = job.to_json()?;
+        let job_key = format!("{JOB_KEY_PREFIX}{}", job.id);
+        pipe.set(&job_key, &job_json).ignore();
+        pipe.zadd(&queue_key, &job.id, calculate_score(job.priority))
+            .ignore();
+        ids.push(job.id);
+    }
+
+    pipe.query_async::<()>(&mut conn).await?;
+    Ok(ids)
+}
+
 /// Redis ZSET score for a job, derived from priority only.
 ///
 /// We deliberately use only the priority in the score to preserve exact
@@ -982,6 +1030,16 @@ impl QueueProvider for RedisQueue {
         ))
     }
 
+    async fn enqueue_batch(
+        &self,
+        class: String,
+        queue: Option<String>,
+        jobs: Vec<(JsonValue, Option<i32>)>,
+        tags: Option<Vec<String>>,
+    ) -> Result<Vec<JobId>> {
+        enqueue_batch(&self.client, class, queue, jobs, tags).await
+    }
+
     async fn register_handler(&self, name: String, handler: JobHandler) -> Result<()> {
         let mut registry = self.registry.lock().await;
         registry.insert_handler(name, handler)
@@ -1273,6 +1331,118 @@ mod tests {
         // Queue should now be empty
         let queue_len: i64 = conn.zcard(&queue_key).await.expect("get queue length");
         assert_eq!(queue_len, 0);
+    }
+
+    #[tokio::test]
+    async fn test_can_enqueue_batch_redis() {
+        let (client, _container) = setup_redis().await;
+        assert!(clear(&client).await.is_ok());
+
+        // Mixed per-job priorities: the default (None → 0), a high and a low
+        // value. Dequeue order must follow priority, not insertion order.
+        let jobs = vec![
+            (serde_json::json!({"user_id": 1}), None),
+            (serde_json::json!({"user_id": 2}), Some(10)),
+            (serde_json::json!({"user_id": 3}), Some(-5)),
+        ];
+        let ids = enqueue_batch(&client, "BatchJob".to_string(), None, jobs, None)
+            .await
+            .expect("batch enqueue");
+        assert_eq!(ids.len(), 3);
+
+        // Every job key was written, in input order, with its own priority.
+        let stored = get_all_jobs(&client).await;
+        assert_eq!(stored.len(), 3);
+        for (id, expected_priority) in ids.iter().zip([0, 10, -5]) {
+            let job = stored
+                .iter()
+                .find(|job| &job.id == id)
+                .expect("batched job must be stored");
+            assert_eq!(job.name, "BatchJob");
+            assert_eq!(job.status, JobStatus::Queued);
+            assert_eq!(job.priority, expected_priority);
+        }
+
+        // Every id landed in the default queue's ZSET.
+        let mut conn = get_test_connection(&client).await;
+        let queue_key = format!("{QUEUE_KEY_PREFIX}default");
+        let queue_len: i64 = conn.zcard(&queue_key).await.expect("get queue length");
+        assert_eq!(queue_len, 3);
+
+        let queues = vec!["default".to_string()];
+        for expected_user in [2, 1, 3] {
+            let (job, _) = dequeue_with_conn(&mut conn, &queues, &[])
+                .await
+                .expect("dequeue")
+                .expect("a batched job must be dequeueable");
+            assert_eq!(
+                job.data.get("user_id"),
+                Some(&serde_json::json!(expected_user)),
+                "batched jobs must be dequeued by priority"
+            );
+            complete_job_with_conn(&mut conn, &job.id, "default", None)
+                .await
+                .expect("complete job");
+        }
+        assert!(dequeue_with_conn(&mut conn, &queues, &[])
+            .await
+            .expect("dequeue")
+            .is_none());
+    }
+
+    #[tokio::test]
+    async fn test_can_enqueue_batch_with_queue_and_tags_redis() {
+        let (client, _container) = setup_redis().await;
+        assert!(clear(&client).await.is_ok());
+
+        let ids = enqueue_batch(
+            &client,
+            "BatchJob".to_string(),
+            Some("mailer".to_string()),
+            vec![
+                (serde_json::json!({"user_id": 1}), None),
+                (serde_json::json!({"user_id": 2}), None),
+            ],
+            Some(vec!["email".to_string()]),
+        )
+        .await
+        .expect("tagged batch enqueue");
+        assert_eq!(ids.len(), 2);
+
+        // The batch went to the named queue, not the default one.
+        let mut conn = get_test_connection(&client).await;
+        let mailer_len: i64 = conn
+            .zcard(format!("{QUEUE_KEY_PREFIX}mailer"))
+            .await
+            .expect("get queue length");
+        assert_eq!(mailer_len, 2);
+        let default_len: i64 = conn
+            .zcard(format!("{QUEUE_KEY_PREFIX}default"))
+            .await
+            .expect("get queue length");
+        assert_eq!(default_len, 0);
+
+        // Tags apply to every job: a tagless worker must not see them and a
+        // worker carrying the tag must.
+        let queues = vec!["mailer".to_string()];
+        assert!(
+            dequeue_with_conn(&mut conn, &queues, &[])
+                .await
+                .expect("dequeue")
+                .is_none(),
+            "an untagged worker must not see tagged jobs"
+        );
+        for _ in 0..2 {
+            let (job, _) = dequeue_with_conn(&mut conn, &queues, &["email".to_string()])
+                .await
+                .expect("dequeue")
+                .expect("a tagged batched job must be dequeueable by a matching worker");
+            assert!(ids.contains(&job.id));
+            assert_eq!(job.tags, Some(vec!["email".to_string()]));
+            complete_job_with_conn(&mut conn, &job.id, "mailer", None)
+                .await
+                .expect("complete job");
+        }
     }
 
     #[tokio::test]
