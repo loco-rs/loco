@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{path::Path, time::Duration};
 
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -15,7 +15,10 @@ pub mod mem;
 pub mod null;
 pub mod opendal_adapter;
 
-use super::{stream::BytesStream, StorageResult};
+#[cfg(all(test, feature = "storage_aws_s3"))]
+mod aws_presign_tests;
+
+use super::{stream::BytesStream, StorageError, StorageResult};
 
 #[derive(Debug)]
 pub struct UploadResponse {
@@ -33,6 +36,48 @@ impl UploadResponse {
     pub fn new(e_tag: Option<String>, version: Option<String>) -> Self {
         Self { e_tag, version }
     }
+}
+
+/// A presigned HTTP request returned by [`StoreDriver::presign_get`] or
+/// [`StoreDriver::presign_put`].
+#[non_exhaustive]
+#[derive(Debug, Clone)]
+pub struct PresignedRequest {
+    /// The HTTP method to use (e.g. `GET`, `PUT`).
+    pub method: http::Method,
+    /// The URI the client should send the request to.
+    pub uri: http::Uri,
+    /// Headers that must be included on the request.
+    pub headers: http::HeaderMap,
+}
+
+impl PresignedRequest {
+    /// Builds a `PresignedRequest`.
+    ///
+    /// Custom [`StoreDriver`] implementations use this to return a presigned
+    /// request without depending on `opendal` types.
+    #[must_use]
+    pub fn new(method: http::Method, uri: http::Uri, headers: http::HeaderMap) -> Self {
+        Self {
+            method,
+            uri,
+            headers,
+        }
+    }
+
+    /// The presigned URL as a string.
+    #[must_use]
+    pub fn url(&self) -> String {
+        self.uri.to_string()
+    }
+}
+
+/// Optional parameters for [`StoreDriver::presign_put`].
+#[non_exhaustive]
+#[derive(Debug, Clone, Default)]
+pub struct PresignPutOptions {
+    /// `Content-Type` header included in the signed request.
+    pub content_type: Option<String>,
 }
 
 /// A single entry returned by [`StoreDriver::list`] or [`StoreDriver::stat`].
@@ -208,6 +253,49 @@ pub trait StoreDriver: Sync + Send {
     ///
     /// Returns a `StorageResult` with the entry's metadata.
     async fn stat(&self, path: &Path) -> StorageResult<ListEntry>;
+
+    /// Builds a presigned URL that lets a client `GET` the content at `path`
+    /// directly from the backing store, without proxying through the app.
+    ///
+    /// # Default Implementation
+    ///
+    /// Returns an error. Only backends that support presigning (e.g. S3,
+    /// Azure Blob, GCS) override this.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `StorageResult` if the driver doesn't support presigning or
+    /// the request could not be built.
+    async fn presign_get(&self, path: &Path, expire: Duration) -> StorageResult<PresignedRequest> {
+        let _ = (path, expire);
+        Err(StorageError::Any(
+            "presign_get is not supported by this storage driver".into(),
+        ))
+    }
+
+    /// Builds a presigned URL that lets a client `PUT` content to `path`
+    /// directly on the backing store, without proxying through the app.
+    ///
+    /// # Default Implementation
+    ///
+    /// Returns an error. Only backends that support presigning (e.g. S3,
+    /// Azure Blob, GCS) override this.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `StorageResult` if the driver doesn't support presigning or
+    /// the request could not be built.
+    async fn presign_put(
+        &self,
+        path: &Path,
+        expire: Duration,
+        options: PresignPutOptions,
+    ) -> StorageResult<PresignedRequest> {
+        let _ = (path, expire, options);
+        Err(StorageError::Any(
+            "presign_put is not supported by this storage driver".into(),
+        ))
+    }
 
     /// Retrieves content from the specified path and returns it as a stream.
     /// This method is more memory-efficient than `get()` for large files as it

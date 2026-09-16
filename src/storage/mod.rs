@@ -3,7 +3,7 @@
 //! This module defines a generic storage abstraction represented by the
 //! [`Storage`] struct. It provides methods for performing common storage
 //! operations such as upload, download, delete, rename, copy, exists, list,
-//! and stat.
+//! stat, and presigning.
 //!
 //! ## Storage Strategy
 //!
@@ -18,12 +18,13 @@ pub mod stream;
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
+    time::Duration,
 };
 
 use bytes::Bytes;
 
 use self::{
-    drivers::{ListEntry, StoreDriver},
+    drivers::{ListEntry, PresignPutOptions, PresignedRequest, StoreDriver},
     stream::BytesStream,
 };
 
@@ -465,6 +466,68 @@ impl Storage {
         strategy: &dyn strategies::StorageStrategy,
     ) -> StorageResult<ListEntry> {
         strategy.stat(self, path).await
+    }
+
+    /// Builds a presigned `GET` URL for `path` using the selected strategy.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the driver does not support presigning or the
+    /// request could not be built.
+    pub async fn presign_get(
+        &self,
+        path: &Path,
+        expire: Duration,
+    ) -> StorageResult<PresignedRequest> {
+        self.presign_get_with_policy(path, expire, &*self.strategy)
+            .await
+    }
+
+    /// Builds a presigned `GET` URL using a specific strategy.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the driver does not support presigning or the
+    /// request could not be built.
+    pub async fn presign_get_with_policy(
+        &self,
+        path: &Path,
+        expire: Duration,
+        strategy: &dyn strategies::StorageStrategy,
+    ) -> StorageResult<PresignedRequest> {
+        strategy.presign_get(self, path, expire).await
+    }
+
+    /// Builds a presigned `PUT` URL for `path` using the selected strategy.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the driver does not support presigning or the
+    /// request could not be built.
+    pub async fn presign_put(
+        &self,
+        path: &Path,
+        expire: Duration,
+        options: PresignPutOptions,
+    ) -> StorageResult<PresignedRequest> {
+        self.presign_put_with_policy(path, expire, options, &*self.strategy)
+            .await
+    }
+
+    /// Builds a presigned `PUT` URL using a specific strategy.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the driver does not support presigning or the
+    /// request could not be built.
+    pub async fn presign_put_with_policy(
+        &self,
+        path: &Path,
+        expire: Duration,
+        options: PresignPutOptions,
+        strategy: &dyn strategies::StorageStrategy,
+    ) -> StorageResult<PresignedRequest> {
+        strategy.presign_put(self, path, expire, options).await
     }
 
     /// Returns a reference to the store with the specified name if exists.

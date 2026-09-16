@@ -160,6 +160,7 @@ opendal = { version = "0.58.1", default-features = false, features = [
     "services-fs",
     "layers-retry",
 ] }
+http = "1"
 
 # cache
 moka = { version = "0.12.7", features = ["future"], optional = true }

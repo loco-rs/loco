@@ -24,12 +24,14 @@
 //!   secondary fallback under mirror mode. Empty secondary listings are
 //!   skipped (same as `exists` skipping `false`) so a later secondary with
 //!   data remains discoverable.
+//! * `presign_get`/`presign_put`: primary only. Presigned URLs are tied to one
+//!   backend's credentials and are never served from secondaries.
 use std::{collections::BTreeMap, path::Path};
 
 use bytes::Bytes;
 
 use crate::storage::{
-    drivers::{ListEntry, StoreDriver},
+    drivers::{ListEntry, PresignPutOptions, PresignedRequest, StoreDriver},
     strategies::StorageStrategy,
     Storage, StorageError, StorageResult,
 };
@@ -365,6 +367,31 @@ impl StorageStrategy for ReplicatedStrategy {
                 Err(error)
             }
         }
+    }
+
+    async fn presign_get(
+        &self,
+        storage: &Storage,
+        path: &Path,
+        expire: std::time::Duration,
+    ) -> StorageResult<PresignedRequest> {
+        storage
+            .as_store_err(&self.primary)?
+            .presign_get(path, expire)
+            .await
+    }
+
+    async fn presign_put(
+        &self,
+        storage: &Storage,
+        path: &Path,
+        expire: std::time::Duration,
+        options: PresignPutOptions,
+    ) -> StorageResult<PresignedRequest> {
+        storage
+            .as_store_err(&self.primary)?
+            .presign_put(path, expire, options)
+            .await
     }
 }
 
@@ -921,5 +948,19 @@ mod tests {
         );
         put(&storage, "store_2", path.as_path()).await;
         assert!(storage.exists(path.as_path()).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn presign_mirror_does_not_fall_back_to_secondary() {
+        let path = orig();
+        let storage = storage_for(
+            ReplicatedStrategy::mirror("store_1", Some(vec!["store_2".to_string()]), FailIfAny),
+            named(&["store_1", "store_2"]),
+        );
+        put(&storage, "store_2", path.as_path()).await;
+        assert!(storage
+            .presign_get(path.as_path(), std::time::Duration::from_secs(60))
+            .await
+            .is_err());
     }
 }
