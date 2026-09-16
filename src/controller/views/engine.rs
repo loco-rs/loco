@@ -200,36 +200,66 @@ impl TeraView {
 
         Ok(Self(tera))
     }
+
+    /// Access the Tera view engine instance.
+    #[cfg(not(debug_assertions))]
+    #[inline(always)]
+    fn tera(&self, _key: &str) -> Result<&tera::Tera> {
+        Ok(&self.0)
+    }
+    /// Access the Tera view engine instance.
+    #[cfg(debug_assertions)]
+    #[inline]
+    fn tera(&self, key: &str) -> Result<impl std::ops::Deref<Target = HotReloadingTeraEngine>> {
+        let mut tera = self
+            .0
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+        // Only create a new Tera instance if the view path files have changed
+        if tera.dirty {
+            tracing::warn!(key, "Hot-reloading Tera view engine");
+
+            tera.dirty = false;
+
+            let new_engine =
+                Self::create_tera_instance(&tera.view_path, tera.post_process.as_ref())?;
+
+            tera.engine = new_engine;
+        }
+
+        Ok(tera)
+    }
+
+    pub fn render_component<S: Serialize>(
+        &self,
+        component: &str,
+        data: S,
+        body: Option<&str>,
+    ) -> Result<String> {
+        let context = tera::Context::from_serialize(&data)?;
+        let tera = self.tera(component)?;
+
+        #[cfg(debug_assertions)]
+        let tera = &tera.engine;
+
+        Ok(tera
+            .render_component(component, &context, body, true)
+            .map_err(|err| {
+                Error::string(&format!("Error rendering component {component}: {err:?}"))
+            })?)
+    }
 }
 
 impl ViewRenderer for TeraView {
     fn render<S: Serialize>(&self, key: &str, data: S) -> Result<String> {
         let context = tera::Context::from_serialize(&data)?;
+        let tera = self.tera(key)?;
 
         #[cfg(debug_assertions)]
-        {
-            let mut tera = self
-                .0
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let tera = &tera.engine;
 
-            // Only create a new Tera instance if the view path files have changed
-            if tera.dirty {
-                tracing::warn!(key, "Hot-reloading Tera view engine");
-
-                tera.dirty = false;
-
-                let new_engine =
-                    Self::create_tera_instance(&tera.view_path, tera.post_process.as_ref())?;
-
-                tera.engine = new_engine;
-            }
-
-            Ok(tera.engine.render(key, &context)?)
-        }
-
-        #[cfg(not(debug_assertions))]
-        Ok(self.0.render(key, &context)?)
+        Ok(tera.render(key, &context)?)
     }
 }
 
@@ -260,6 +290,60 @@ mod tests {
                 .unwrap(),
             "generate test2.html file: bar-txt"
         );
+    }
+
+    #[test]
+    fn can_render_component() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .add_file(
+                "template/test.html",
+                "{% component test (foo: string, bar = true) %}{{foo}} {{bar}}{% endcomponent %}",
+            )
+            .add_file(
+                "template/test2.html",
+                "{% component test2 (foo, bar) %}{{foo}} {{bar}}{% endcomponent %}",
+            )
+            .create()
+            .unwrap();
+
+        let v = TeraView::from_custom_dir(&tree_fs.root, |_| Ok(())).unwrap();
+
+        assert_eq!(
+            v.render_component("test", json!({"foo": "foo-txt"}), None)
+                .unwrap(),
+            "foo-txt true"
+        );
+        assert_eq!(
+            v.render_component("test", json!({"foo": "foo-txt", "bar":false}), None)
+                .unwrap(),
+            "foo-txt false"
+        );
+
+        assert_eq!(
+            v.render_component("test2", json!({"foo": "foo-txt", "bar": "hello"}), None)
+                .unwrap(),
+            "foo-txt hello"
+        );
+        assert_eq!(
+            v.render_component("test2", json!({"foo": "foo-txt", "bar": 42}), None)
+                .unwrap(),
+            "foo-txt 42"
+        );
+        assert_eq!(
+            v.render_component(
+                "test2",
+                json!({"foo": "foo-txt", "bar": "<script>do_something_dangerous()</script>"}),
+                None
+            )
+            .unwrap(),
+            "foo-txt &lt;script&gt;do_something_dangerous()&lt;/script&gt;"
+        );
+
+        assert!(matches!(
+            v.render_component("abc", json!({"foo": "foo-txt", "bar": 42}), None)
+                .unwrap_err(),
+            Error::Message(s) if s.contains("ComponentNotFound(\"abc\")")
+        ));
     }
 
     /// A custom filter registered through `post_process` must be usable BY the
