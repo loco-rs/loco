@@ -77,8 +77,10 @@ impl Settings {
 
         match prompt_selection.background {
             BackgroundOption::QueueRedis => features.names.push("worker_redis".to_string()),
-            BackgroundOption::QueuePostgres | BackgroundOption::QueueSqlite => {
+            BackgroundOption::QueuePostgres => features.names.push("worker".to_string()),
+            BackgroundOption::QueueSqlite => {
                 features.names.push("worker".to_string());
+                features.names.push("db-sqlite".to_string());
             }
             BackgroundOption::Async | BackgroundOption::Blocking => {}
         }
