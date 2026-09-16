@@ -1,5 +1,110 @@
 # Changelog
 
+## 1.2.0 - 2026-09-16
+
+Ships a Loco skill so coding agents write idiomatic Loco without guessing,
+and fixes a long list of defects in the app `loco new` generates — including
+a server-side app that returned 404 at `/`.
+
+**Upgrading:** nothing to do for most apps. Two behaviour changes are listed
+below; neither needs an edit unless you were relying on the old behaviour.
+
+### Breaking
+
+- **`perform_later_with_priority` now returns an error when no queue provider
+  is configured.** It previously logged and handed back a fabricated job id,
+  so an app with a misconfigured queue was told every enqueue had succeeded.
+  It now returns `Error::QueueProviderMissing`. (#1821, @mccormickt)
+
+- **`ExprTrait` is no longer re-exported from the prelude.** It is
+  `impl<T> ExprTrait for T where T: Into<Expr>`, and primitives are
+  `Into<Expr>`, so it reached every value in every file that globs the
+  prelude: `n.max(1)` stopped compiling, and `n.eq(&3)` kept compiling while
+  returning an `Expr` instead of a `bool`. Import it explicitly if you need
+  it.
+
+### Added
+
+- **A Loco skill for coding agents.** `skills/loco/` carries the framework's
+  doctrine, a generated API index covering `loco-rs` and Sea-ORM, and ten
+  task recipes. `loco new` writes it into every generated app under
+  `.claude/skills/loco/`, matched to that app's crate version, and it is
+  served at <https://loco.rs/skills/loco/>. `cargo xtask agent-skill --check`
+  keeps the derived outputs from drifting out of step with the source.
+
+- **Batch job enqueueing.** `perform_all_later(&ctx, args_list)` and
+  `perform_all_later_with_priority` enqueue many jobs in a single round trip,
+  atomically, on all three backends. Fanning out with a loop of
+  `perform_later` cost N round trips and could leave the queue half-populated
+  when one of them failed. (#1821, @mccormickt)
+
+- **`cargo loco task user:delete`** in generated apps, beside `user:create`.
+  Takes a pid, prints the user it matched, and confirms before deleting;
+  `force:true` skips the prompt for scripted use. (#1708, @floscodes)
+
+### Fixed
+
+- **A server-side app returned 404 at `/`.** `assets/views/home/hello.html`
+  shipped with a test that rendered it and no route that served it, so the
+  first URL anyone opened was a 404. Generated apps now ship
+  `controllers/page.rs` and a request test that exercises the route rather
+  than the template.
+
+- **Nine defects in the generated SPA.** No sign-up page — the SaaS starter
+  ships JWT auth as its headline feature and told users to
+  `curl POST /api/auth/register`. A Vite dev proxy hardcoded to port 5150
+  while the backend reads `PORT` from config, so overriding the port sent
+  every `/api` call somewhere else. A dead-end `Home.tsx`. Booleans rendering
+  as blank cells in both list and detail views. List and detail disagreeing
+  on which column holds the title, producing links with no text. And
+  `vite build` never typechecking, because esbuild strips types without
+  checking them — it is now `tsc -b && vite build`.
+
+- **Scaffolded controller actions were all routed as `GET`.** `create` was
+  reachable by `GET`, `delete` by `GET`. Actions are now wired to the verb
+  their name implies, and the generated tests call them that way.
+
+- **TypeScript bindings were written for apps with no frontend.**
+  `#[ts(export)]` is a side effect of `cargo test`, not an annotation, so
+  running the suite in an `--assets none` app conjured a
+  `frontend/src/bindings/` tree out of nothing.
+
+- **The generated model test asserted nothing.** It booted the app, seeded,
+  and returned. It now queries the entity, which fails when the migration and
+  the entity disagree — a renamed column, a type that does not round-trip, a
+  migration that never ran.
+
+- **The generated Dockerfile pinned a Rust older than the crate's MSRV**, so
+  `cargo loco generate deployment docker && docker build` failed on a freshly
+  generated app.
+
+- **The prelude withheld Sea-ORM query traits every app needs.** It carried
+  `QueryFilter` but not `QueryOrder`, so `.filter()` compiled and
+  `.order_by_desc()` on the next line did not — reported as a missing method
+  rather than a missing trait. Loco had been working around this in its own
+  generated scaffold.
+
+- **The prelude's `Pager` re-export was not gated behind `with-db`**, so
+  every DB-less app failed to compile `loco-rs` itself.
+
+### Docs
+
+- "The Tour" rewritten against what the generator actually emits today.
+  (#1829, @Data5tream)
+- Indonesian README. (#1823)
+- A copy-paste agent prompt for upgrading 1.0 → 1.1.
+- The Japanese README could not reach the English or Spanish translations.
+
+### Internal
+
+- CI pinned its toolchain instead of floating on `stable`, which meant new
+  pedantic and nursery lints turned master red on a calendar rather than on a
+  change. `style` also gated seven other jobs, so a lint error in an
+  unrelated file reported build, test, msrv and examples as SKIPPED — two
+  contributors spent two weeks looking at a red X that was ours. A weekly
+  `lint:future` job now runs the same lints on `stable` and `beta` so the
+  next set arrives as a scheduled failure instead of on someone's PR.
+
 ## 1.1.0 - 2026-08-15
 
 Moves the template engine to Tera 2, makes configuration files valid YAML,

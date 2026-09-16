@@ -1,53 +1,44 @@
 # Agent guide for this Loco app
 
-This is a **Loco** (loco.rs) application — an all-in-one, batteries-included Rust
-web framework. Routing, the database (Sea-ORM), background jobs, a scheduler,
-mailers, tasks, storage, caching, and testing are already integrated. **Prefer
-Loco's built-ins and generators over adding external crates or wiring
-infrastructure by hand.**
+This is a [Loco](https://loco.rs) app — **Rails for Rust**. When you are unsure
+how something should work here, the answer is almost always "the way Rails does
+it." Where Loco diverges, it is because Rust forced it.
 
-## Where things live
+## Read this first
 
-```
-src/app.rs            # impl Hooks for App — registers routes/workers/tasks (the wiring hub)
-src/controllers/      # HTTP handlers grouped into Routes
-src/models/_entities/ # GENERATED Sea-ORM entities — do not hand-edit
-src/models/*.rs       # your model logic
-src/workers/          # background jobs
-src/tasks/            # CLI/admin tasks
-src/mailers/          # email
-migration/            # Sea-ORM migrations
-config/*.yaml         # per-environment config (LOCO_ENV)
-tests/                # request/model/task tests
-```
+A complete Loco skill ships with this app at **`.claude/skills/loco/`**, matched
+to the exact `loco-rs` version in `Cargo.toml`:
 
-## How to work in this app
+| File | What it gives you |
+|---|---|
+| `.claude/skills/loco/SKILL.md` | start here — the router, `AppContext`, project layout, CLI |
+| `.claude/skills/loco/doctrine.md` | what good Loco code looks like; read before writing any |
+| `.claude/skills/loco/api-index.md` | every public `loco_rs` symbol, generated from rustdoc — **check here before guessing an API name** |
+| `.claude/skills/loco/recipes/` | how to add a model, endpoint, worker, task, mailer, middleware, auth, tests |
 
-- **Add features with generators**, then edit:
-  `cargo loco generate model|scaffold|controller|worker|task|mailer|migration ...`.
-  The generators also wire new code into `src/app.rs`.
-- **Everything uses `AppContext` (`ctx`)**: `ctx.db`, `ctx.config`,
-  `ctx.mailer`, `ctx.storage`, `ctx.cache`, `ctx.queue_provider`. Don't create
-  your own DB pool, server, or job queue.
-- Start every controller/model/worker/task with `use loco_rs::prelude::*;`.
-- App code returns `loco_rs::Result<T>` and uses `?`.
-- Config is YAML in `config/`; secrets come from the environment via the
-  `get_env` Tera helper inside the YAML.
-- Primary/foreign keys are `i64` (this is Loco 0.17+).
-- Tests: `request::<App, _, _>(|request, ctx| async move { ... }).await;`.
+If your tool supports Agent Skills, it will load `SKILL.md` automatically. If
+not, read it directly — it is a normal markdown file.
 
-## Useful commands
+## The three rules that prevent most mistakes
 
-```
-cargo loco start            # run the app
-cargo loco db migrate       # apply migrations
-cargo loco routes           # list routes
-cargo loco task <name>      # run a task
-cargo loco doctor           # check the environment
+1. **Generate, then edit.** `cargo loco generate <thing>` writes the file *and*
+   the wiring. Rust has no autoloading; hand-wiring is how "the handler exists
+   but 404s" happens.
+2. **Use the batteries.** This app already has an ORM, queue, scheduler, mailer,
+   task runner, storage, cache, and test harness. Adding a crate for something
+   Loco already does is the most common mistake.
+3. **Fat model, slim controller.** Domain logic on the model; handlers parse,
+   call a model method, and render.
+
+## Before you call it done
+
+```sh
+cargo fmt --all
+cargo clippy --all-targets -- -D warnings
+cargo test
 ```
 
-## Learn more
+## More
 
-- Framework agent guide: https://loco.rs/AGENTS.md
-- Full single-file reference: https://loco.rs/llms-full.txt
-- Docs: https://loco.rs/docs
+- Docs: <https://loco.rs/docs/>
+- Framework agent guide: <https://loco.rs/AGENTS.md>

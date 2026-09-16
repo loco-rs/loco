@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, path::PathBuf};
 
 use cargo_metadata::{semver::Version, MetadataCommand, Package};
 use clap::{ArgAction::SetTrue, Parser, Subcommand};
@@ -28,6 +28,43 @@ enum Commands {
     /// Parse every fenced `rust` block in the docs tree and fail on the ones
     /// that are not valid Rust. Syntax only — see `xtask::docs_syntax`.
     DocsSyntax,
+    /// Regenerate the `loco` agent skill's API index from rustdoc JSON and
+    /// mirror the skill into the `loco new` app template, so neither can drift
+    /// from the crate. See `xtask::agent_skill`.
+    AgentSkill {
+        /// Fail if the committed skill is stale instead of rewriting it.
+        #[arg(long, action = SetTrue)]
+        check: bool,
+    },
+    /// Measure whether an agent writes idiomatic Loco. See `xtask::eval`.
+    Eval {
+        /// List the task corpus and exit.
+        #[arg(long, action = SetTrue)]
+        list: bool,
+        /// Gate every reference solution. The corpus's own test suite — a
+        /// reference that fails silently invalidates every score built on it.
+        #[arg(long, action = SetTrue)]
+        check_references: bool,
+        /// Restrict to a single task id.
+        #[arg(long)]
+        task: Option<String>,
+        /// Skip the model judge and report gates and cost only.
+        #[arg(long, action = SetTrue)]
+        no_judge: bool,
+        /// Score a previous run's saved answers instead of generating again.
+        /// Recovers a run whose judging failed after generation was paid for.
+        #[arg(long, action = SetTrue)]
+        rejudge: bool,
+        /// Reuse any arm whose answers were already saved, and generate only
+        /// the rest. Unlike `--rejudge` this does not require every arm to
+        /// have been answered, so a run that died partway — out of disk, out
+        /// of memory — resumes without paying for generation twice.
+        #[arg(long, action = SetTrue)]
+        resume: bool,
+        /// Scratch directory for scaffolded apps and the shared target dir.
+        #[arg(long, default_value = "target/eval")]
+        work: PathBuf,
+    },
 }
 
 fn main() -> eyre::Result<()> {
@@ -63,6 +100,40 @@ fn main() -> eyre::Result<()> {
         Commands::DocsSyntax => {
             xtask::docs_syntax::run(&project_dir)?;
             xtask::CmdExit::ok_with_message("docs-syntax passed")
+        }
+        Commands::AgentSkill { check } => {
+            xtask::agent_skill::run(&project_dir, check)?;
+            xtask::CmdExit::ok_with_message("agent-skill ok")
+        }
+        Commands::Eval {
+            list,
+            check_references,
+            task,
+            no_judge,
+            rejudge,
+            resume,
+            work,
+        } => {
+            let work = if work.is_absolute() {
+                work
+            } else {
+                project_dir.join(work)
+            };
+            if list {
+                xtask::eval::list(&project_dir)?;
+            } else if check_references {
+                xtask::eval::check_references(&project_dir, &work, task.as_deref())?;
+            } else {
+                xtask::eval::run(
+                    &project_dir,
+                    &work,
+                    task.as_deref(),
+                    !no_judge,
+                    rejudge,
+                    resume,
+                )?;
+            }
+            xtask::CmdExit::ok_with_message("eval ok")
         }
     };
 

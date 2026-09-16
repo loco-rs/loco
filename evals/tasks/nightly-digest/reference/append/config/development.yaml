@@ -1,0 +1,11 @@
+# The scheduler holds no logic: it runs the task, on a schedule. Recurring work
+# is always a Task plus an entry here — whenever/cron/rake, as in Rails.
+scheduler:
+  output: stdout
+  jobs:
+    signup_digest:
+      # Cron starts with SECONDS: sec min hour day-of-month month day-of-week
+      # year. This is 03:00:00 daily, not every 3 minutes.
+      run: "signup_digest hours:24"
+      schedule: "0 0 3 * * *"
+      tags: ["reporting"]

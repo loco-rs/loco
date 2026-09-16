@@ -6,7 +6,7 @@
   "packageManager": "pnpm@10.12.4",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc -b && vite build",
     "preview": "vite preview"
   },
   "dependencies": {

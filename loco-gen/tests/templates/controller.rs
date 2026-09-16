@@ -118,3 +118,73 @@ fn the_auth_flag_protects_every_generated_handler_and_its_test() {
         "both generated tests should assert the route is protected:\n{test}"
     );
 }
+
+/// Actions are wired to the verb their name implies.
+///
+/// Every action used to be `get(..)`, so a generated `create` answered GET and
+/// nothing else. The generated test asserted that same shape, which is why no
+/// gate ever went red: the coverage encoded the defect.
+#[test]
+fn actions_are_wired_to_the_verb_their_name_implies() {
+    let component = Component::Controller {
+        name: "movie".to_string(),
+        actions: [
+            "index", "show", "create", "update", "delete", "destroy", "publish",
+        ]
+        .iter()
+        .map(ToString::to_string)
+        .collect(),
+        auth: false,
+    };
+
+    let tree_fs = tree_fs::TreeBuilder::default()
+        .drop(true)
+        .add_empty("src/controllers/mod.rs")
+        .add_empty("tests/requests/mod.rs")
+        .add("src/app.rs", APP_ROUTS)
+        .create()
+        .unwrap();
+
+    let rrgen = RRgen::with_working_dir(&tree_fs.root);
+    generate(
+        &rrgen,
+        component,
+        &AppInfo {
+            app_name: "tester".to_string(),
+            working_dir: tree_fs.root.clone(),
+        },
+    )
+    .expect("Generation failed");
+
+    let controller = fs::read_to_string(tree_fs.root.join("src/controllers/movie.rs"))
+        .expect("controller file missing");
+
+    for (action, verb) in [
+        ("index", "get"),
+        ("show", "get"),
+        ("create", "post"),
+        ("update", "put"),
+        ("delete", "delete"),
+        ("destroy", "delete"),
+        // An action we do not recognise stays a read rather than guessing.
+        ("publish", "get"),
+    ] {
+        assert!(
+            controller.contains(&format!(".add(\"{action}\", {verb}({action}))")),
+            "`{action}` should be wired as `{verb}`:\n{controller}"
+        );
+    }
+
+    // The generated test has to exercise the route as it is actually wired,
+    // otherwise it re-encodes whatever the template got wrong.
+    let test = fs::read_to_string(tree_fs.root.join("tests/requests/movie.rs"))
+        .expect("test file missing");
+    assert!(
+        test.contains("request.post(\"/api/movies/create\")"),
+        "the generated test should POST to a POST route:\n{test}"
+    );
+    assert!(
+        test.contains("request.delete(\"/api/movies/delete\")"),
+        "the generated test should DELETE a DELETE route:\n{test}"
+    );
+}

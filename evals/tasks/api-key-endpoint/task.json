@@ -1,0 +1,9 @@
+{
+  "title": "API-key authenticated endpoint — use the extractor, not header parsing",
+  "principles": ["P1", "P5"],
+  "note": "Loco ships auth::ApiToken<T>. Hand-parsing an Authorization header, or querying users by api_key in the handler, passes every mechanical gate.",
+  "skill": ["doctrine.md", "recipes/auth.md", "recipes/endpoint.md", "api-index.md"],
+  "produce": ["src/controllers/machine.rs", "src/views/machine.rs"],
+  "append": [],
+  "app_flags": ["--db", "sqlite", "--bg", "async", "--assets", "serverside"]
+}

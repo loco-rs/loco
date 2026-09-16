@@ -1,0 +1,28 @@
+{
+  "title": "Purge unverified users — durable background work, not a spawned future",
+  "principles": [
+    "P1",
+    "P2"
+  ],
+  "note": "The tempting wrong answers are tokio::spawn, a hand-rolled retry loop with tokio::time::sleep, or a Task where a queued job belongs. None of them show up in Cargo.toml.",
+  "skill": [
+    "doctrine.md",
+    "recipes/background-job.md",
+    "api-index.md",
+    "sea-orm-index.md"
+  ],
+  "produce": [
+    "src/workers/purge_unverified.rs"
+  ],
+  "append": [
+    "src/models/users.rs"
+  ],
+  "app_flags": [
+    "--db",
+    "sqlite",
+    "--bg",
+    "async",
+    "--assets",
+    "serverside"
+  ]
+}

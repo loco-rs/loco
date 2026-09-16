@@ -1,0 +1,9 @@
+{
+  "title": "Deactivation notice email — use the mailer, not an SMTP client",
+  "principles": ["P1", "P4"],
+  "note": "The flagship P1 failure. Hand-writing SMTP, adding lettre, or reading SMTP_HOST via std::env::var all compile and lint clean; the framework already owns the transport and reads it from config.",
+  "skill": ["doctrine.md", "recipes/mailer.md", "api-index.md"],
+  "produce": ["src/mailers/deactivation.rs", "src/mailers/deactivation/notice/subject.t", "src/mailers/deactivation/notice/html.t", "src/mailers/deactivation/notice/text.t"],
+  "append": [],
+  "app_flags": ["--db", "sqlite", "--bg", "async", "--assets", "serverside"]
+}

@@ -20,6 +20,7 @@ cargo_metadata = "0.23"
 requestty = "0.5.0"
 regex = { version = "1.10.2" }
 thiserror = "2"
+serde_json = { workspace = true }
 tabled = "0.21"
 colored = { version = "3.0" }
 # Parses the ```rust blocks in the docs tree (see `docs_syntax`). `full` is

@@ -1,4 +1,6 @@
-use super::utils::{guess_file_by_time, APP_ROUTS, MIGRATION_SRC_LIB, ROUTES_TSX_FIXTURE};
+use super::utils::{
+    guess_file_by_time, APP_ROUTS, HOME_TSX_FIXTURE, MIGRATION_SRC_LIB, ROUTES_TSX_FIXTURE,
+};
 use insta::{assert_snapshot, with_settings};
 use loco_gen::{collect_messages, generate, AppInfo, Component};
 use rrgen::RRgen;
@@ -48,6 +50,7 @@ fn can_generate() {
         .add("migration/src/lib.rs", MIGRATION_SRC_LIB)
         .add("src/app.rs", APP_ROUTS)
         .add("frontend/src/routes.tsx", ROUTES_TSX_FIXTURE)
+        .add("frontend/src/pages/Home.tsx", HOME_TSX_FIXTURE)
         .create()
         .unwrap();
 
@@ -224,6 +227,7 @@ fn scaffolding_a_second_resource_does_not_collide_on_import_names() {
         .add("migration/src/lib.rs", MIGRATION_SRC_LIB)
         .add("src/app.rs", APP_ROUTS)
         .add("frontend/src/routes.tsx", ROUTES_TSX_FIXTURE)
+        .add("frontend/src/pages/Home.tsx", HOME_TSX_FIXTURE)
         .create()
         .unwrap();
 
@@ -404,5 +408,234 @@ fn no_auth_generates_public_handlers() {
         public.matches("    State(ctx): State<AppContext>,").count(),
         5,
         "handler signatures should stay well-formed without the extractor:\n{public}"
+    );
+}
+
+/// The golden test above snapshots one field set, and a snapshot can only fail
+/// when output *changes* -- it cannot fail for a defect that was there the day
+/// it was written. This is the Rails `assert_field_type` shape instead: a
+/// property that must hold for any field set, asserted directly.
+///
+/// The defect it pins: `List`/`Show` interpolated every column as `{item.col}`,
+/// and React renders `true`, `false` and `null` as **nothing**. A boolean column
+/// was an empty cell, in an app that compiled, linted and passed its tests. No
+/// snapshot contained a boolean, so nothing failed.
+#[test]
+fn boolean_columns_render_as_text_rather_than_as_an_empty_cell() {
+    // SAFETY: test-local env setup; no other thread reads the environment during this test.
+    unsafe { std::env::set_var("SKIP_MIGRATION", "") };
+
+    let component = Component::Scaffold {
+        name: "flag".to_string(),
+        with_tz: true,
+        fields: vec![
+            ("title".to_string(), "string!".to_string()),
+            ("published".to_string(), "bool!".to_string()),
+            ("archived".to_string(), "bool".to_string()),
+        ],
+        frontend: true,
+        auth: true,
+    };
+
+    let tree_fs = tree_fs::TreeBuilder::default()
+        .drop(true)
+        .add_empty("src/controllers/mod.rs")
+        .add_empty("src/dtos/mod.rs")
+        .add_empty("tests/models/mod.rs")
+        .add("migration/src/lib.rs", MIGRATION_SRC_LIB)
+        .add("src/app.rs", APP_ROUTS)
+        .add("frontend/src/routes.tsx", ROUTES_TSX_FIXTURE)
+        .add("frontend/src/pages/Home.tsx", HOME_TSX_FIXTURE)
+        .create()
+        .unwrap();
+
+    let rrgen = RRgen::with_working_dir(&tree_fs.root);
+    generate(
+        &rrgen,
+        component,
+        &AppInfo {
+            app_name: "tester".to_string(),
+            working_dir: tree_fs.root.clone(),
+        },
+    )
+    .expect("Generation failed");
+
+    let pages = tree_fs.root.join("frontend/src/pages/flags");
+    for page in ["List", "Show"] {
+        let content = fs::read_to_string(pages.join(format!("{page}.tsx")))
+            .unwrap_or_else(|_| panic!("frontend {page}.tsx file missing"));
+
+        for column in ["published", "archived"] {
+            assert!(
+                content.contains(&format!("{column} ? \"Yes\" : \"No\"")),
+                "{page}.tsx renders `{column}` without a boolean branch, so the cell is \
+                 blank for both true and false:\n{content}"
+            );
+        }
+        // The nullable one has a third state, and `?? \"—\"` does not reach it:
+        // `false ?? x` is `false`, which renders as nothing.
+        assert!(
+            content.contains("archived == null ?"),
+            "{page}.tsx does not distinguish a null `archived` from `false`:\n{content}"
+        );
+    }
+}
+
+/// Every resource the scaffold generates has to be reachable from somewhere
+/// other than the address bar.
+#[test]
+fn a_scaffolded_resource_is_linked_from_the_home_page() {
+    // SAFETY: test-local env setup; no other thread reads the environment during this test.
+    unsafe { std::env::set_var("SKIP_MIGRATION", "") };
+
+    let component = Component::Scaffold {
+        name: "movie".to_string(),
+        with_tz: true,
+        fields: vec![("title".to_string(), "string!".to_string())],
+        frontend: true,
+        auth: true,
+    };
+
+    let tree_fs = tree_fs::TreeBuilder::default()
+        .drop(true)
+        .add_empty("src/controllers/mod.rs")
+        .add_empty("src/dtos/mod.rs")
+        .add_empty("tests/models/mod.rs")
+        .add("migration/src/lib.rs", MIGRATION_SRC_LIB)
+        .add("src/app.rs", APP_ROUTS)
+        .add("frontend/src/routes.tsx", ROUTES_TSX_FIXTURE)
+        .add("frontend/src/pages/Home.tsx", HOME_TSX_FIXTURE)
+        .create()
+        .unwrap();
+
+    let rrgen = RRgen::with_working_dir(&tree_fs.root);
+    generate(
+        &rrgen,
+        component,
+        &AppInfo {
+            app_name: "tester".to_string(),
+            working_dir: tree_fs.root.clone(),
+        },
+    )
+    .expect("Generation failed");
+
+    let home = fs::read_to_string(tree_fs.root.join("frontend/src/pages/Home.tsx"))
+        .expect("Home.tsx missing");
+    assert!(
+        home.contains("<Link to=\"/movies\">Movies</Link>"),
+        "the scaffold did not link its own resource from the home page:\n{home}"
+    );
+}
+
+/// `Show.tsx` heads the page with `title_field_name` -- the first bare `string`
+/// column. `List.tsx` used to make its *first* column the clickable one, which
+/// is a different rule, and the two disagree whenever the string column is not
+/// first: `loco g scaffold task done:bool! title:string!` produced
+/// `<Link>{task.done}</Link>` -- a link whose text renders as nothing, with the
+/// real title sitting in a plain cell beside it.
+#[test]
+fn the_list_links_on_the_same_column_the_show_page_titles_with() {
+    // SAFETY: test-local env setup; no other thread reads the environment during this test.
+    unsafe { std::env::set_var("SKIP_MIGRATION", "") };
+
+    let component = Component::Scaffold {
+        name: "task".to_string(),
+        with_tz: true,
+        // deliberately NOT title-first
+        fields: vec![
+            ("done".to_string(), "bool!".to_string()),
+            ("title".to_string(), "string!".to_string()),
+        ],
+        frontend: true,
+        auth: true,
+    };
+
+    let tree_fs = tree_fs::TreeBuilder::default()
+        .drop(true)
+        .add_empty("src/controllers/mod.rs")
+        .add_empty("src/dtos/mod.rs")
+        .add_empty("tests/models/mod.rs")
+        .add("migration/src/lib.rs", MIGRATION_SRC_LIB)
+        .add("src/app.rs", APP_ROUTS)
+        .add("frontend/src/routes.tsx", ROUTES_TSX_FIXTURE)
+        .add("frontend/src/pages/Home.tsx", HOME_TSX_FIXTURE)
+        .create()
+        .unwrap();
+
+    let rrgen = RRgen::with_working_dir(&tree_fs.root);
+    generate(
+        &rrgen,
+        component,
+        &AppInfo {
+            app_name: "tester".to_string(),
+            working_dir: tree_fs.root.clone(),
+        },
+    )
+    .expect("Generation failed");
+
+    let list = fs::read_to_string(tree_fs.root.join("frontend/src/pages/tasks/List.tsx"))
+        .expect("List.tsx missing");
+
+    assert!(
+        list.contains(">{task.title}</Link>"),
+        "the row links on something other than the title column:\n{list}"
+    );
+    assert!(
+        !list.contains(">{task.done}</Link>"),
+        "a boolean is the link text, so the link renders with no text at all:\n{list}"
+    );
+}
+
+/// A scaffold in an app with no frontend must not emit `#[ts(export)]`.
+///
+/// The attribute makes `cargo test` write TypeScript into
+/// `../frontend/src/bindings/`. In an API-only app that directory does not
+/// exist, so running the suite grew a stray `frontend/` tree in a project that
+/// had deliberately opted out of one.
+#[test]
+fn a_scaffold_without_a_frontend_writes_no_typescript_bindings() {
+    let component = Component::Scaffold {
+        name: "movie".to_string(),
+        with_tz: true,
+        fields: vec![
+            ("title".to_string(), "string!".to_string()),
+            ("rating".to_string(), "enum:good,bad!".to_string()),
+        ],
+        frontend: false,
+        auth: true,
+    };
+
+    let tree_fs = tree_fs::TreeBuilder::default()
+        .drop(true)
+        .add_empty("src/controllers/mod.rs")
+        .add_empty("src/dtos/mod.rs")
+        .add_empty("tests/models/mod.rs")
+        .add("migration/src/lib.rs", MIGRATION_SRC_LIB)
+        .add("src/app.rs", APP_ROUTS)
+        .create()
+        .unwrap();
+
+    let rrgen = RRgen::with_working_dir(&tree_fs.root);
+    generate(
+        &rrgen,
+        component,
+        &AppInfo {
+            app_name: "tester".to_string(),
+            working_dir: tree_fs.root.clone(),
+        },
+    )
+    .expect("Generation failed");
+
+    let dto = fs::read_to_string(tree_fs.root.join("src/dtos/movies.rs"))
+        .expect("dto file missing — the backend DTO ships regardless of frontend");
+
+    assert!(
+        !dto.contains("ts(export"),
+        "an app with no frontend would write ts-rs bindings on `cargo test`:\n{dto}"
+    );
+    // The DTO itself must still be there: the API controller imports it.
+    assert!(
+        dto.contains("pub struct MovieDto"),
+        "the backend DTO should still be generated:\n{dto}"
     );
 }

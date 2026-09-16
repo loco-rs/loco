@@ -134,7 +134,11 @@ impl TeraView {
                 post_process: Box::new(post_process),
             }));
 
-            let tera2 = tera.clone();
+            // Weak, not a clone. The watcher this closure ends up inside is
+            // stored in the very `Arc` being captured, so a strong reference
+            // here is a cycle: the count never reaches zero and the engine,
+            // its thread and its inotify instance outlive every `TeraView`.
+            let tera2 = std::sync::Arc::downgrade(&tera);
 
             // Create file watcher
             let mut watcher = notify::recommended_watcher(move |event| {
@@ -177,6 +181,12 @@ impl TeraView {
                     // All other changes.
                     change => info!(?paths, ?change, "View file changed"),
                 }
+
+                // The engine is gone; this event arrived after the `TeraView`
+                // was dropped and the watcher is on its way out too.
+                let Some(tera2) = tera2.upgrade() else {
+                    return;
+                };
 
                 tera2
                     .lock()
@@ -487,5 +497,34 @@ mod tests {
         assert!(updated_render.contains("Base Header v2: Hello World v2")); // Should have changed
         assert!(updated_render.contains("Child Page")); // Should be the same
         assert!(updated_render.contains("Child content")); // Should be the same
+    }
+
+    /// Dropping a `TeraView` must drop the engine it owns.
+    ///
+    /// The hot-reload watcher lives *inside* the `Arc` whose clone its own
+    /// event closure captured, so the strong count never reached zero: every
+    /// `Hooks::boot` leaked an OS thread, an inotify instance and several MB,
+    /// permanently. An app that boots once barely notices; an integration test
+    /// binary that boots per test exhausts the per-user inotify limit and then
+    /// fails somewhere unrelated.
+    #[test]
+    #[cfg(debug_assertions)]
+    fn dropping_the_view_drops_the_engine() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .add_file("template/test.html", "{{foo}}")
+            .create()
+            .unwrap();
+
+        let v = TeraView::from_custom_dir(&tree_fs.root, |_| Ok(())).unwrap();
+        let engine = std::sync::Arc::downgrade(&v.0);
+
+        drop(v);
+
+        assert!(
+            engine.upgrade().is_none(),
+            "the view engine outlived the TeraView that owned it — the watcher \
+             closure is still holding a strong reference, so its thread and \
+             inotify instance leak for the life of the process"
+        );
     }
 }
