@@ -1,8 +1,42 @@
-use loco::{settings, wizard::BackgroundOption};
+use loco::{
+    settings,
+    wizard::{self, AssetsOption, BackgroundOption, DBOption},
+    OS,
+};
 use rstest::rstest;
 
 use super::*;
 use crate::assertion;
+
+#[test]
+fn test_queue_sqlite_without_db_includes_db_sqlite_feature() {
+    let settings = settings::Settings::from_wizard(
+        "test-app",
+        &wizard::Selections {
+            db: DBOption::None,
+            background: BackgroundOption::QueueSqlite,
+            asset: AssetsOption::None,
+        },
+        OS::Linux,
+    );
+    let generator = TestGenerator::generate(settings);
+    let content = assertion::toml::load(generator.path("Cargo.toml"));
+
+    assertion::toml::eq_path_value_eq_bool(
+        &content,
+        &["workspace", "dependencies", "loco-rs", "default-features"],
+        false,
+    );
+    assertion::toml::assert_path_value_eq_array(
+        &content,
+        &["dependencies", "loco-rs", "features"],
+        &[
+            toml::Value::String("cli".into()),
+            toml::Value::String("worker".into()),
+            toml::Value::String("db-sqlite".into()),
+        ],
+    );
+}
 
 pub fn run_generator(background: BackgroundOption) -> TestGenerator {
     let settings = settings::Settings {

@@ -54,4 +54,4 @@ To opt out of the default set (e.g. a DB-less app), depend with `default-feature
 loco-rs = { version = "...", default-features = false, features = ["cli"] }
 ```
 
-This is the pattern the `loco new` generator itself uses when the app is created without a database (see the CLI reference's app-creation flow): it emits `default-features = false` with `features = ["cli"]`, plus `worker_redis` if a Redis-backed queue was selected, or `worker` if a Postgres- or SQLite-backed queue was selected.
+This is the pattern the `loco new` generator itself uses when the app is created without a database (see the CLI reference's app-creation flow): it emits `default-features = false` with `features = ["cli"]`, plus `worker_redis` if a Redis-backed queue was selected, `worker` if a Postgres-backed queue was selected, or `worker` and `db-sqlite` if a SQLite-backed queue was selected.
