@@ -81,6 +81,16 @@ impl QueueProvider for SqliteQueue {
         ))
     }
 
+    async fn enqueue_batch(
+        &self,
+        class: String,
+        _queue: Option<String>,
+        jobs: Vec<(serde_json::Value, Option<i32>)>,
+        tags: Option<Vec<String>>,
+    ) -> Result<Vec<JobId>> {
+        enqueue_batch(&self.pool, &class, jobs, tags).await
+    }
+
     async fn register_handler(&self, name: String, handler: JobHandler) -> Result<()> {
         let mut registry = self.registry.lock().await;
         registry.insert_handler(name, handler)
@@ -275,6 +285,75 @@ pub async fn enqueue(
     .execute(pool)
     .await?;
     Ok(id)
+}
+
+/// Maximum number of jobs per INSERT statement. Each row binds 7 parameters,
+/// kept conservatively under `SQLITE_MAX_VARIABLE_NUMBER` (defaults to 32766 on
+/// `SQLite` >= 3.32, which `sqlx` bundles). Larger batches are split across
+/// multiple statements that all run inside one transaction, so the whole batch
+/// is still enqueued atomically regardless of how many chunks it spans.
+const ENQUEUE_BATCH_CHUNK_SIZE: usize = 1_000;
+
+/// Enqueue multiple jobs in a single atomic batch.
+///
+/// Each entry of `jobs` is one job's data paired with its priority (`None`
+/// for the default); `tags` apply to every job. The returned IDs are in the
+/// same order as `jobs`.
+///
+/// Every job is inserted inside one transaction: either all of them are
+/// enqueued or none are. A failure mid-batch rolls back, so the batch leaves
+/// nothing behind and is safe to retry without duplicating jobs.
+///
+/// # Errors
+///
+/// This function will return an error if it fails
+pub async fn enqueue_batch(
+    pool: &SqlitePool,
+    name: &str,
+    jobs: Vec<(JobData, Option<i32>)>,
+    tags: Option<Vec<String>>,
+) -> Result<Vec<JobId>> {
+    if jobs.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    // Store `run_at` in SQLite's canonical `YYYY-MM-DD HH:MM:SS` text format so
+    // it compares correctly against `CURRENT_TIMESTAMP` in `dequeue` — the same
+    // normalization the single-job `enqueue` gets from its `DATETIME($4)` wrap.
+    // Binding a `DateTime<Utc>` directly would store RFC3339 (`...T...+00:00`),
+    // which sorts after `CURRENT_TIMESTAMP` and would hide the job until the
+    // next day.
+    let run_at = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
+    let tags_json = match &tags {
+        Some(tags) => Some(serde_json::to_value(tags)?),
+        None => None,
+    };
+    let mut ids = Vec::with_capacity(jobs.len());
+
+    debug!(count = jobs.len(), job_name = %name, run_at = %run_at, tags = ?tags, "Batch enqueueing jobs");
+    let mut tx = pool.begin().await?;
+    for chunk in jobs.chunks(ENQUEUE_BATCH_CHUNK_SIZE) {
+        let mut query_builder = sqlx::query_builder::QueryBuilder::<sqlx::Sqlite>::new(
+            "INSERT INTO sqlt_loco_queue (id, task_data, name, run_at, interval, tags, priority) ",
+        );
+
+        query_builder.push_values(chunk.iter(), |mut b, (data, priority)| {
+            let id = Ulid::new().to_string();
+            b.push_bind(id.clone())
+                .push_bind(data.clone())
+                .push_bind(name.to_string())
+                .push_bind(run_at.clone())
+                .push_bind(None::<i64>)
+                .push_bind(tags_json.clone())
+                .push_bind(priority.unwrap_or(0));
+            ids.push(id);
+        });
+
+        query_builder.build().execute(&mut *tx).await?;
+    }
+    tx.commit().await?;
+
+    Ok(ids)
 }
 
 async fn dequeue(client: &SqlitePool, worker_tags: &[String]) -> Result<Option<Job>> {
@@ -777,6 +856,104 @@ mod tests {
         }, {
             assert_debug_snapshot!(jobs);
         });
+    }
+
+    #[tokio::test]
+    async fn can_enqueue_batch() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .drop(true)
+            .create()
+            .expect("create temp folder");
+        let pool = init(&tree_fs.root).await;
+
+        assert!(initialize_database(&pool).await.is_ok());
+        assert_eq!(get_all_jobs(&pool).await.len(), 0);
+
+        // Mixed per-job priorities: the default (None → 0), a high and a low
+        // value. Dequeue order must follow priority, not insertion order.
+        let jobs = vec![
+            (serde_json::json!({"user_id": 1}), None),
+            (serde_json::json!({"user_id": 2}), Some(10)),
+            (serde_json::json!({"user_id": 3}), Some(-5)),
+        ];
+        let ids = enqueue_batch(&pool, "BatchJob", jobs, None)
+            .await
+            .expect("batch enqueue");
+        assert_eq!(ids.len(), 3);
+        assert_eq!(get_all_jobs(&pool).await.len(), 3);
+
+        // Returned ids are in input order and carry each job's own priority.
+        assert_eq!(get_job(&pool, &ids[0]).await.priority, 0);
+        assert_eq!(get_job(&pool, &ids[1]).await.priority, 10);
+        assert_eq!(get_job(&pool, &ids[2]).await.priority, -5);
+
+        // Regression guard: run_at must be stored in SQLite's canonical
+        // `YYYY-MM-DD HH:MM:SS` format. If it were bound as a raw RFC3339
+        // `DateTime<Utc>` (with a `T` separator) the `run_at <= CURRENT_TIMESTAMP`
+        // predicate in `dequeue` would never match and this would return None.
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        for expected_user in [2, 1, 3] {
+            let job = dequeue(&pool, &[])
+                .await
+                .expect("dequeue ok")
+                .expect("a batched job must be dequeueable (run_at format regression)");
+            assert_eq!(
+                job.data.get("user_id"),
+                Some(&serde_json::json!(expected_user)),
+                "batched jobs must be dequeued by priority"
+            );
+        }
+
+        // Tagged batches bind tags_json for every row; a worker carrying the
+        // tag must see them (a tagless worker deliberately does not).
+        let tagged = enqueue_batch(
+            &pool,
+            "BatchJob",
+            vec![(serde_json::json!({"user_id": 4}), None)],
+            Some(vec!["email".to_string()]),
+        )
+        .await
+        .expect("tagged batch enqueue");
+        assert_eq!(tagged.len(), 1);
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        let dequeued = dequeue(&pool, &["email".to_string()])
+            .await
+            .expect("dequeue ok");
+        assert!(
+            dequeued.is_some(),
+            "a tagged batched job must be dequeueable by a matching worker"
+        );
+    }
+
+    #[tokio::test]
+    async fn can_enqueue_batch_across_chunks() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .drop(true)
+            .create()
+            .expect("create temp folder");
+        let pool = init(&tree_fs.root).await;
+
+        assert!(initialize_database(&pool).await.is_ok());
+        assert_eq!(get_all_jobs(&pool).await.len(), 0);
+
+        // Span more than two chunks so the multi-statement path runs inside one
+        // transaction. All rows must commit together (atomic batch) and every
+        // generated id must be unique.
+        let count = ENQUEUE_BATCH_CHUNK_SIZE * 2 + 1;
+        let jobs = (0..count)
+            .map(|i| (serde_json::json!({ "user_id": i }), None))
+            .collect::<Vec<_>>();
+
+        let ids = enqueue_batch(&pool, "BatchJob", jobs, None)
+            .await
+            .expect("batch enqueue");
+        assert_eq!(ids.len(), count);
+        assert_eq!(
+            ids.iter().collect::<std::collections::HashSet<_>>().len(),
+            count,
+            "every batched job id must be unique"
+        );
+        assert_eq!(get_all_jobs(&pool).await.len(), count);
     }
 
     #[tokio::test]
