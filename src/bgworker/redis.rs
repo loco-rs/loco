@@ -13,11 +13,13 @@ use crate::{
 };
 use async_trait::async_trait;
 use chrono::Utc;
-use redis::{aio::MultiplexedConnection as Connection, AsyncCommands, Client, Script};
+use redis::{
+    aio::MultiplexedConnection as Connection, AsyncCommands, AsyncConnectionConfig, Client, Script,
+};
 use serde_json::Value as JsonValue;
 use tokio::{task::JoinHandle, time::sleep};
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, error, trace};
+use tracing::{debug, error, info, trace};
 use ulid::Ulid;
 
 pub type RedisPool = Client;
@@ -108,12 +110,8 @@ impl JobRegistry {
             let tags = tags.to_owned();
 
             let job = tokio::spawn(async move {
-                let mut conn = match client.get_multiplexed_async_connection().await {
-                    Ok(conn) => conn,
-                    Err(err) => {
-                        error!(err = err.to_string(), "Failed to create worker connection");
-                        return;
-                    }
+                let Some(mut conn) = connect_worker(&client, &worker_token).await else {
+                    return;
                 };
 
                 loop {
@@ -126,7 +124,17 @@ impl JobRegistry {
                     let job_opt = match dequeue_with_conn(&mut conn, &queues, &tags).await {
                         Ok(t) => t,
                         Err(err) => {
-                            error!(err = err.to_string(), "cannot fetch from queue");
+                            // A dead socket never heals by being used again: the
+                            // same error recurs on every poll, forever, while the
+                            // worker consumes nothing and still looks alive.
+                            error!(
+                                err = err.to_string(),
+                                "cannot fetch from queue, reconnecting"
+                            );
+                            match connect_worker(&client, &worker_token).await {
+                                Some(fresh) => conn = fresh,
+                                None => break,
+                            }
                             None
                         }
                     };
@@ -186,6 +194,69 @@ impl Default for JobRegistry {
 fn connect(url: &str) -> Result<RedisPool> {
     let client = Client::open(url.to_string())?;
     Ok(client)
+}
+
+/// How long a single worker connection attempt may take.
+///
+/// `redis` 1.x defaults this to one second (`DEFAULT_CONNECTION_TIMEOUT`), where
+/// 0.x left it unset and waited as long as the connect needed. One second has to
+/// cover TCP, AUTH and the multiplexer handshake, and on a small instance booting
+/// an app — migrations, connection pool and seeding at once — a managed Redis can
+/// miss it. Inheriting that default turns a slow boot into a worker that never
+/// starts.
+const WORKER_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// How long a single command issued by a worker may take.
+///
+/// Same story: `redis` 1.x defaults this to 500ms where 0.x left it unset. That
+/// is a tight budget for a round trip to a managed Redis, and a worker that trips
+/// it stops draining the queue.
+const WORKER_RESPONSE_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Attempts before a worker gives up connecting.
+const WORKER_CONNECT_ATTEMPTS: u32 = 5;
+
+/// Connect a worker to Redis, retrying with backoff.
+///
+/// Returns `None` only when cancelled or after every attempt failed, which is the
+/// one case where the worker genuinely cannot proceed. A single failure must not
+/// end it: the worker is the only thing draining its queue, so a worker task that
+/// returns makes every queued job disappear silently while the process stays up
+/// and answers health checks.
+async fn connect_worker(client: &RedisPool, token: &CancellationToken) -> Option<Connection> {
+    let config = AsyncConnectionConfig::new()
+        .set_connection_timeout(Some(WORKER_CONNECT_TIMEOUT))
+        .set_response_timeout(Some(WORKER_RESPONSE_TIMEOUT));
+    let mut backoff = Duration::from_millis(250);
+
+    for attempt in 1..=WORKER_CONNECT_ATTEMPTS {
+        if token.is_cancelled() {
+            return None;
+        }
+        match client
+            .get_multiplexed_async_connection_with_config(&config)
+            .await
+        {
+            Ok(conn) => {
+                if attempt > 1 {
+                    info!(attempt, "worker connected to redis");
+                }
+                return Some(conn);
+            }
+            Err(err) => {
+                error!(
+                    err = err.to_string(),
+                    attempt,
+                    max = WORKER_CONNECT_ATTEMPTS,
+                    "failed to create worker connection"
+                );
+            }
+        }
+        tokio::time::sleep(backoff).await;
+        backoff = (backoff * 2).min(Duration::from_secs(5));
+    }
+    error!("giving up connecting the worker to redis");
+    None
 }
 
 async fn get_connection(client: &RedisPool) -> Result<Connection> {
@@ -1168,6 +1239,46 @@ mod tests {
     use crate::{bgworker::BackgroundWorker, tests_cfg::redis::setup_redis_container};
     use chrono::Utc;
     use testcontainers::{ContainerAsync, GenericImage};
+
+    /// A cancelled worker stops trying immediately rather than working through
+    /// its retry budget against a server it will never be allowed to reach.
+    #[tokio::test]
+    async fn connect_worker_honours_cancellation() {
+        // Port 1 is never a Redis. The point is that cancellation short-circuits
+        // before any attempt is made, so the address is irrelevant.
+        let client = Client::open("redis://127.0.0.1:1/").expect("client opens");
+        let token = CancellationToken::new();
+        token.cancel();
+
+        assert!(
+            connect_worker(&client, &token).await.is_none(),
+            "a cancelled worker must not attempt to connect"
+        );
+    }
+
+    /// An unreachable Redis exhausts the retry budget and reports it, rather than
+    /// ending the worker on the first failure.
+    ///
+    /// The distinction matters: the worker is the only thing draining its queue,
+    /// so a task that returns early makes every queued job disappear silently
+    /// while the process stays up and answers health checks.
+    #[tokio::test]
+    async fn connect_worker_retries_before_giving_up() {
+        let client = Client::open("redis://127.0.0.1:1/").expect("client opens");
+        let token = CancellationToken::new();
+
+        let started = std::time::Instant::now();
+        assert!(connect_worker(&client, &token).await.is_none());
+
+        // 250ms + 500ms + 1s + 2s of backoff sits between five attempts; assert
+        // well under that so the test cannot flake on a slow machine, while
+        // still failing outright if the retry loop is removed.
+        assert!(
+            started.elapsed() >= Duration::from_millis(500),
+            "expected the connect to be retried with backoff, returned after {:?}",
+            started.elapsed()
+        );
+    }
 
     async fn setup_redis() -> (RedisPool, ContainerAsync<GenericImage>) {
         let (redis_url, container) = setup_redis_container().await;
