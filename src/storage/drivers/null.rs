@@ -121,6 +121,7 @@ mod tests {
     use std::path::Path;
 
     use super::new;
+    use crate::storage::drivers::PresignPutOptions;
 
     /// The null driver's contract is that *every* operation refuses rather than
     /// pretending to succeed. `list` returning `Ok(vec![])` or `exists`
@@ -137,5 +138,17 @@ mod tests {
         assert!(store.list(path, true).await.is_err());
         assert!(store.list(path, false).await.is_err());
         assert!(store.stat(path).await.is_err());
+        assert!(store
+            .presign_get(path, std::time::Duration::from_secs(60))
+            .await
+            .is_err());
+        assert!(store
+            .presign_put(
+                path,
+                std::time::Duration::from_secs(60),
+                PresignPutOptions::default(),
+            )
+            .await
+            .is_err());
     }
 }

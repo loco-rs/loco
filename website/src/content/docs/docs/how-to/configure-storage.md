@@ -229,7 +229,54 @@ On `ReplicatedStrategy` (mirror / `read_from_secondaries`):
 
 Backup mode (`read_from_secondaries: false`) keeps all three primary-only.
 
-## 7. Verify
+## 7. Presign direct uploads and downloads
+
+`Storage` exposes `presign_get` and `presign_put` for handing clients a
+time-limited URL that talks to the backing store directly (S3, Azure Blob, GCS)
+without proxying bytes through your app.
+
+```rust
+use std::{path::Path, time::Duration};
+use loco_rs::storage::drivers::PresignPutOptions;
+
+let ttl = Duration::from_secs(300);
+
+let download = ctx.storage.presign_get(Path::new("exports/checkpoint.bin"), ttl).await?;
+println!("GET {}", download.url());
+
+let upload = ctx
+    .storage
+    .presign_put(
+        Path::new("uploads/report.pdf"),
+        ttl,
+        PresignPutOptions {
+            content_type: Some("application/pdf".to_string()),
+            ..Default::default()
+        },
+    )
+    .await?;
+println!("{} {}", upload.method, upload.url());
+```
+
+Each call returns a `storage::drivers::PresignedRequest` with `method`, `uri`,
+`headers`, and a `url()` helper. Clients must send the signed headers exactly
+as returned.
+
+On `ReplicatedStrategy`, presign is **primary-only** — presigned URLs are tied
+to one backend's credentials and never fall back to secondaries.
+
+To exercise presign against a real S3-compatible endpoint in tests (ignored in
+normal CI; set the env vars and pass `-- --ignored`):
+
+```sh
+LOCO_TEST_S3_ENDPOINT=http://127.0.0.1:9000 \
+LOCO_TEST_S3_BUCKET=loco-presign-test \
+LOCO_TEST_S3_ACCESS_KEY_ID=minio \
+LOCO_TEST_S3_SECRET_ACCESS_KEY=minio123 \
+cargo test -p loco-rs presign_s3_roundtrip --features storage_aws_s3 -- --ignored
+```
+
+## 8. Verify
 
 ```rust
 use axum_test::multipart::{MultipartForm, Part}; // not re-exported by the testing prelude

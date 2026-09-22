@@ -2,11 +2,15 @@
 //!
 //! This module provides an implementation of the [`StorageStrategy`] for a
 //! single storage strategy.
-use std::path::Path;
+use std::{path::Path, time::Duration};
 
 use bytes::Bytes;
 
-use crate::storage::{drivers::ListEntry, strategies::StorageStrategy, Storage, StorageResult};
+use crate::storage::{
+    drivers::{ListEntry, PresignPutOptions, PresignedRequest},
+    strategies::StorageStrategy,
+    Storage, StorageResult,
+};
 
 /// Represents a single storage strategy.
 #[derive(Clone)]
@@ -114,6 +118,31 @@ impl StorageStrategy for SingleStrategy {
     /// Returns a [`StorageResult`] indicating of the operation status.
     async fn stat(&self, storage: &Storage, path: &Path) -> StorageResult<ListEntry> {
         storage.as_store_err(&self.primary)?.stat(path).await
+    }
+
+    async fn presign_get(
+        &self,
+        storage: &Storage,
+        path: &Path,
+        expire: Duration,
+    ) -> StorageResult<PresignedRequest> {
+        storage
+            .as_store_err(&self.primary)?
+            .presign_get(path, expire)
+            .await
+    }
+
+    async fn presign_put(
+        &self,
+        storage: &Storage,
+        path: &Path,
+        expire: Duration,
+        options: PresignPutOptions,
+    ) -> StorageResult<PresignedRequest> {
+        storage
+            .as_store_err(&self.primary)?
+            .presign_put(path, expire, options)
+            .await
     }
 
     /// Downloads content as a stream from the primary storage
@@ -446,5 +475,189 @@ mod tests {
             .stat_with_policy(path.as_path(), &other)
             .await
             .is_err());
+    }
+}
+
+#[cfg(test)]
+mod presign_tests {
+    use std::{
+        collections::BTreeMap,
+        path::{Path, PathBuf},
+        time::Duration,
+    };
+
+    use async_trait::async_trait;
+    use bytes::Bytes;
+    use http::{HeaderMap, Method, Uri};
+
+    use super::*;
+    use crate::storage::{
+        drivers::{
+            GetResponse, ListEntry, PresignPutOptions, PresignedRequest, StoreDriver,
+            UploadResponse,
+        },
+        Storage, StorageError,
+    };
+
+    struct PresignStub {
+        label: &'static str,
+    }
+
+    fn presign_uri(label: &str, kind: &str, path: &Path) -> StorageResult<Uri> {
+        format!("http://{label}/{kind}/{}", path.display())
+            .parse()
+            .map_err(|err| StorageError::Any(Box::new(err)))
+    }
+
+    #[async_trait]
+    impl StoreDriver for PresignStub {
+        async fn upload(&self, _path: &Path, _content: &Bytes) -> StorageResult<UploadResponse> {
+            Ok(UploadResponse::new(None, None))
+        }
+
+        async fn get(&self, _path: &Path) -> StorageResult<GetResponse> {
+            Err(StorageError::Any("not implemented".into()))
+        }
+
+        async fn delete(&self, _path: &Path) -> StorageResult<()> {
+            Ok(())
+        }
+
+        async fn rename(&self, _from: &Path, _to: &Path) -> StorageResult<()> {
+            Ok(())
+        }
+
+        async fn copy(&self, _from: &Path, _to: &Path) -> StorageResult<()> {
+            Ok(())
+        }
+
+        async fn exists(&self, _path: &Path) -> StorageResult<bool> {
+            Ok(true)
+        }
+
+        async fn list(&self, _path: &Path, _recursive: bool) -> StorageResult<Vec<ListEntry>> {
+            Ok(vec![])
+        }
+
+        async fn stat(&self, _path: &Path) -> StorageResult<ListEntry> {
+            Ok(ListEntry::new(
+                "probe.txt".to_string(),
+                false,
+                Some(0),
+                None,
+                None,
+            ))
+        }
+
+        async fn presign_get(
+            &self,
+            path: &Path,
+            _expire: Duration,
+        ) -> StorageResult<PresignedRequest> {
+            Ok(PresignedRequest::new(
+                Method::GET,
+                presign_uri(self.label, "get", path)?,
+                HeaderMap::new(),
+            ))
+        }
+
+        async fn presign_put(
+            &self,
+            path: &Path,
+            _expire: Duration,
+            options: PresignPutOptions,
+        ) -> StorageResult<PresignedRequest> {
+            let mut headers = HeaderMap::new();
+            if let Some(content_type) = options.content_type.as_deref() {
+                headers.insert(
+                    http::header::CONTENT_TYPE,
+                    http::HeaderValue::from_str(content_type)
+                        .map_err(|err| StorageError::Any(Box::new(err)))?,
+                );
+            }
+            Ok(PresignedRequest::new(
+                Method::PUT,
+                presign_uri(self.label, "put", path)?,
+                headers,
+            ))
+        }
+    }
+
+    fn presign_storage(label: &'static str) -> Storage {
+        Storage::new(
+            BTreeMap::from([(
+                label.to_string(),
+                Box::new(PresignStub { label }) as Box<dyn StoreDriver>,
+            )]),
+            Box::new(SingleStrategy::new(label)) as Box<dyn StorageStrategy>,
+        )
+    }
+
+    #[tokio::test]
+    async fn facade_presign_get_and_put() {
+        let storage = presign_storage("arena");
+        let path = PathBuf::from("exports/checkpoint.bin");
+
+        let get = storage
+            .presign_get(path.as_path(), Duration::from_secs(300))
+            .await
+            .unwrap();
+        assert_eq!(get.method, Method::GET);
+        assert!(get.url().contains("arena/get/exports/checkpoint.bin"));
+
+        let put = storage
+            .presign_put(
+                path.as_path(),
+                Duration::from_secs(300),
+                PresignPutOptions {
+                    content_type: Some("application/octet-stream".to_string()),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(put.method, Method::PUT);
+        assert!(put.url().contains("arena/put/exports/checkpoint.bin"));
+        assert_eq!(
+            put.headers
+                .get(http::header::CONTENT_TYPE)
+                .and_then(|v| v.to_str().ok()),
+            Some("application/octet-stream")
+        );
+    }
+
+    #[tokio::test]
+    async fn with_policy_presign_routes_to_the_strategy_it_is_handed() {
+        let storage = Storage::new(
+            BTreeMap::from([
+                (
+                    "default".to_string(),
+                    Box::new(PresignStub {
+                        label: "default-store",
+                    }) as Box<dyn StoreDriver>,
+                ),
+                (
+                    "other".to_string(),
+                    Box::new(PresignStub {
+                        label: "other-store",
+                    }) as Box<dyn StoreDriver>,
+                ),
+            ]),
+            Box::new(SingleStrategy::new("default")) as Box<dyn StorageStrategy>,
+        );
+        let other = SingleStrategy::new("other");
+        let path = PathBuf::from("probe.txt");
+
+        let presign = storage
+            .presign_get(path.as_path(), Duration::from_secs(60))
+            .await
+            .unwrap();
+        assert!(presign.url().contains("default-store"));
+
+        let other_presign = storage
+            .presign_get_with_policy(path.as_path(), Duration::from_secs(60), &other)
+            .await
+            .unwrap();
+        assert!(other_presign.url().contains("other-store"));
     }
 }
