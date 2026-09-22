@@ -10,7 +10,7 @@ sidebar:
 ## Defaults
 
 ```toml
-default = ["auth", "cli", "with-db", "cache_inmem", "worker"]
+default = ["auth", "cli", "with-db", "cache_inmem", "worker", "db-sqlite"]
 ```
 
 A plain `loco-rs = "..."` dependency (no `default-features = false`) pulls in JWT auth, the `cargo loco` CLI, Sea-ORM database support, the in-memory cache, and the Postgres/SQLite-backed queue workers. The Redis-backed queue worker (`worker_redis`) is *not* in the default set — opt in explicitly if your app uses a Redis queue.
@@ -21,12 +21,13 @@ A plain `loco-rs = "..."` dependency (no `default-features = false`) pulls in JW
 |---|---|---|---|
 | `auth` | **ON** | `dep:jsonwebtoken`, `jsonwebtoken/rust_crypto` | JWT authentication. Selects `jsonwebtoken`'s pure-Rust `rust_crypto` backend (jsonwebtoken 10 no longer bundles a crypto backend by default), so the flag stays self-contained and needs no C toolchain, even when enabled alone with `default-features = false`. |
 | `cli` | **ON** | `dep:clap` | Enables the `cargo loco` runtime CLI (`src/cli.rs`). |
-| `with-db` | **ON** | `dep:sea-orm`, `dep:sea-orm-migration`, `dep:sqlx`, `loco-gen/with-db` | Sea-ORM 2.0 database support. Gates the `db` CLI subcommand and the DB-dependent generators (`model`, `migration`, `scaffold`). |
+| `with-db` | **ON** | `dep:sea-orm`, `dep:sea-orm-migration`, `dep:sqlx`, `loco-gen/with-db` | Sea-ORM 2.0 database support. Gates the `db` CLI subcommand and the DB-dependent generators (`model`, `migration`, `scaffold`). Postgres driver only unless `db-sqlite` is also enabled. |
+| `db-sqlite` | **ON** | `sea-orm?/sqlx-sqlite`, `sea-orm-migration?/sqlx-sqlite`, `sqlx?/sqlite` | SQLite SeaORM/sqlx drivers and the SQLite queue worker backend. Disable with `default-features = false` on Postgres-only apps to skip `libsqlite3-sys` compile cost. |
 | `multi-tenancy` | off | `with-db` | Explicit tenant scoping through `TenantEntity`, `TenantQueryExt`, and `TenantActiveModelExt`. See [Add row-level multi-tenancy](/docs/how-to/multi-tenancy). |
 | `testing` | off | `dep:axum-test`, `dep:scraper`, `dep:tree-fs` | Test harness utilities. Enabled alongside `multi-tenancy` for docs.rs, and used by the crate's own `dev-dependencies`. |
 | `cache_inmem` | **ON** | `dep:moka` | In-memory cache backend. |
 | `cache_redis` | off | `dep:bb8-redis`, `dep:bb8` | Redis-backed cache pool. |
-| `worker` | **ON** | `dep:sqlx`, `dep:ulid` | Background job queue/workers, Postgres and SQLite backends. Which one runs is chosen at runtime by `queue.kind` in config (`Postgres` or `Sqlite`), not by a separate feature per database. |
+| `worker` | **ON** | `dep:sqlx`, `dep:ulid` | Background job queue/workers, Postgres backend (SQLite when `db-sqlite` is also on). Which one runs is chosen at runtime by `queue.kind` in config (`Postgres` or `Sqlite`), not by a separate feature per database. |
 | `worker_redis` | off | `worker`, `dep:redis` | Adds the Redis-backed queue backend on top of `worker` (implies it). Enable this if your app's `queue.kind` is `Redis`. |
 | `redis_tls` | off | `redis/tokio-rustls-comp`, `redis/tls-rustls-webpki-roots`, `dep:rustls` | Redis over TLS (`rediss://` URLs) for managed providers such as ElastiCache, Upstash, or Azure Cache. Arms both the worker and the cache Redis paths at once — they share the same `redis` crate — with webpki-bundled roots, so it stays portable to slim/distroless images. Enable it alongside `worker_redis`/`cache_redis` and point the config at a `rediss://` URL; no code changes are needed. |
 | `all_storage` | off | `storage_aws_s3` + `storage_azure` + `storage_gcp` | Umbrella flag — turns on every cloud storage backend at once. |
@@ -55,4 +56,4 @@ To opt out of the default set (e.g. a DB-less app), depend with `default-feature
 loco-rs = { version = "...", default-features = false, features = ["cli"] }
 ```
 
-This is the pattern the `loco new` generator itself uses when the app is created without a database (see the CLI reference's app-creation flow): it emits `default-features = false` with `features = ["cli"]`, plus `worker_redis` if a Redis-backed queue was selected, or `worker` if a Postgres- or SQLite-backed queue was selected.
+This is the pattern the `loco new` generator itself uses when the app is created without a database (see the CLI reference's app-creation flow): it emits `default-features = false` with `features = ["cli"]`, plus `worker_redis` if a Redis-backed queue was selected, `worker` if a Postgres-backed queue was selected, or `worker` and `db-sqlite` if a SQLite-backed queue was selected.

@@ -101,6 +101,8 @@ All three backends support per-job priority: higher `priority` (a full `i32`) is
 DownloadWorker::perform_later_with_priority(&ctx, args, Some(100)).await?;
 ```
 
+To enqueue many jobs in one round trip, use `perform_all_later` (all at the default priority) or `perform_all_later_with_priority` (each job paired with its own `Option<i32>`). All three backends enqueue the batch atomically — one transaction on Postgres/SQLite, one `MULTI`/`EXEC` block on Redis — so either every job is enqueued or none are. See [Add a background worker](/docs/how-to/add-worker#enqueue-many-jobs-at-once).
+
 Redis additionally supports **named** queues via `queue.queues` — `Worker::queue()` picks which named queue a job lands in, and the config list order sets each queue's priority (first = most important). The default named queues are `["default", "mailer"]`.
 
 ## Managing jobs from the CLI

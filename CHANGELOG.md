@@ -4,6 +4,16 @@
 
 ### Added
 
+- **`Storage` facade exposes `presign_get` / `presign_put`** (and
+  `*_with_policy` siblings), routing through the selected strategy.
+- **`StoreDriver::presign_get` / `presign_put`** with default "not supported"
+  bodies; S3/Azure/GCS backends override via OpenDAL.
+- **`PresignedRequest::url()`** helper and **`PresignPutOptions`** (with
+  optional `content_type`) for signed upload metadata. Both structs are
+  `#[non_exhaustive]`.
+- **S3 presign integration test** (`presign_s3_roundtrip_get_and_put`):
+  `#[ignore]` by default; set `LOCO_TEST_S3_*` env vars and run with
+  `-- --ignored` plus `storage_aws_s3` feature.
 - Opt-in `multi-tenancy` feature (enables `with-db`): `TenantEntity` declares an entity's
   tenant key, `TenantQueryExt::in_tenant` scopes reads and bulk mutations, and
   `TenantActiveModelExt::set_tenant` safely assigns new records without

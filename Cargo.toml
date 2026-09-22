@@ -45,6 +45,7 @@ default = [
     "with-db",
     "cache_inmem",
     "worker",
+    "db-sqlite",
 ]
 # jsonwebtoken 10 no longer bundles a crypto backend, so `auth` selects the
 # pure-Rust `rust_crypto` one. This keeps `auth` self-contained (enabling it
@@ -58,6 +59,14 @@ with-db = [
     "dep:sea-orm-migration",
     "dep:sqlx",
     "loco-gen/with-db",
+]
+# SQLite SeaORM/sqlx drivers and the SQLite queue worker. Off by default when
+# consumers use `default-features = false` (e.g. Postgres-only apps that skip
+# libsqlite3-sys compile cost).
+db-sqlite = [
+    "sea-orm?/sqlx-sqlite",
+    "sea-orm-migration?/sqlx-sqlite",
+    "sqlx?/sqlite",
 ]
 # Explicit tenant scoping for Sea-ORM models and queries.
 multi-tenancy = ["with-db"]
@@ -90,7 +99,6 @@ clap = { version = "4.4.7", features = ["derive"], optional = true }
 colored = { workspace = true }
 sea-orm = { version = "2.0", features = [
     "sqlx-postgres",        # `DATABASE_DRIVER` feature
-    "sqlx-sqlite",
     "runtime-tokio-rustls",
     "macros",
 ], optional = true }
@@ -162,6 +170,7 @@ opendal = { version = "0.58.1", default-features = false, features = [
     "services-fs",
     "layers-retry",
 ] }
+http = "1"
 
 # cache
 moka = { version = "0.12.7", features = ["future"], optional = true }
@@ -183,7 +192,6 @@ sqlx = { version = "0.9", default-features = false, features = [
     "json",
     "postgres",
     "chrono",
-    "sqlite",
     "tls-rustls-ring-webpki",
 ], optional = true }
 ulid = { version = "1", optional = true }
@@ -239,7 +247,6 @@ features = [
     # e.g.
     "runtime-tokio-rustls", # `ASYNC_RUNTIME` feature
     "sqlx-postgres",        # `DATABASE_DRIVER` feature
-    "sqlx-sqlite",
 ]
 
 [package.metadata.docs.rs]

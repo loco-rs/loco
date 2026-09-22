@@ -144,6 +144,11 @@ impl BackgroundWorker<DownloadWorkerArgs> for DownloadWorker {
 let job_id = DownloadWorker::perform_later(&ctx, args).await?;
 // enqueue at a priority (higher runs first), on ANY backend:
 DownloadWorker::perform_later_with_priority(&ctx, args, Some(100)).await?;
+// enqueue many jobs in ONE round trip (atomic on every backend); returns
+// one id per job, in input order:
+let job_ids = DownloadWorker::perform_all_later(&ctx, args_list).await?;
+// same, with a priority per job (None = default):
+DownloadWorker::perform_all_later_with_priority(&ctx, vec![(a, Some(100)), (b, None)]).await?;
 ```
 
 - Backends: Postgres and SQLite ship by default (feature `worker`); Redis needs
@@ -154,6 +159,8 @@ DownloadWorker::perform_later_with_priority(&ctx, args, Some(100)).await?;
   (`Result<String>`). Priority (full `i32` range) works on all three
   backends. Redis fully supports job admin now (cancel/clear/requeue/dump/
   import) — it is not Postgres/SQLite-only.
+- ❌ Calling `perform_later` in a loop to fan out N jobs. ✅
+  `perform_all_later(&ctx, Vec<Args>)` — one round trip, one transaction.
 - Manage from the CLI: `cargo loco jobs cancel|tidy|purge|dump|import|requeue`.
 
 ## Scheduler, mailers, tasks

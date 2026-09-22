@@ -13,11 +13,13 @@ use crate::{
 };
 use async_trait::async_trait;
 use chrono::Utc;
-use redis::{aio::MultiplexedConnection as Connection, AsyncCommands, Client, Script};
+use redis::{
+    aio::MultiplexedConnection as Connection, AsyncCommands, AsyncConnectionConfig, Client, Script,
+};
 use serde_json::Value as JsonValue;
 use tokio::{task::JoinHandle, time::sleep};
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, error, trace};
+use tracing::{debug, error, info, trace};
 use ulid::Ulid;
 
 pub type RedisPool = Client;
@@ -108,12 +110,8 @@ impl JobRegistry {
             let tags = tags.to_owned();
 
             let job = tokio::spawn(async move {
-                let mut conn = match client.get_multiplexed_async_connection().await {
-                    Ok(conn) => conn,
-                    Err(err) => {
-                        error!(err = err.to_string(), "Failed to create worker connection");
-                        return;
-                    }
+                let Some(mut conn) = connect_worker(&client, &worker_token).await else {
+                    return;
                 };
 
                 loop {
@@ -126,7 +124,17 @@ impl JobRegistry {
                     let job_opt = match dequeue_with_conn(&mut conn, &queues, &tags).await {
                         Ok(t) => t,
                         Err(err) => {
-                            error!(err = err.to_string(), "cannot fetch from queue");
+                            // A dead socket never heals by being used again: the
+                            // same error recurs on every poll, forever, while the
+                            // worker consumes nothing and still looks alive.
+                            error!(
+                                err = err.to_string(),
+                                "cannot fetch from queue, reconnecting"
+                            );
+                            match connect_worker(&client, &worker_token).await {
+                                Some(fresh) => conn = fresh,
+                                None => break,
+                            }
                             None
                         }
                     };
@@ -188,6 +196,69 @@ fn connect(url: &str) -> Result<RedisPool> {
     Ok(client)
 }
 
+/// How long a single worker connection attempt may take.
+///
+/// `redis` 1.x defaults this to one second (`DEFAULT_CONNECTION_TIMEOUT`), where
+/// 0.x left it unset and waited as long as the connect needed. One second has to
+/// cover TCP, AUTH and the multiplexer handshake, and on a small instance booting
+/// an app — migrations, connection pool and seeding at once — a managed Redis can
+/// miss it. Inheriting that default turns a slow boot into a worker that never
+/// starts.
+const WORKER_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// How long a single command issued by a worker may take.
+///
+/// Same story: `redis` 1.x defaults this to 500ms where 0.x left it unset. That
+/// is a tight budget for a round trip to a managed Redis, and a worker that trips
+/// it stops draining the queue.
+const WORKER_RESPONSE_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Attempts before a worker gives up connecting.
+const WORKER_CONNECT_ATTEMPTS: u32 = 5;
+
+/// Connect a worker to Redis, retrying with backoff.
+///
+/// Returns `None` only when cancelled or after every attempt failed, which is the
+/// one case where the worker genuinely cannot proceed. A single failure must not
+/// end it: the worker is the only thing draining its queue, so a worker task that
+/// returns makes every queued job disappear silently while the process stays up
+/// and answers health checks.
+async fn connect_worker(client: &RedisPool, token: &CancellationToken) -> Option<Connection> {
+    let config = AsyncConnectionConfig::new()
+        .set_connection_timeout(Some(WORKER_CONNECT_TIMEOUT))
+        .set_response_timeout(Some(WORKER_RESPONSE_TIMEOUT));
+    let mut backoff = Duration::from_millis(250);
+
+    for attempt in 1..=WORKER_CONNECT_ATTEMPTS {
+        if token.is_cancelled() {
+            return None;
+        }
+        match client
+            .get_multiplexed_async_connection_with_config(&config)
+            .await
+        {
+            Ok(conn) => {
+                if attempt > 1 {
+                    info!(attempt, "worker connected to redis");
+                }
+                return Some(conn);
+            }
+            Err(err) => {
+                error!(
+                    err = err.to_string(),
+                    attempt,
+                    max = WORKER_CONNECT_ATTEMPTS,
+                    "failed to create worker connection"
+                );
+            }
+        }
+        tokio::time::sleep(backoff).await;
+        backoff = (backoff * 2).min(Duration::from_secs(5));
+    }
+    error!("giving up connecting the worker to redis");
+    None
+}
+
 async fn get_connection(client: &RedisPool) -> Result<Connection> {
     let conn = client.get_multiplexed_async_connection().await?;
     Ok(conn)
@@ -242,6 +313,54 @@ pub async fn enqueue(
     let _: () = conn.zadd(&queue_key, &job.id, score).await?;
 
     Ok(job_id)
+}
+
+/// Enqueue multiple jobs in a single atomic pipeline operation.
+///
+/// Each entry of `jobs` is one job's arguments paired with its priority
+/// (`None` for the default); `tags` apply to every job. The returned IDs are
+/// in the same order as `jobs`.
+///
+/// The pipeline runs as a `MULTI`/`EXEC` transaction, so either every job's
+/// payload and queue entry are written or none are. A failure leaves nothing
+/// behind and the batch is safe to retry without duplicating jobs.
+///
+/// # Errors
+///
+/// This function will return an error if it fails
+pub async fn enqueue_batch(
+    client: &RedisPool,
+    class: String,
+    queue: Option<String>,
+    jobs: Vec<(serde_json::Value, Option<i32>)>,
+    tags: Option<Vec<String>>,
+) -> Result<Vec<JobId>> {
+    if jobs.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut conn = get_connection(client).await?;
+    let queue_name = queue.unwrap_or_else(|| "default".to_string());
+    let queue_key = format!("{QUEUE_KEY_PREFIX}{queue_name}");
+
+    let mut ids = Vec::with_capacity(jobs.len());
+    let mut pipe = redis::pipe();
+    pipe.atomic();
+    for (args_json, priority) in jobs {
+        let job_id = Ulid::new().to_string();
+        let mut job = Job::new(job_id, class.clone(), args_json);
+        job.tags = tags.clone();
+        job.priority = priority.unwrap_or(0);
+        let job_json = job.to_json()?;
+        let job_key = format!("{JOB_KEY_PREFIX}{}", job.id);
+        pipe.set(&job_key, &job_json).ignore();
+        pipe.zadd(&queue_key, &job.id, calculate_score(job.priority))
+            .ignore();
+        ids.push(job.id);
+    }
+
+    pipe.query_async::<()>(&mut conn).await?;
+    Ok(ids)
 }
 
 /// Redis ZSET score for a job, derived from priority only.
@@ -982,6 +1101,16 @@ impl QueueProvider for RedisQueue {
         ))
     }
 
+    async fn enqueue_batch(
+        &self,
+        class: String,
+        queue: Option<String>,
+        jobs: Vec<(JsonValue, Option<i32>)>,
+        tags: Option<Vec<String>>,
+    ) -> Result<Vec<JobId>> {
+        enqueue_batch(&self.client, class, queue, jobs, tags).await
+    }
+
     async fn register_handler(&self, name: String, handler: JobHandler) -> Result<()> {
         let mut registry = self.registry.lock().await;
         registry.insert_handler(name, handler)
@@ -1110,6 +1239,46 @@ mod tests {
     use crate::{bgworker::BackgroundWorker, tests_cfg::redis::setup_redis_container};
     use chrono::Utc;
     use testcontainers::{ContainerAsync, GenericImage};
+
+    /// A cancelled worker stops trying immediately rather than working through
+    /// its retry budget against a server it will never be allowed to reach.
+    #[tokio::test]
+    async fn connect_worker_honours_cancellation() {
+        // Port 1 is never a Redis. The point is that cancellation short-circuits
+        // before any attempt is made, so the address is irrelevant.
+        let client = Client::open("redis://127.0.0.1:1/").expect("client opens");
+        let token = CancellationToken::new();
+        token.cancel();
+
+        assert!(
+            connect_worker(&client, &token).await.is_none(),
+            "a cancelled worker must not attempt to connect"
+        );
+    }
+
+    /// An unreachable Redis exhausts the retry budget and reports it, rather than
+    /// ending the worker on the first failure.
+    ///
+    /// The distinction matters: the worker is the only thing draining its queue,
+    /// so a task that returns early makes every queued job disappear silently
+    /// while the process stays up and answers health checks.
+    #[tokio::test]
+    async fn connect_worker_retries_before_giving_up() {
+        let client = Client::open("redis://127.0.0.1:1/").expect("client opens");
+        let token = CancellationToken::new();
+
+        let started = std::time::Instant::now();
+        assert!(connect_worker(&client, &token).await.is_none());
+
+        // 250ms + 500ms + 1s + 2s of backoff sits between five attempts; assert
+        // well under that so the test cannot flake on a slow machine, while
+        // still failing outright if the retry loop is removed.
+        assert!(
+            started.elapsed() >= Duration::from_millis(500),
+            "expected the connect to be retried with backoff, returned after {:?}",
+            started.elapsed()
+        );
+    }
 
     async fn setup_redis() -> (RedisPool, ContainerAsync<GenericImage>) {
         let (redis_url, container) = setup_redis_container().await;
@@ -1273,6 +1442,118 @@ mod tests {
         // Queue should now be empty
         let queue_len: i64 = conn.zcard(&queue_key).await.expect("get queue length");
         assert_eq!(queue_len, 0);
+    }
+
+    #[tokio::test]
+    async fn test_can_enqueue_batch_redis() {
+        let (client, _container) = setup_redis().await;
+        assert!(clear(&client).await.is_ok());
+
+        // Mixed per-job priorities: the default (None → 0), a high and a low
+        // value. Dequeue order must follow priority, not insertion order.
+        let jobs = vec![
+            (serde_json::json!({"user_id": 1}), None),
+            (serde_json::json!({"user_id": 2}), Some(10)),
+            (serde_json::json!({"user_id": 3}), Some(-5)),
+        ];
+        let ids = enqueue_batch(&client, "BatchJob".to_string(), None, jobs, None)
+            .await
+            .expect("batch enqueue");
+        assert_eq!(ids.len(), 3);
+
+        // Every job key was written, in input order, with its own priority.
+        let stored = get_all_jobs(&client).await;
+        assert_eq!(stored.len(), 3);
+        for (id, expected_priority) in ids.iter().zip([0, 10, -5]) {
+            let job = stored
+                .iter()
+                .find(|job| &job.id == id)
+                .expect("batched job must be stored");
+            assert_eq!(job.name, "BatchJob");
+            assert_eq!(job.status, JobStatus::Queued);
+            assert_eq!(job.priority, expected_priority);
+        }
+
+        // Every id landed in the default queue's ZSET.
+        let mut conn = get_test_connection(&client).await;
+        let queue_key = format!("{QUEUE_KEY_PREFIX}default");
+        let queue_len: i64 = conn.zcard(&queue_key).await.expect("get queue length");
+        assert_eq!(queue_len, 3);
+
+        let queues = vec!["default".to_string()];
+        for expected_user in [2, 1, 3] {
+            let (job, _) = dequeue_with_conn(&mut conn, &queues, &[])
+                .await
+                .expect("dequeue")
+                .expect("a batched job must be dequeueable");
+            assert_eq!(
+                job.data.get("user_id"),
+                Some(&serde_json::json!(expected_user)),
+                "batched jobs must be dequeued by priority"
+            );
+            complete_job_with_conn(&mut conn, &job.id, "default", None)
+                .await
+                .expect("complete job");
+        }
+        assert!(dequeue_with_conn(&mut conn, &queues, &[])
+            .await
+            .expect("dequeue")
+            .is_none());
+    }
+
+    #[tokio::test]
+    async fn test_can_enqueue_batch_with_queue_and_tags_redis() {
+        let (client, _container) = setup_redis().await;
+        assert!(clear(&client).await.is_ok());
+
+        let ids = enqueue_batch(
+            &client,
+            "BatchJob".to_string(),
+            Some("mailer".to_string()),
+            vec![
+                (serde_json::json!({"user_id": 1}), None),
+                (serde_json::json!({"user_id": 2}), None),
+            ],
+            Some(vec!["email".to_string()]),
+        )
+        .await
+        .expect("tagged batch enqueue");
+        assert_eq!(ids.len(), 2);
+
+        // The batch went to the named queue, not the default one.
+        let mut conn = get_test_connection(&client).await;
+        let mailer_len: i64 = conn
+            .zcard(format!("{QUEUE_KEY_PREFIX}mailer"))
+            .await
+            .expect("get queue length");
+        assert_eq!(mailer_len, 2);
+        let default_len: i64 = conn
+            .zcard(format!("{QUEUE_KEY_PREFIX}default"))
+            .await
+            .expect("get queue length");
+        assert_eq!(default_len, 0);
+
+        // Tags apply to every job: a tagless worker must not see them and a
+        // worker carrying the tag must.
+        let queues = vec!["mailer".to_string()];
+        assert!(
+            dequeue_with_conn(&mut conn, &queues, &[])
+                .await
+                .expect("dequeue")
+                .is_none(),
+            "an untagged worker must not see tagged jobs"
+        );
+        for _ in 0..2 {
+            let (job, _) = dequeue_with_conn(&mut conn, &queues, &["email".to_string()])
+                .await
+                .expect("dequeue")
+                .expect("a tagged batched job must be dequeueable by a matching worker");
+            assert!(ids.contains(&job.id));
+            assert_eq!(job.tags, Some(vec!["email".to_string()]));
+            complete_job_with_conn(&mut conn, &job.id, "mailer", None)
+                .await
+                .expect("complete job");
+        }
     }
 
     #[tokio::test]

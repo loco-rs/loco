@@ -1,11 +1,13 @@
-use std::path::Path;
+use std::{path::Path, time::Duration};
 
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures_util::{SinkExt, StreamExt};
 use opendal::{layers::RetryLayer, Operator};
 
-use super::{GetResponse, ListEntry, StoreDriver, UploadResponse};
+use super::{
+    GetResponse, ListEntry, PresignPutOptions, PresignedRequest, StoreDriver, UploadResponse,
+};
 use crate::storage::{stream::BytesStream, StorageError, StorageResult};
 
 pub struct OpendalAdapter {
@@ -197,6 +199,53 @@ impl StoreDriver for OpendalAdapter {
             meta.last_modified()
                 .map(|ts| chrono::DateTime::<chrono::Utc>::from(std::time::SystemTime::from(ts))),
             meta.etag().map(std::string::ToString::to_string),
+        ))
+    }
+
+    /// Builds a presigned `GET` URL via `OpenDAL`'s native presigning support.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `StorageResult` if the backend doesn't support presigning or
+    /// the request could not be built.
+    async fn presign_get(&self, path: &Path, expire: Duration) -> StorageResult<PresignedRequest> {
+        let req = self
+            .opendal_impl
+            .presign_read(&path.display().to_string(), expire)
+            .await?;
+        Ok(PresignedRequest::new(
+            req.method().clone(),
+            req.uri().clone(),
+            req.header().clone(),
+        ))
+    }
+
+    /// Builds a presigned `PUT` URL via `OpenDAL`'s native presigning support.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `StorageResult` if the backend doesn't support presigning or
+    /// the request could not be built.
+    async fn presign_put(
+        &self,
+        path: &Path,
+        expire: Duration,
+        options: PresignPutOptions,
+    ) -> StorageResult<PresignedRequest> {
+        let path = path.display().to_string();
+        let req = match options.content_type.as_deref() {
+            Some(content_type) => {
+                self.opendal_impl
+                    .presign_write_with(&path, expire)
+                    .content_type(content_type)
+                    .await?
+            }
+            None => self.opendal_impl.presign_write(&path, expire).await?,
+        };
+        Ok(PresignedRequest::new(
+            req.method().clone(),
+            req.uri().clone(),
+            req.header().clone(),
         ))
     }
 
