@@ -1,7 +1,7 @@
 ---
 title: "Loco 1.2.0"
 description: "A Loco skill for coding agents, presigned storage URLs, row-level multi-tenancy, Tera components and Postgres-only builds. Plus a long list of fixes to the app loco new generates."
-pubDate: 2026-09-24
+pubDate: 2026-09-24T06:00:00Z
 authors:
   - team-loco
 ---

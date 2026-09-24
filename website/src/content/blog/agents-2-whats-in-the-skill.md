@@ -1,7 +1,7 @@
 ---
 title: "What's in the Loco skill"
 description: "llms.txt didn't reach anyone, a full dump was too big to reason over, and a generated API index turned out to be a hallucination detector. Part 2 of teaching agents Loco."
-pubDate: 2026-10-01
+pubDate: 2026-09-24T02:00:00Z
 authors:
   - dotan-nahum
 ---

@@ -1,7 +1,7 @@
 ---
 title: "Rails had twenty years of training data. Loco has a skill."
 description: "Coding agents are good at Rails because Rails has two decades of public code behind it. Loco has none of that. Part 1 of how we taught agents to write Loco."
-pubDate: 2026-09-29
+pubDate: 2026-09-24T01:00:00Z
 authors:
   - dotan-nahum
 ---
