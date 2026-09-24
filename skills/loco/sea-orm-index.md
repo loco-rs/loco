@@ -110,10 +110,14 @@ since they restate the trait's own API.
 - `fn` **get_sqlx_logging_level**`(self: &Self) -> LevelFilter` — Get the level of SQLx statement logging
 - `fn` **get_sqlx_slow_statements_logging_settings**`(self: &Self) -> (LevelFilter, Duration)` — Get the SQLx slow statements logging settings
 - `fn` **get_statement_timeout**`(self: &Self) -> Option<Duration>` — Get the statement timeout, if set
+- `fn` **get_test_before_acquire**`(self: &Self) -> bool` — Get whether a pooled connection is pinged on every acquire (default true)
+- `fn` **get_test_before_acquire_if_idle_for**`(self: &Self) -> Option<Duration>` — Get the idle threshold set by
 - `fn` **get_url**`(self: &Self) -> &str` — Get the database URL of the pool
 - `fn` **idle_timeout**`(self: &mut Self, value: T) -> &mut Self where T: Into<Option<Duration>>` — Set the idle duration before closing a connection
+- `fn` **map_sqlx_postgres_before_acquire**`(self: &mut Self, f: F) -> &mut Self where F: Fn + Send + Sync` — Set a `before_acquire` callback run on an idle pooled PostgreSQL connection before it
 - `fn` **map_sqlx_postgres_opts**`(self: &mut Self, f: F) -> &mut Self where F: Fn + Send + Sync` — Apply a function to modify the underlying [`PgConnectOptions`] before
 - `fn` **map_sqlx_postgres_pool_opts**`(self: &mut Self, f: F) -> &mut Self where F: Fn + Send + Sync` — Apply a function to modify the underlying [`sqlx::pool::PoolOptions<sqlx::Postgres>`]
+- `fn` **map_sqlx_sqlite_before_acquire**`(self: &mut Self, f: F) -> &mut Self where F: Fn + Send + Sync` — Set a `before_acquire` callback run on an idle pooled SQLite connection before it is
 - `fn` **map_sqlx_sqlite_opts**`(self: &mut Self, f: F) -> &mut Self where F: Fn + Send + Sync` — Apply a function to modify the underlying [`SqliteConnectOptions`] before
 - `fn` **map_sqlx_sqlite_pool_opts**`(self: &mut Self, f: F) -> &mut Self where F: Fn + Send + Sync` — Apply a function to modify the underlying [`sqlx::pool::PoolOptions<sqlx::Sqlite>`]
 - `fn` **max_connections**`(self: &mut Self, value: u32) -> &mut Self` — Set the maximum number of connections of the pool
@@ -130,6 +134,7 @@ since they restate the trait's own API.
 - `fn` **sqlx_slow_statements_logging_settings**`(self: &mut Self, level: LevelFilter, duration: Duration) -> &mut Self` — Set SQLx slow statements logging level and duration threshold (default `LevelFilter::Off`)
 - `fn` **statement_timeout**`(self: &mut Self, value: Duration) -> &mut Self` — Set the statement timeout (PostgreSQL only)
 - `fn` **test_before_acquire**`(self: &mut Self, value: bool) -> &mut Self` — If true, the connection will be pinged upon acquiring from the pool (default true)
+- `fn` **test_before_acquire_if_idle_for**`(self: &mut Self, idle: Duration) -> &mut Self` — Ping a pooled connection before handing it out, but only once it has been idle for at
 
 ### `ConnectionTrait`
 
@@ -266,6 +271,7 @@ since they restate the trait's own API.
 - `fn` **num_items**`(self: &Self) -> Result<u64, DbErr>` — Get the total number of items
 - `fn` **num_items_and_pages**`(self: &Self) -> Result<ItemsAndPagesNumber, DbErr>` — Get the total number of items and pages
 - `fn` **num_pages**`(self: &Self) -> Result<u64, DbErr>` — Get the total number of pages
+- `fn` **set_page**`(self: &mut Self, page: u64)` — Set the page counter
 
 ### `PaginatorTrait`
 
@@ -290,12 +296,21 @@ since they restate the trait's own API.
 
 - `fn` **exists**`(self: Self, db: &C) -> Pin<Box<dyn Future + Send>> where C: ConnectionTrait, Self: Send + Sized + Send` — Check if any records exist
 
+### `Selector`
+
+- `fn` **one**`(self: Self, db: &C) -> Result<Option<S::Item>, DbErr> where C: ConnectionTrait` — Get an item from the Select query
+
 ### `Selector<S>`
 
 - `fn` **all**`(self: Self, db: &C) -> Result<Vec<S::Item>, DbErr> where C: ConnectionTrait` — Get all items from the Select query
 - `fn` **into_statement**`(self: Self, builder: DbBackend) -> Statement` — Get the SQL statement
 - `fn` **one**`(self: Self, db: &C) -> Result<Option<S::Item>, DbErr> where C: ConnectionTrait` — Get an item from the Select query
+- `fn` **require_one**`(self: Self, db: &C) -> Result<S::Item, DbErr> where C: ConnectionTrait` — Get exactly one item from the Select query, returning
 - `fn` **stream**`(self: Self, db: &C) -> Result<Pin<Box<dyn Stream + Send>>, DbErr> where C: ConnectionTrait + StreamTrait + Send, S::Item: Send` — Stream the results of the Select operation
+
+### `SelectorRaw`
+
+- `fn` **one**`(self: Self, db: &C) -> Result<Option<S::Item>, DbErr> where C: ConnectionTrait` — Get an item from the Select query
 
 ### `SelectorRaw<S>`
 
@@ -305,6 +320,7 @@ since they restate the trait's own API.
 - `fn` **into_model**`(self: Self) -> SelectorRaw<SelectModel<M>> where M: FromQueryResult` — ```
 - `fn` **into_statement**`(self: Self) -> Statement` — Get the SQL statement
 - `fn` **one**`(self: Self, db: &C) -> Result<Option<S::Item>, DbErr> where C: ConnectionTrait` — Get an item from the Select query
+- `fn` **require_one**`(self: Self, db: &C) -> Result<S::Item, DbErr> where C: ConnectionTrait` — Get exactly one item from the query, returning [`DbErr::RecordNotFound`]
 - `fn` **stream**`(self: Self, db: &C) -> Result<Pin<Box<dyn Stream + Send>>, DbErr> where C: ConnectionTrait + StreamTrait + Send, S::Item: Send` — Stream the results of the Select operation
 
 ### `SelectorTrait`
@@ -384,6 +400,7 @@ since they restate the trait's own API.
 
 ### `TransactionTrait`
 
+- `type` **Transaction** — The concrete type for the transaction
 - `fn` **begin**`(self: &Self) -> Pin<Box<dyn Future + Send>>` — Execute SQL `BEGIN` transaction
 - `fn` **begin_with_config**`(self: &Self, isolation_level: Option<IsolationLevel>, access_mode: Option<AccessMode>) -> Pin<Box<dyn Future + Send>>` — Execute SQL `BEGIN` transaction with isolation level and/or access mode
 - `fn` **begin_with_options**`(self: &Self, options: TransactionOptions) -> Pin<Box<dyn Future + Send>>` — Execute SQL `BEGIN` transaction with isolation level and/or access mode
@@ -695,10 +712,17 @@ since they restate the trait's own API.
 - `variant` **NotSet** — An undefined [Value]. Nothing is sent to the database
 - `variant` **Set** — A [Value] that's explicitly set by the application and sent to the database
 - `variant` **Unchanged** — An existing, unchanged [Value] from the database
+- `fn` **as_option**`(self: &Self) -> Option<&V>` — Flatten an `&ActiveValue<Option<V>>` into an `Option<&V>`, folding
 - `fn` **as_ref**`(self: &Self) -> &V` — # Panics
+- `fn` **into_option**`(self: Self) -> Option<V>` — Flatten an `ActiveValue<Option<V>>` into an `Option<V>`, folding
 - `fn` **set_ne**`(self: &mut Self, value: V) where V: PartialEq` — `Set(value)`, except when [`self.is_unchanged()`][ActiveValue#method.is_unchanged]
 - `fn` **set_ne_and**`(self: &mut Self, value: V, f: impl Trait) where V: PartialEq` — `Set(value)`, except when [`self.is_unchanged()`][ActiveValue#method.is_unchanged],
 - `fn` **try_as_ref**`(self: &Self) -> Option<&V>` — Get the inner value, unless `self` is [NotSet][ActiveValue::NotSet]
+
+### `ActiveValue<Option<V>>`
+
+- `fn` **as_option**`(self: &Self) -> Option<&V>` — Flatten an `&ActiveValue<Option<V>>` into an `Option<&V>`, folding
+- `fn` **into_option**`(self: Self) -> Option<V>` — Flatten an `ActiveValue<Option<V>>` into an `Option<V>`, folding
 
 ### `ActiveValue<V>`
 
@@ -706,12 +730,17 @@ since they restate the trait's own API.
 - `fn` **into_wrapped_value**`(self: Self) -> ActiveValue<Value>` — Wrap the [Value] into a `ActiveValue<Value>`
 - `fn` **is_not_set**`(self: &Self) -> bool` — Check if the [ActiveValue] is [ActiveValue::NotSet]
 - `fn` **is_set**`(self: &Self) -> bool` — Check if the [ActiveValue] is [ActiveValue::Set]
+- `fn` **is_set_and**`(self: &Self, f: impl Trait) -> bool` — Check if the [ActiveValue] is [ActiveValue::Set] and that the inner value
 - `fn` **is_unchanged**`(self: &Self) -> bool` — Check if the [ActiveValue] is [ActiveValue::Unchanged]
+- `fn` **is_unchanged_and**`(self: &Self, f: impl Trait) -> bool` — Check if the [ActiveValue] is [ActiveValue::Unchanged] and that the inner
 - `fn` **not_set**`() -> Self` — Create an [ActiveValue::NotSet]
 - `fn` **reset**`(self: &mut Self)` — Reset the value from [ActiveValue::Unchanged] to [ActiveValue::Set],
 - `fn` **set**`(value: V) -> Self` — Create an [ActiveValue::Set]
 - `fn` **set_if_not_equals**`(self: &mut Self, value: V) where V: PartialEq` — Alias for [`ActiveValue::set_ne`]. Kept for compatibility
 - `fn` **set_if_not_equals_and**`(self: &mut Self, value: V, f: impl Trait) where V: PartialEq` — Alias for [`ActiveValue::set_ne_and`]. Kept for compatibility
+- `fn` **set_if_unset**`(self: &mut Self, value: V)` — `Set(value)` if [`self.is_not_set()`][ActiveValue#method.is_not_set], no-op otherwise
+- `fn` **set_if_unset_default**`(self: &mut Self) where V: Default` — `Set(V::default())` if [`self.is_not_set()`][ActiveValue#method.is_not_set], no-op otherwise
+- `fn` **set_if_unset_with**`(self: &mut Self, f: impl Trait)` — `Set(f())` if [`self.is_not_set()`][ActiveValue#method.is_not_set], no-op otherwise
 - `fn` **set_ne**`(self: &mut Self, value: V) where V: PartialEq` — `Set(value)`, except when [`self.is_unchanged()`][ActiveValue#method.is_unchanged]
 - `fn` **set_ne_and**`(self: &mut Self, value: V, f: impl Trait) where V: PartialEq` — `Set(value)`, except when [`self.is_unchanged()`][ActiveValue#method.is_unchanged],
 - `fn` **take**`(self: &mut Self) -> Option<V>` — Take ownership of the inner value, also setting self to `NotSet`
@@ -1642,6 +1671,7 @@ since they restate the trait's own API.
 - `fn` **find_with_related**`(self: Self, r: R) -> SelectTwoMany<E, R> where R: EntityTrait, E: Related<R>` — Left Join with a Related Entity and select the related Entity as a `Vec`
 - `fn` **into_model**`(self: Self) -> Selector<SelectModel<M>> where M: FromQueryResult` — Return a [Selector] from `Self` that wraps a [SelectModel]
 - `fn` **into_partial_model**`(self: Self) -> Selector<SelectModel<M>> where M: PartialModelTrait` — Return a [Selector] from `Self` that wraps a [SelectModel] with a [PartialModel](PartialModelTrait)
+- `fn` **one**`(self: Self, db: &C) -> Result<Option<E::Model>, DbErr> where C: ConnectionTrait` — Get one Model from the SELECT query
 
 ### `Select<E>`
 
@@ -1667,6 +1697,7 @@ since they restate the trait's own API.
 - `fn` **order_by_id**`(self: Self, order: Order) -> Self` — Apply order by primary key to the query statement
 - `fn` **order_by_id_asc**`(self: Self) -> Self` — Apply order by primary key to the query statement
 - `fn` **order_by_id_desc**`(self: Self) -> Self` — Apply order by primary key to the query statement
+- `fn` **require_one**`(self: Self, db: &C) -> Result<E::Model, DbErr> where C: ConnectionTrait` — Get exactly one Model from the SELECT query, returning
 - `fn` **reverse_join**`(self: Self, _: R) -> Self where R: EntityTrait + Related<E>` — Join with an Entity Related to me
 - `fn` **right_join**`(self: Self, _: R) -> Self where R: EntityTrait, E: Related<R>` — Right Join with a Related Entity
 - `fn` **select_also**`(self: Self, _: F) -> SelectTwo<E, F> where F: EntityTrait` — Selects extra Entity and returns it together with the Entity from `Self`
@@ -1732,6 +1763,10 @@ since they restate the trait's own API.
 
 - `fn` **all**`(self: Self, db: &C) -> Result<Vec<(E::Model, Vec<F::Model>, Vec<G::Model>)>, DbErr> where C: ConnectionTrait` — Execute query and consolidate rows by E
 
+### `SelectTwo`
+
+- `fn` **one**`(self: Self, db: &C) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr> where C: ConnectionTrait` — Get one Model from the Select query
+
 ### `SelectTwo<E, F>`
 
 - `fn` **all**`(self: Self, db: &C) -> Result<Vec<(E::Model, Option<F::Model>)>, DbErr> where C: ConnectionTrait` — Get all Models from the Select query
@@ -1744,12 +1779,17 @@ since they restate the trait's own API.
 - `fn` **into_model**`(self: Self) -> Selector<SelectTwoModel<M, N>> where M: FromQueryResult, N: FromQueryResult` — Perform a conversion into a [SelectTwoModel]
 - `fn` **into_partial_model**`(self: Self) -> Selector<SelectTwoModel<M, N>> where M: PartialModelTrait, N: PartialModelTrait` — Perform a conversion into a [SelectTwoModel] with [PartialModel](PartialModelTrait)
 - `fn` **one**`(self: Self, db: &C) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr> where C: ConnectionTrait` — Get one Model from the Select query
+- `fn` **require_one**`(self: Self, db: &C) -> Result<(E::Model, Option<F::Model>), DbErr> where C: ConnectionTrait` — Get exactly one row from the Select query, returning
 - `fn` **stream**`(self: Self, db: &C) -> Result<impl Trait, DbErr> where C: ConnectionTrait + StreamTrait + Send` — Stream the results of a Select operation on a Model
 - `fn` **stream_partial_model**`(self: Self, db: &C) -> Result<impl Trait, DbErr> where C: ConnectionTrait + StreamTrait + Send, M: PartialModelTrait + Send, N: PartialModelTrait + Send` — Stream the result of the operation with PartialModel
 
 ### `SelectTwoMany<E, F>`
 
 - `fn` **all**`(self: Self, db: &C) -> Result<Vec<(E::Model, Vec<F::Model>)>, DbErr> where C: ConnectionTrait` — Run the select and return all matching parent models, each paired
+
+### `SelectTwoRequired`
+
+- `fn` **one**`(self: Self, db: &C) -> Result<Option<(E::Model, F::Model)>, DbErr> where C: ConnectionTrait` — Get one Model from the Select query
 
 ### `SelectTwoRequired<E, F>`
 
@@ -1758,6 +1798,7 @@ since they restate the trait's own API.
 - `fn` **into_model**`(self: Self) -> Selector<SelectTwoRequiredModel<M, N>> where M: FromQueryResult, N: FromQueryResult` — Perform a conversion into a [SelectTwoRequiredModel]
 - `fn` **into_partial_model**`(self: Self) -> Selector<SelectTwoRequiredModel<M, N>> where M: PartialModelTrait, N: PartialModelTrait` — Perform a conversion into a [SelectTwoRequiredModel] with [PartialModel](PartialModelTrait)
 - `fn` **one**`(self: Self, db: &C) -> Result<Option<(E::Model, F::Model)>, DbErr> where C: ConnectionTrait` — Get one Model from the Select query
+- `fn` **require_one**`(self: Self, db: &C) -> Result<(E::Model, F::Model), DbErr> where C: ConnectionTrait` — Get exactly one row from the Select query, returning
 - `fn` **stream**`(self: Self, db: &C) -> Result<impl Trait, DbErr> where C: ConnectionTrait + StreamTrait + Send` — Stream the results of a Select operation on a Model
 - `fn` **stream_partial_model**`(self: Self, db: &C) -> Result<impl Trait, DbErr> where C: ConnectionTrait + StreamTrait + Send, M: PartialModelTrait + Send, N: PartialModelTrait + Send` — Stream the result of the operation with PartialModel
 
