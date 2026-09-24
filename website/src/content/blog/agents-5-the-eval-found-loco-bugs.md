@@ -3,7 +3,7 @@ title: "The eval kept finding bugs in Loco"
 description: "We built an eval to grade agents. It graded us. What it found, the regression we shipped chasing a score, and why the generated app turned out to be the best prompt we have. Part 5 of teaching agents Loco."
 pubDate: 2026-10-13
 authors:
-  - team-loco
+  - dotan-nahum
 ---
 
 Every eval task needs a reference solution, and we wrote each one against a

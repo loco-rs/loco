@@ -3,7 +3,7 @@ title: "What's in the Loco skill"
 description: "llms.txt didn't reach anyone, a full dump was too big to reason over, and a generated API index turned out to be a hallucination detector. Part 2 of teaching agents Loco."
 pubDate: 2026-10-01
 authors:
-  - team-loco
+  - dotan-nahum
 ---
 
 Our first answer to "help agents write Loco" was `llms.txt`. We had one. It was

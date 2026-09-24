@@ -3,7 +3,7 @@ title: "Ten eval runs and an honest null"
 description: "We built an eval to prove the Loco skill makes agents better. Ten runs later, the headline number never moved. What moved was which mistakes agents made. Part 4 of teaching agents Loco."
 pubDate: 2026-10-08
 authors:
-  - team-loco
+  - dotan-nahum
 ---
 
 A skill you can't measure is a vibe. So we built `cargo xtask eval`: seven

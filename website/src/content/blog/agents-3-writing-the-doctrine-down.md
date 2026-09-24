@@ -3,7 +3,7 @@ title: "Writing the doctrine down"
 description: "Loco follows the Rails doctrine and diverges only where Rust forces it. An agent can't infer that, so we wrote it into a file. Part 3 of teaching agents Loco."
 pubDate: 2026-10-06
 authors:
-  - team-loco
+  - dotan-nahum
 ---
 
 Templates and an API index get an agent to code that compiles. They don't get
