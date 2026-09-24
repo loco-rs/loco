@@ -1,0 +1,10 @@
+hello-world = Привіт, світе!
+greeting = Вітаю, { $name }!
+        .placeholder = Привіт, друже!
+about = Про програму
+simple = простий текст
+reference = простий текст із посиланням: { -something }
+parameter = текст із { $param }
+parameter2 = перший текст { $param }, другий { $multi-word-param }
+email = текст з EMAIL("example@example.org")
+fallback = цей текст має використовуватися як резервний

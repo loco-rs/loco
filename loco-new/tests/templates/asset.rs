@@ -149,6 +149,7 @@ fn serverside_ships_the_assets_the_config_points_at() {
         "assets/static/404.html",
         "assets/views/home/hello.html",
         "assets/i18n/en-US/main.ftl",
+        "assets/i18n/uk-UA/main.ftl",
         "assets/shared.ftl",
     ] {
         assert!(

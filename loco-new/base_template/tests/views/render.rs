@@ -32,4 +32,8 @@ fn renders_home_view_with_i18n() {
         rendered.contains("Hello World"),
         "expected the i18n key to resolve, got: {rendered}"
     );
+    assert!(
+        rendered.contains("Привіт, світе!"),
+        "expected the Ukrainian locale to resolve, got: {rendered}"
+    );
 }
