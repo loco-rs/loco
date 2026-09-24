@@ -68,6 +68,8 @@ db-sqlite = [
     "sea-orm-migration?/sqlx-sqlite",
     "sqlx?/sqlite",
 ]
+# Explicit tenant scoping for Sea-ORM models and queries.
+multi-tenancy = ["with-db"]
 # Storage features
 all_storage = ["storage_aws_s3", "storage_azure", "storage_gcp"]
 storage_aws_s3 = ["opendal/services-s3"]
@@ -248,7 +250,7 @@ features = [
 ]
 
 [package.metadata.docs.rs]
-features = ["testing"]
+features = ["testing", "multi-tenancy"]
 
 [dev-dependencies]
 loco-rs = { path = ".", features = ["testing"] }

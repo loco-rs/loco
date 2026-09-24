@@ -14,6 +14,10 @@
 - **S3 presign integration test** (`presign_s3_roundtrip_get_and_put`):
   `#[ignore]` by default; set `LOCO_TEST_S3_*` env vars and run with
   `-- --ignored` plus `storage_aws_s3` feature.
+- Opt-in `multi-tenancy` feature (enables `with-db`): `TenantEntity` declares an entity's
+  tenant key, `TenantQueryExt::in_tenant` scopes reads and bulk mutations, and
+  `TenantActiveModelExt::set_tenant` safely assigns new records without
+  allowing tenant reassignment. ([#1640](https://github.com/loco-rs/loco/issues/1640))
 
 ## 1.1.0 - 2026-08-15
 

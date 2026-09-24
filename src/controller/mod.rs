@@ -268,6 +268,11 @@ impl IntoResponse for Error {
                 StatusCode::CONFLICT,
                 ErrorDetail::new("conflict", "Resource already exists"),
             ),
+            #[cfg(feature = "multi-tenancy")]
+            Self::Model(ModelError::TenantMismatch) => (
+                StatusCode::BAD_REQUEST,
+                ErrorDetail::new("tenant_mismatch", "Model belongs to a different tenant"),
+            ),
             #[cfg(feature = "with-db")]
             Self::Model(ModelError::Validation(ref errors)) => validation_error_response(errors),
 
@@ -395,6 +400,21 @@ mod tests {
             serde_json::json!({
                 "error": "conflict",
                 "description": "Resource already exists"
+            })
+        );
+    }
+
+    #[cfg(feature = "multi-tenancy")]
+    #[tokio::test]
+    async fn model_tenant_mismatch_maps_to_400() {
+        let (status, json) = response_json(Error::Model(ModelError::TenantMismatch)).await;
+
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(
+            json,
+            serde_json::json!({
+                "error": "tenant_mismatch",
+                "description": "Model belongs to a different tenant"
             })
         );
     }
