@@ -15,7 +15,15 @@ queue, or invent an API name that sounds right. `loco new` now writes a skill
 into every app under `.claude/skills/loco/`: the framework's doctrine, ten task
 recipes, and an API index for `loco-rs` and Sea-ORM generated from rustdoc. It
 matches the crate version your app compiles against, and you can read it at
-[loco.rs/skills/loco](https://loco.rs/skills/loco/).
+[loco.rs/skills/loco](https://loco.rs/skills/loco/SKILL.md).
+
+We wrote up how we built it, including the parts that didn't work:
+
+1. [Rails had twenty years of training data. Loco has a skill.](https://loco.rs/blog/agents-1-no-training-data/)
+2. [What's in the Loco skill](https://loco.rs/blog/agents-2-whats-in-the-skill/)
+3. [Writing the doctrine down](https://loco.rs/blog/agents-3-writing-the-doctrine-down/)
+4. [Ten eval runs and an honest null](https://loco.rs/blog/agents-4-ten-eval-runs/)
+5. [The eval kept finding bugs in Loco](https://loco.rs/blog/agents-5-the-eval-found-loco-bugs/)
 
 **Presigned storage URLs.** `ctx.storage.presign_get` and `presign_put` give a
 client a time-limited URL that talks to S3, Azure or GCS directly, so a large

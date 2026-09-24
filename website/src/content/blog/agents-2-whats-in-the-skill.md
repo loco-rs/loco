@@ -27,7 +27,7 @@ We went with an [Agent Skill](https://agentskills.io): a folder the agent
 discovers, with a short entry file that routes to the rest on demand. `loco new`
 writes it into every app at `.claude/skills/loco/`, pinned to the `loco-rs`
 version that app compiles against. The same files live at
-[loco.rs/skills/loco](https://loco.rs/skills/loco/).
+[loco.rs/skills/loco](https://loco.rs/skills/loco/SKILL.md).
 
 - **`SKILL.md`**, under 2k tokens. Three rules (generate then edit, use the
   batteries, fat model slim controller), the eight fields of `AppContext`, the
