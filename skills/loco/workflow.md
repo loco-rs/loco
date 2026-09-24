@@ -57,7 +57,7 @@ The last three matter as much as the first seven: the correct answer is often
 
 **Recurring work is always two pieces.** The scheduler holds no work — its
 entries shell out to a task by name. So "every night at 3am" means a `Task` that
-does the thing, plus a `config/scheduler.yaml` entry that runs it. Writing the
+does the thing, plus an entry under `scheduler:` in `config/<env>.yaml` that runs it. Writing the
 logic inside a scheduler entry is not possible.
 
 ---

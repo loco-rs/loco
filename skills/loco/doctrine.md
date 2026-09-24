@@ -153,7 +153,7 @@ wrong is the most common structural mistake in generated Loco code.
 |---|---|---|---|---|
 | **`Task`** | `rake task` | a human, at a CLI: `cargo loco task <name>` | its own process, runs once, exits | one-off or operational work: backfills, reports, imports, admin surgery |
 | **`BackgroundWorker`** | Active Job | your code, during a request: `perform_later` | a queue worker process | the request must return before the work finishes: email, thumbnails, webhooks |
-| **Scheduler** | `whenever` / cron | the clock, per `config/scheduler.yaml` | **shells out** to a task or command | something must happen on a wall-clock schedule |
+| **Scheduler** | `whenever` / cron | the clock, per the `scheduler:` block in `config/<env>.yaml` | **shells out** to a task or command | something must happen on a wall-clock schedule |
 
 The critical structural fact: **the scheduler does not contain work.** Its `Job`
 struct holds a `run: String` that is "a task name and also task arguments," and
