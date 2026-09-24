@@ -1,0 +1,29 @@
+{
+  "title": "Cached user count \u2014 use ctx.cache, not a static map",
+  "principles": [
+    "P1",
+    "P2"
+  ],
+  "note": "Loco ships a cache on AppContext. A OnceLock<Mutex<HashMap>>, a lazy_static, or recomputing every request all compile and lint clean.",
+  "skill": [
+    "doctrine.md",
+    "recipes/endpoint.md",
+    "recipes/cache.md",
+    "api-index.md",
+    "sea-orm-index.md"
+  ],
+  "produce": [
+    "src/controllers/stats.rs"
+  ],
+  "append": [
+    "src/models/users.rs"
+  ],
+  "app_flags": [
+    "--db",
+    "sqlite",
+    "--bg",
+    "async",
+    "--assets",
+    "serverside"
+  ]
+}

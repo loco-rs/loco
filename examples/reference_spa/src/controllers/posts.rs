@@ -1,7 +1,6 @@
 #![allow(clippy::unused_async)]
 use axum::http::StatusCode;
 use loco_rs::prelude::*;
-use sea_orm::QueryOrder;
 use serde::Deserialize;
 
 use crate::{

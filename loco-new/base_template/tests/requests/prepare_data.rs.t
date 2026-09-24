@@ -51,7 +51,7 @@ pub async fn init_user_login(request: &TestServer, ctx: &AppContext) -> LoggedIn
 }
 
 pub fn auth_header(token: &str) -> (HeaderName, HeaderValue) {
-    let auth_header_value = HeaderValue::from_str(&format!("Bearer {}", &token)).unwrap();
+    let auth_header_value = HeaderValue::from_str(&format!("Bearer {token}")).unwrap();
 
     (HeaderName::from_static("authorization"), auth_header_value)
 }

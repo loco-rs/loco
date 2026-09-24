@@ -8,6 +8,9 @@ injections:
 - into: frontend/src/routes.tsx
   after: "// scaffold:routes"
   content: "{{ frontend_routes_injection }}"
+- into: frontend/src/pages/Home.tsx
+  after: "scaffold:nav"
+  content: "{{ frontend_nav_injection }}"
 ---
 import { Link } from "react-router";
 import { useList{{ pascal_plural }}, useRemove{{ pascal_singular }} } from "../../api/{{ snake_plural }}";
@@ -43,10 +46,12 @@ export function List() {
           {data?.items.map(({{ camel_singular }}) => (
             <tr key={{ "{" }}{{ camel_singular }}.id}>
 {%- for f in fields %}
-{%- if loop.first %}
+{%- if f.field_name == title_field_name %}
               <td>
                 <Link to={`/{{ snake_plural }}/${{ "{" }}{{ camel_singular }}.id}`}>{{ "{" }}{{ camel_singular }}.{{ f.field_name }}}</Link>
               </td>
+{%- elif f.input_kind == "checkbox" %}
+              <td>{{ "{" }}{% if f.nullable %}{{ camel_singular }}.{{ f.field_name }} == null ? "—" : {% endif %}{{ camel_singular }}.{{ f.field_name }} ? "Yes" : "No"}</td>
 {%- else %}
               <td>{{ "{" }}{{ camel_singular }}.{{ f.field_name }}}</td>
 {%- endif %}

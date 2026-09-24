@@ -1,6 +1,6 @@
 [package]
 name = "loco-gen"
-version = "1.1.0"
+version = "1.2.0"
 description = "Loco generators"
 homepage = "https://loco.rs/"
 documentation = "https://docs.rs/loco-gen"

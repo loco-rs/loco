@@ -33,9 +33,9 @@ async fn can_get_{{ name | plural | snake_case }}() {
 {% for action in actions -%}
 #[tokio::test]
 #[serial]
-async fn can_get_{{action}}() {
+async fn can_call_{{action.name}}() {
     request::<App, _, _>(|request, _ctx| async move {
-        let res = request.get("/api/{{ name | plural | snake_case }}/{{action}}").await;
+        let res = request.{{action.verb}}("/api/{{ name | plural | snake_case }}/{{action.name}}").await;
         assert_eq!(res.status_code(), {% if auth %}401{% else %}200{% endif %});
     })
     .await;

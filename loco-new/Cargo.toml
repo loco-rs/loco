@@ -2,7 +2,7 @@
 
 [package]
 name = "loco"
-version = "1.1.0"
+version = "1.2.0"
 edition = "2024"
 # Its own workspace, so it cannot inherit the root's `rust-version`. Kept in
 # step with it by hand — the `msrv` CI job checks both against the root value.

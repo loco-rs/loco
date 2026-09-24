@@ -40,7 +40,14 @@ pub fn generate(
     let mut gen_result = model::generate(rrgen, name, with_tz, fields, appinfo)?;
 
     let api_columns = column::columns_from_fields(fields)?;
-    let api_vars = build_api_context(name, &api_columns, with_tz, auth, appinfo);
+    let mut api_vars = build_api_context(name, &api_columns, with_tz, auth, appinfo);
+
+    // The DTOs derive `TS` either way, but `#[ts(export)]` makes `cargo test`
+    // *write* the bindings — into `../frontend/src/bindings/`. In an app with
+    // no frontend that conjured a `frontend/` tree out of nothing every time
+    // the suite ran, so the attribute has to follow the same condition the
+    // frontend templates do.
+    api_vars["frontend"] = serde_json::Value::Bool(frontend);
 
     // Backend (DTO + controller) -- always emitted.
     let res = render_template(rrgen, Path::new("scaffold/api"), &api_vars)?;
@@ -352,6 +359,17 @@ fn build_api_context(
     })
     .collect::<Vec<_>>()
     .join("\\n");
+    // Without this the generated app is a dead end: every route exists and
+    // nothing on the home page reaches it, so a freshly scaffolded resource is
+    // only findable by typing its URL.
+    //
+    // The quotes are backslash-escaped for the same reason the joins above use
+    // a literal `\\n`: this string is interpolated into the template's YAML
+    // frontmatter, which Tera renders *before* the YAML is parsed. A bare `"`
+    // would close the `content:` scalar and the whole template would fail to
+    // parse.
+    let frontend_nav_injection =
+        format!("          <li><Link to=\\\"/{snake_plural}\\\">{pascal_plural}</Link></li>");
 
     json!({
         "pascal_singular": pascal_singular,
@@ -368,5 +386,6 @@ fn build_api_context(
         "title_field_name": title_field_name,
         "frontend_imports_injection": frontend_imports_injection,
         "frontend_routes_injection": frontend_routes_injection,
+        "frontend_nav_injection": frontend_nav_injection,
     })
 }

@@ -1,16 +1,17 @@
-Use AI to Convert Tera v1 Templates to Tera v2
-==============================================
+---
+title: Migrate templates to Tera 2 with an AI assistant
+description: Where an AI converting Tera 1 templates to Tera 2 goes wrong — null handling, type tests, pat= patterns, default filters, and macros becoming components.
+---
 
 This document highlights the key considerations when migrating from Tera v1 to Tera v2 using AI tools.
 
 A strong AI should get you at least 90% of the way there without any fuss, especially if you do not use Tera v1 macros.
 
-However, the devil is in the details.  Subtle issues exist such that a converted termplate may
+However, the devil is in the details.  Subtle issues exist such that a converted template may
 compile and run successfully, but still contain errors that may or may not surface during runtime.
 
 
-Null Handling
--------------
+## Null Handling
 
 In Tera v1, you can do `<p>{{ text }}</p>` to render a blank tag if `text` does not exist.
 
@@ -21,8 +22,7 @@ The solution is to convert all nullable variable access to `expr or ""` which re
 AI is good in doing this modification and is usually quite thorough.
 
 
-Detecting Types
----------------
+## Detecting Types
 
 In Tera v2, there are now `is array`, `is string` etc.
 
@@ -31,8 +31,7 @@ You no longer have to use `is iterable` and not knowing whether a value is a str
 AI should be good in doing this modification.
 
 
-Patterns Need `pat=`
---------------------
+## Patterns Need `pat=`
 
 In Tera v2, `is containing` requires `pat=` for the pattern.
 
@@ -43,8 +42,7 @@ Tera v2: `is containing(pat="hello")`
 AI is very good in catching these.
 
 
-Filters and Maps
-----------------
+## Filters and Maps
 
 In Tera v2, you can do `[item.key for item in collection if item.value != ""]`.
 
@@ -53,8 +51,7 @@ So Tera v1's `map` and `filter` filters are no longer needed.
 AI can rewrite these expressions.
 
 
-Default Filter
---------------
+## Default Filter
 
 In Tera v2, `result | default(value=42)` is no longer necessary.
 
@@ -67,8 +64,7 @@ There is one catch: if `result` is falsy, it will be replaced with the default a
 `result or ""` will be blank if `result == 0`, so beware of this behavior difference between Tera v1 and v2.
 
 
-Missing Filters
----------------
+## Missing Filters
 
 Many built-in filters from Tera v1 no longer load by default.
 
@@ -77,8 +73,7 @@ Some are no longer necessary, e.g. the `json_encode` filter is not needed as map
 The old filters are in the `tera-contrib` crate.  This crate must be added to `Cargo.toml` to use them.
 
 
-Coalescing Operators
---------------------
+## Coalescing Operators
 
 Tera v2 has coalescing operators such as `foo?.bar?.baz` and `foo?[42]` etc.
 
@@ -89,8 +84,7 @@ You no longer need: `{% if not foo or not foo.bar or not foo.bar.baz %}N/A{% els
 AI is quite good in replace these expressions to use the coalescing operators if given clear instructions.
 
 
-String Comparisons
-------------------
+## String Comparisons
 
 Tera v2 now has built-in string comparisons, such as `>=`, `<` etc.
 
@@ -99,8 +93,7 @@ Your own custom filters in Tera v1 are no longer necessary.
 If you have them, ask AI to convert them into the standard operators, which it'll do just fine.
 
 
-Macros -> Components
---------------------
+## Macros -> Components
 
 It is surprisingly easy to use AI to convert Tera v1 macros to Tera v2 components.
 
@@ -109,16 +102,14 @@ Simply ask AI to do that, and it'd successfully convert most of them automatical
 Ask the AI to eliminate all `import` statements which are also no longer needed.
 
 
-Use Components as Values
-------------------------
+## Use Components as Values
 
 It is OK to use a Tera v2 component as value to a variable, just like Tera v1 macros.
 
 Example: `{% set text = <foo bar={42} title="hello" /> %}`
 
 
-Component Gotcha's
-------------------
+## Component Gotcha's
 
 ### Naming
 
