@@ -1,0 +1,31 @@
+{
+  "title": "Nightly signup digest \u2014 recurring work, run by the clock and by hand",
+  "principles": [
+    "P1",
+    "P2",
+    "P6"
+  ],
+  "note": "Targets task-vs-worker-vs-scheduler. Tempting wrong answers: a BackgroundWorker that re-enqueues itself, a tokio::spawn loop, or logic written into a scheduler entry.",
+  "skill": [
+    "doctrine.md",
+    "recipes/task-and-schedule.md",
+    "recipes/config.md",
+    "api-index.md",
+    "sea-orm-index.md"
+  ],
+  "produce": [
+    "src/tasks/signup_digest.rs"
+  ],
+  "app_flags": [
+    "--db",
+    "sqlite",
+    "--bg",
+    "async",
+    "--assets",
+    "serverside"
+  ],
+  "append": [
+    "src/models/users.rs",
+    "config/development.yaml"
+  ]
+}

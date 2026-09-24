@@ -40,6 +40,12 @@ const DOCS_DIR: &str = "website/src/content/docs";
 /// parsed, so this is the only thing standing between them and a truncated
 /// snippet in the published API docs.
 const RUST_DIRS: &[&str] = &["src", "loco-gen/src", "loco-new/src"];
+/// The agent skill. Its whole purpose is to stop coding agents inventing Loco
+/// that does not exist, so a snippet in it that is not even valid Rust would
+/// actively teach the thing it was written to prevent. Nothing else checks
+/// these blocks — they are markdown, not doc comments, so `cargo test --doc`
+/// never sees them.
+const SKILL_DIR: &str = "skills/loco";
 const SKIP_MARKER: &str = "no-syntax-check";
 
 struct Block {
@@ -74,6 +80,12 @@ pub fn run(project_dir: &Path) -> Result<()> {
     }
     if blocks.len() == before_sources {
         bail!("found no ```rust blocks in {RUST_DIRS:?} — the extractor is broken, not the docs");
+    }
+
+    let before_skill = blocks.len();
+    collect(&project_dir.join(SKILL_DIR), &mut blocks)?;
+    if blocks.len() == before_skill {
+        bail!("found no ```rust blocks under {SKILL_DIR} — the extractor is broken, not the skill");
     }
 
     let mut failures = Vec::new();

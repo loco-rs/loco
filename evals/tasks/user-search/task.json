@@ -1,0 +1,33 @@
+{
+  "title": "Authenticated, paginated user search \u2014 the credential-leak trap",
+  "principles": [
+    "P2",
+    "P4",
+    "P5"
+  ],
+  "note": "The users entity carries password and api_key. Serialising it directly compiles, lints and tests clean \u2014 only a reader catches it.",
+  "skill": [
+    "doctrine.md",
+    "recipes/endpoint.md",
+    "recipes/auth.md",
+    "recipes/config.md",
+    "api-index.md",
+    "sea-orm-index.md"
+  ],
+  "produce": [
+    "src/controllers/user_search.rs",
+    "src/views/user_search.rs"
+  ],
+  "app_flags": [
+    "--db",
+    "sqlite",
+    "--bg",
+    "async",
+    "--assets",
+    "serverside"
+  ],
+  "append": [
+    "src/models/users.rs",
+    "config/development.yaml"
+  ]
+}

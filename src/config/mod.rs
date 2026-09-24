@@ -84,8 +84,9 @@ pub struct Config {
     ///     - google.com
     ///     - apple.com
     /// ```
-    /// And then optionally deserialize it to your own `Settings` type by
-    /// accessing `ctx.config.settings`.
+    /// Read it with [`Config::settings`] rather than deserializing this field
+    /// by hand — that path makes a malformed block silently look like an
+    /// absent one.
     #[serde(default)]
     pub settings: Option<serde_json::Value>,
 
@@ -107,6 +108,36 @@ pub struct Config {
 pub type Initializers = BTreeMap<String, serde_json::Value>;
 
 impl Config {
+    /// Deserialize the `settings:` block into your own type.
+    ///
+    /// An absent block reads as an empty one, so a settings type whose fields
+    /// all carry `#[serde(default)]` works whether or not the operator wrote
+    /// the block. A block that is *present and malformed* is an error, which
+    /// is the whole point of this method: the obvious hand-rolled spelling,
+    /// `serde_json::from_value(..).ok().unwrap_or_default()`, cannot tell a
+    /// missing block from a typo'd one and quietly runs on defaults.
+    ///
+    /// ```ignore
+    /// #[derive(Debug, Default, Deserialize)]
+    /// #[serde(default)]
+    /// struct Settings {
+    ///     page_size: u64,
+    /// }
+    ///
+    /// let settings: Settings = ctx.config.settings()?;
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// When the block does not deserialize into `T`.
+    pub fn settings<T: serde::de::DeserializeOwned>(&self) -> Result<T> {
+        let raw = self
+            .settings
+            .clone()
+            .unwrap_or_else(|| serde_json::Value::Object(serde_json::Map::new()));
+        Ok(serde_json::from_value(raw)?)
+    }
+
     /// Creates a new configuration instance based on the specified environment.
     ///
     /// # Errors
@@ -259,6 +290,48 @@ mod tests {
 
     use super::*;
     use crate::environment::Environment;
+
+    #[derive(Debug, Default, Deserialize, PartialEq, Eq)]
+    #[serde(default)]
+    struct AppSettings {
+        page_size: u64,
+    }
+
+    fn with_settings(settings: Option<serde_json::Value>) -> Config {
+        Config {
+            settings,
+            ..crate::tests_cfg::config::test_config()
+        }
+    }
+
+    /// An absent block reads as an empty one, so a fully-defaulted settings
+    /// type does not force operators to write `settings: {}`.
+    #[test]
+    fn absent_settings_deserialize_as_defaults() {
+        let settings: AppSettings = with_settings(None).settings().expect("defaults");
+        assert_eq!(settings, AppSettings { page_size: 0 });
+    }
+
+    #[test]
+    fn present_settings_deserialize() {
+        let settings: AppSettings = with_settings(Some(serde_json::json!({"page_size": 25})))
+            .settings()
+            .expect("present");
+        assert_eq!(settings, AppSettings { page_size: 25 });
+    }
+
+    /// The reason this method exists. Hand-rolling with `.ok()` cannot tell a
+    /// typo'd block from a missing one, and silently runs on defaults.
+    #[test]
+    fn malformed_settings_are_an_error_not_a_default() {
+        let err = with_settings(Some(serde_json::json!({"page_size": "twenty"})))
+            .settings::<AppSettings>()
+            .expect_err("a malformed block must not read as absent");
+        assert!(
+            matches!(err, Error::JSON(_)),
+            "expected the deserialization error to surface, got: {err:?}"
+        );
+    }
 
     /// A minimal, valid `test.yaml`/`test.local.yaml` body. `settings` is
     /// used as a free-form nested map to exercise the merge behavior beyond

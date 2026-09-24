@@ -3,6 +3,7 @@ mod controller;
 mod deployment;
 #[cfg(feature = "with-db")]
 mod idempotency;
+mod links;
 mod mailer;
 #[cfg(feature = "with-db")]
 mod migration;

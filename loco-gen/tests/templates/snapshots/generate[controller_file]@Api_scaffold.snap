@@ -5,7 +5,6 @@ expression: "fs::read_to_string(controllers_path.join(\"posts.rs\")).expect(\"co
 #![allow(clippy::unused_async)]
 use axum::http::StatusCode;
 use loco_rs::prelude::*;
-use sea_orm::QueryOrder;
 
 use crate::{
     dtos::{

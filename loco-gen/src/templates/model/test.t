@@ -8,8 +8,9 @@ injections:
   append: true
   content: "mod {{plural_snake}};"
 ---
-use {{pkg_name}}::app::App;
+use {{pkg_name}}::{app::App, models::_entities::{{plural_snake}}};
 use loco_rs::testing::prelude::*;
+use sea_orm::EntityTrait;
 use serial_test::serial;
 
 macro_rules! configure_insta {
@@ -20,22 +21,27 @@ macro_rules! configure_insta {
     };
 }
 
+/// The `{{model}}` entity matches the table its migration created.
+///
+/// Selecting every column is the cheapest assertion that says something true:
+/// it fails if the migration and the entity disagree — a renamed column, a
+/// type that does not round-trip, a migration that never ran — which is the
+/// most common way a generated model breaks. Extend it as the model grows.
 #[tokio::test]
 #[serial]
-async fn test_model() {
+async fn can_query_{{plural_snake}}() {
     configure_insta!();
 
     let boot = boot_test::<App>().await.unwrap();
     seed::<App>(&boot.app_context).await.unwrap();
 
-    // query your model, e.g.:
+    // The query is the assertion. Bind the result and compare it once you have
+    // seed data to compare against, e.g.:
     //
-    // let item = models::posts::Model::find_by_pid(
-    //     &boot.app_context.db,
-    //     "11111111-1111-1111-1111-111111111111",
-    // )
-    // .await;
-
-    // snapshot the result:
-    // assert_debug_snapshot!(item);
+    // let items = {{plural_snake}}::Entity::find().all(&boot.app_context.db).await.unwrap();
+    // assert_debug_snapshot!(items);
+    {{plural_snake}}::Entity::find()
+        .all(&boot.app_context.db)
+        .await
+        .expect("`{{plural_snake}}` should be queryable — entity and migration must agree");
 }

@@ -1,0 +1,4 @@
+# Page size is configuration, not a literal in the handler.
+settings:
+  user_search:
+    page_size: 25

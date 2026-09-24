@@ -1,0 +1,42 @@
+name: "[evals]"
+
+# The eval corpus scores agent output against curated reference solutions. A
+# reference that no longer compiles does not fail loudly — it silently
+# invalidates every score measured against it, which is worse than having no
+# eval at all. This gates the corpus whenever the crate, the skill, or the
+# tasks change.
+#
+# Only the references are gated here. Running the eval itself needs a model and
+# costs real money, so it is a maintainer command, not a PR check.
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    paths:
+      - "evals/**"
+      - "skills/**"
+      - "src/**"
+      - "loco-new/base_template/**"
+      - "xtask/src/eval.rs"
+
+jobs:
+  references:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      # The harness drives the installed `loco` binary, which generates from
+      # ITS embedded templates — a stale one produces apps that do not match
+      # this commit's base_template.
+      - name: Install the CLI from this commit
+        run: cargo install --path loco-new --force
+      - name: Gate every reference solution
+        run: cargo run -p xtask -- eval --check-references
+        env:
+          LOCO_DEV_MODE_PATH: ${{ github.workspace }}

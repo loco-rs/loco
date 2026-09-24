@@ -6,3 +6,7 @@ dist/
 # not hand-maintained, unlike the rest of public/.
 public/llms.txt
 public/llms-full.txt
+# Copied from the repo's `skills/loco/` and root AGENTS.md by the same step, so
+# the site serves the agent skill without it becoming a second tracked copy.
+public/skills/
+public/AGENTS.md
