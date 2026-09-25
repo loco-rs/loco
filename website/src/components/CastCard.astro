@@ -6,16 +6,19 @@
 // episode number badge (from the zero-padded `episode` frontmatter field,
 // e.g. "007" -> "#007") overlaid on the thumbnail.
 import type { CollectionEntry } from 'astro:content';
+import { localizedPath, type Locale } from '../lib/i18n';
 
 interface Props {
   cast: CollectionEntry<'casts'>;
+  locale?: Locale;
 }
-const { cast } = Astro.props;
+const { cast, locale = 'en' } = Astro.props;
 
 const thumbnail = `https://img.youtube.com/vi/${cast.data.youtube}/hqdefault.jpg`;
+
 ---
 
-<a class="castcard" href={`/casts/${cast.id}/`}>
+<a class="castcard" href={localizedPath(`/casts/${cast.id}/`, locale)}>
   <div class="thumb">
     <img src={thumbnail} alt={cast.data.title} loading="lazy" />
     <span class="badge">#{cast.data.episode}</span>

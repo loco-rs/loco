@@ -7,7 +7,7 @@ sidebar:
 
 **Goal:** return the right HTTP status and JSON error body from a handler, without hand-writing `impl IntoResponse` yourself.
 
-This assumes a working controller — see [Add a controller](/docs/how-to/add-controller). Every handler that returns `loco_rs::Result<T>` (i.e. `Result<T, Error>`) gets its error automatically converted to an HTTP response by `impl IntoResponse for Error` — you never call `.into_response()` on an error yourself. For the exhaustive variant list and constructors, see the [Error model reference](/docs/reference/errors).
+This assumes a working controller — see [Add a controller](/docs/how-to/add-controller/). Every handler that returns `loco_rs::Result<T>` (i.e. `Result<T, Error>`) gets its error automatically converted to an HTTP response by `impl IntoResponse for Error` — you never call `.into_response()` on an error yourself. For the exhaustive variant list and constructors, see the [Error model reference](/docs/reference/errors/).
 
 ## 1. The three common-case helpers
 
@@ -54,7 +54,7 @@ Each returns `Result<U>` (always the `Err` arm), so `return unauthorized(msg)` t
 
 In practice this means: if you `?`-propagate a `sea_orm::DbErr`, an `std::io::Error`, or anything else that converts into `Error` via `#[from]`, and you haven't matched it explicitly, the client gets a generic 500 — which is usually what you want (don't leak internals), and every response is logged at `tracing::error!` first regardless of variant, so you still see the real cause server-side.
 
-The full variant → status table, including `Validation` (→ 400, from the `validator` crate) and `JsonRejection` (→ axum's own rejection status), is in the [Error model reference](/docs/reference/errors).
+The full variant → status table, including `Validation` (→ 400, from the `validator` crate) and `JsonRejection` (→ axum's own rejection status), is in the [Error model reference](/docs/reference/errors/).
 
 ## 3. Return an arbitrary status: `Error::CustomError`
 
@@ -90,7 +90,7 @@ Reach for `Error::string("...")` when you have a plain `&str`/message and no sou
 
 ## 5. Content-type-aware error handling
 
-If an endpoint needs to render errors differently for HTML vs. JSON clients, match on both the fallible call's `Result` and the negotiated format in one place — see [Respond with different formats](/docs/how-to/respond-formats#4-combine-format-negotiation-with-error-handling).
+If an endpoint needs to render errors differently for HTML vs. JSON clients, match on both the fallible call's `Result` and the negotiated format in one place — see [Respond with different formats](/docs/how-to/respond-formats/#4-combine-format-negotiation-with-error-handling).
 
 Note the boundary: that negotiation is something *your handler* does. An `Error` that propagates out of a handler is rendered by the framework's own `IntoResponse`, which always emits JSON (`{"error": ..., "description": ...}`) regardless of the request's `Accept` header. If an HTML client must see an HTML error page, catch the `Result` in the handler as above rather than letting the error propagate.
 
@@ -104,6 +104,6 @@ curl -i -X POST localhost:5150/auth/login -d '{"email":"x","password":"y"}' -H '
 
 ## Next
 
-- [Validate requests](/docs/how-to/validate-requests) — the `Validation` variant and structured field errors
-- [Respond with different formats](/docs/how-to/respond-formats)
-- [Error model reference](/docs/reference/errors) — full variant list and constructors
+- [Validate requests](/docs/how-to/validate-requests/) — the `Validation` variant and structured field errors
+- [Respond with different formats](/docs/how-to/respond-formats/)
+- [Error model reference](/docs/reference/errors/) — full variant list and constructors

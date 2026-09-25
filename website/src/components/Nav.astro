@@ -2,13 +2,21 @@
 // Ported from the reference `<nav>` block (markup + styles), see
 // docs/superpowers/specs/2026-07-17-homepage-direction-a-reference.html.
 import ThemeToggle from './ThemeToggle.astro';
+import LangSwitcher from './LangSwitcher.astro';
+import { t, localizedPath, type Locale } from '../lib/i18n';
+
+interface Props {
+  locale?: Locale;
+}
+const { locale = 'en' } = Astro.props;
+const tr = t(locale);
 ---
 
 <nav>
   <div class="wrap">
-    <a class="brand" href="/" aria-label="Loco home"><img src="/loco-mark.svg" alt="" /> loco</a>
+    <a class="brand" href={localizedPath('/', locale)} aria-label="Loco home"><img src="/loco-mark.svg" alt="" /> loco</a>
     <div class="navlinks">
-      <a href="/docs/">Docs</a><a href="/blog/">Blog</a><a href="/casts/">Screencasts</a>
+      <a href={localizedPath('/docs/', locale)}>{tr('nav.docs')}</a><a href={localizedPath('/blog/', locale)}>{tr('nav.blog')}</a><a href={localizedPath('/casts/', locale)}>{tr('nav.casts')}</a>
     </div>
     <div class="navright">
       <a
@@ -18,9 +26,10 @@ import ThemeToggle from './ThemeToggle.astro';
         rel="noopener noreferrer"
         data-github-stars
         aria-label="Loco on GitHub"
-      ><span data-star-label>★ GitHub</span></a>
+      ><span data-star-label>{tr('nav.github')}</span></a>
+      <LangSwitcher locale={locale} />
       <ThemeToggle />
-      <a class="btn btn-primary" href="/docs/tutorials/your-first-app/">Get started</a>
+      <a class="btn btn-primary" href={localizedPath('/docs/tutorials/your-first-app/', locale)}>{tr('nav.getStarted')}</a>
     </div>
   </div>
 </nav>

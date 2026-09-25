@@ -7,7 +7,7 @@ sidebar:
 
 **Goal:** filter rows from a model using Loco's `ConditionBuilder` fluent DSL instead of hand-assembling a Sea-ORM `Condition`.
 
-This assumes a working model (see [Add a model](/docs/how-to/add-model)). For the exhaustive operator list, exact signatures, and the `date_range` boundary semantics, see [Query DSL & pagination](/docs/reference/query-pagination).
+This assumes a working model (see [Add a model](/docs/how-to/add-model/). For the exhaustive operator list, exact signatures, and the `date_range` boundary semantics, see [Query DSL & pagination](/docs/reference/query-pagination/).
 
 ## 1. Import the DSL
 
@@ -20,7 +20,7 @@ use sea_orm::EntityTrait;
 
 `query::condition()` starts a builder; `.build()` finalizes it into a `sea_orm::Condition` you pass to `.filter(..)`.
 
-For tenant-owned data, enable the `multi-tenancy` feature, declare `TenantEntity`, and add `.in_tenant(tenant_id)` to selects and bulk mutations. See [Row-level multi-tenancy](/docs/how-to/multi-tenancy).
+For tenant-owned data, enable the `multi-tenancy` feature, declare `TenantEntity`, and add `.in_tenant(tenant_id)` to selects and bulk mutations. See [Row-level multi-tenancy](/docs/how-to/multi-tenancy/).
 
 ## 2. Build a simple filter
 
@@ -62,7 +62,7 @@ let cond = query::condition()
 let published = posts::Entity::find().filter(cond).all(&db).await?;
 ```
 
-Available operators (see the [reference](/docs/reference/query-pagination#operators) for the full table): `eq`/`ne`, `gt`/`gte`/`lt`/`lte`, `between`/`not_between`, `like`/`not_like`, `starts_with`/`ends_with`/`contains`, `is_null`/`is_not_null`, `is_in`/`is_not_in`, and `date_range`. Each also exists as a free function (`query::eq(col, v)`) that starts a new builder — useful when you only need one condition.
+Available operators (see the [reference](/docs/reference/query-pagination/#operators) for the full table): `eq`/`ne`, `gt`/`gte`/`lt`/`lte`, `between`/`not_between`, `like`/`not_like`, `starts_with`/`ends_with`/`contains`, `is_null`/`is_not_null`, `is_in`/`is_not_in`, and `date_range`. Each also exists as a free function (`query::eq(col, v)`) that starts a new builder — useful when you only need one condition.
 
 ## 4. Filter a date range
 
@@ -82,7 +82,7 @@ let cond = query::condition()
 ```
 
 <div class="infobox">
-Boundary behavior is asymmetric: a single-ended range (only <code>from</code> or only <code>to</code>) is <b>strict</b> (<code>&gt;</code> / <code>&lt;</code>), but a double-ended range (both <code>from</code> and <code>to</code>) is <b>inclusive</b> (<code>BETWEEN</code>). See <a href="/docs/reference/query-pagination#daterangebuilder-date-range-filtering">the reference</a> for the full table.
+Boundary behavior is asymmetric: a single-ended range (only <code>from</code> or only <code>to</code>) is <b>strict</b> (<code>&gt;</code> / <code>&lt;</code>), but a double-ended range (both <code>from</code> and <code>to</code>) is <b>inclusive</b> (<code>BETWEEN</code>). See <a href="/docs/reference/query-pagination/#daterangebuilder-date-range-filtering">the reference</a> for the full table.
 </div>
 
 ## 5. Sort results
@@ -109,5 +109,5 @@ You have a `Condition` built from readable, chainable method calls instead of ra
 
 ## Next
 
-- [Paginate results](/docs/how-to/paginate) using the condition you just built.
-- [Query DSL & pagination reference](/docs/reference/query-pagination) for every operator's exact SQL output.
+- [Paginate results](/docs/how-to/paginate/) using the condition you just built.
+- [Query DSL & pagination reference](/docs/reference/query-pagination/) for every operator's exact SQL output.

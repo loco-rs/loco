@@ -66,7 +66,7 @@ $ curl localhost:5150/_ping
 `/_ping` is one of three built-in monitoring endpoints (`/_ping`, `/_health`, `/_readiness`) mounted unconditionally by `AppRoutes::with_default_routes()` in `src/app.rs`.
 
 <div class="infobox">
-Because you picked a database (<code>--db sqlite</code>), this app was also generated with a complete, ready-to-use authentication suite mounted at <code>/api/auth/*</code> (register, login, current user, and more) — any Loco app with a database gets one, it isn't specific to a particular starter "template". This lesson doesn't use it; if you want to explore it, see <a href="/docs/tutorials/saas-with-auth">Build a small authenticated app</a>.
+Because you picked a database (<code>--db sqlite</code>), this app was also generated with a complete, ready-to-use authentication suite mounted at <code>/api/auth/*</code> (register, login, current user, and more) — any Loco app with a database gets one, it isn't specific to a particular starter "template". This lesson doesn't use it; if you want to explore it, see <a href="/docs/tutorials/saas-with-auth/">Build a small authenticated app</a>.
 </div>
 
 Stop the server with `Ctrl+C` before continuing — you'll restart it after generating code.
@@ -89,7 +89,7 @@ The scaffold is **adaptive** — no kind flag to pick. In a headless app (like t
 ```
 
 <div class="infobox">
-<strong>Why <code>--no-auth</code>?</strong> Scaffolded routes are authenticated by default: every handler takes an <code>auth::JWT</code> extractor, so an anonymous <code>curl</code> gets <code>401 Unauthorized</code>. That's the right default for a real resource, but it would turn this lesson into an auth tutorial. <code>--no-auth</code> generates the same controller with public routes. To see the authenticated flavor — register, log in, send the bearer token — follow <a href="/docs/tutorials/saas-with-auth">Build a small authenticated app</a>.
+<strong>Why <code>--no-auth</code>?</strong> Scaffolded routes are authenticated by default: every handler takes an <code>auth::JWT</code> extractor, so an anonymous <code>curl</code> gets <code>401 Unauthorized</code>. That's the right default for a real resource, but it would turn this lesson into an auth tutorial. <code>--no-auth</code> generates the same controller with public routes. To see the authenticated flavor — register, log in, send the bearer token — follow <a href="/docs/tutorials/saas-with-auth/">Build a small authenticated app</a>.
 </div>
 
 Unlike a plain `migration` generator, `scaffold` (like `model`) already **applied** the migration and regenerated the Sea-ORM entities for you — there's nothing left to run manually. You should now have:
@@ -104,7 +104,7 @@ migration/
   src/mYYYYMMDD_HHMMSS_posts.rs
 ```
 
-`title:string` and `content:text` are both nullable columns here (no `!`/`^` suffix) — that's intentional to keep this first pass simple. The field-type suffixes (required, unique) and the full type list are covered in [Generators & field types](/docs/reference/generators).
+`title:string` and `content:text` are both nullable columns here (no `!`/`^` suffix) — that's intentional to keep this first pass simple. The field-type suffixes (required, unique) and the full type list are covered in [Generators & field types](/docs/reference/generators/).
 
 ## 5. Run it and hit your new endpoint
 
@@ -130,7 +130,7 @@ $ curl localhost:5150/api/posts
 {"items":[{"id":1,"title":"My first Loco post","content":"It works.","created_at":"...","updated_at":"..."}],"page":1,"page_size":25,"total_pages":1,"total_items":1}
 ```
 
-The list endpoint is paginated, so it answers with a page envelope rather than a bare array. `page` and `page_size` are query parameters — `curl 'localhost:5150/api/posts?page=2&page_size=10'` — and the metadata field names are the same ones the framework's own [pagination helpers](/docs/how-to/paginate) use.
+The list endpoint is paginated, so it answers with a page envelope rather than a bare array. `page` and `page_size` are query parameters — `curl 'localhost:5150/api/posts?page=2&page_size=10'` — and the metadata field names are the same ones the framework's own [pagination helpers](/docs/how-to/paginate/) use.
 
 That's a full round trip: a generated migration created the `posts` table, a generated Sea-ORM entity modeled it, and a generated controller exposed it over HTTP — with zero hand-written Rust.
 
@@ -145,7 +145,7 @@ In a few minutes, without writing a line of Rust yourself, you:
 
 ## Next
 
-- [The Tour](/docs/tutorials/the-tour) — a faster walkthrough that also covers models with relations, hand-editing a controller, background workers, and tasks.
-- [Add a model](/docs/how-to/add-model) — the how-to version of what you just did, with the field-type mini-language spelled out.
-- [Build a small authenticated app](/docs/tutorials/saas-with-auth) — start from the SaaS starter path instead, with registration, login, and JWT-protected routes baked in.
-- [CLI reference](/docs/reference/cli) and [Generators & field types](/docs/reference/generators) — the exhaustive dictionaries behind everything you just ran.
+- [The Tour](/docs/tutorials/the-tour/) — a faster walkthrough that also covers models with relations, hand-editing a controller, background workers, and tasks.
+- [Add a model](/docs/how-to/add-model/) — the how-to version of what you just did, with the field-type mini-language spelled out.
+- [Build a small authenticated app](/docs/tutorials/saas-with-auth/) — start from the SaaS starter path instead, with registration, login, and JWT-protected routes baked in.
+- [CLI reference](/docs/reference/cli/) and [Generators & field types](/docs/reference/generators/) — the exhaustive dictionaries behind everything you just ran.

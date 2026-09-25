@@ -13,13 +13,21 @@
 // The reference inlines the mark as a base64 data: URI; here it's the
 // existing `/loco-mark.svg` static asset instead — same visual result,
 // no giant inline blob.
+import { t, type Locale } from '../lib/i18n';
+
+interface Props {
+  locale?: Locale;
+}
+const { locale = 'en' } = Astro.props;
+const tr = t(locale);
+
 const PILLARS = [
-  {icon:'battery', title:'Batteries included', copy:'Service, data, emails, background jobs, tasks, and a CLI to drive it all — in the box from day one.'},
-  {icon:'◆', title:'Rails is great', copy:'Loco follows Rails. There, we said it — its concepts, carefully adapted to idiomatic Rust.'},
-  {icon:'✓', title:'Deliver with confidence', copy:'Unapologetically optimized for the solo developer. Complexity and heavy lifting tucked away.'},
-  {icon:'bolt', title:'Scale when needed', copy:'Split, reconfigure, or use only the parts of Loco you need. Grow without a rewrite.'},
-  {icon:'▲', title:'Build incrementally', copy:'Just a service. Or with a database. Or a background worker. Or a task. Use what you need.'},
-  {icon:'▦', title:'Test-driven everything', copy:'Models, controllers, jobs — test the whole app with very little effort. Ship fast, stay safe.'},
+  {icon:'battery', title:tr('pillars.1.title'), copy:tr('pillars.1.copy')},
+  {icon:'◆', title:tr('pillars.2.title'), copy:tr('pillars.2.copy')},
+  {icon:'✓', title:tr('pillars.3.title'), copy:tr('pillars.3.copy')},
+  {icon:'bolt', title:tr('pillars.4.title'), copy:tr('pillars.4.copy')},
+  {icon:'▲', title:tr('pillars.5.title'), copy:tr('pillars.5.copy')},
+  {icon:'▦', title:tr('pillars.6.title'), copy:tr('pillars.6.copy')},
 ];
 ---
 
@@ -37,8 +45,8 @@ const PILLARS = [
 <section class="pillars">
   <div class="wrap">
     <div class="sec-head" data-reveal data-par="0.04">
-      <h2>Empower the one-person team.</h2>
-      <p>Loco follows Rails — carefully adapted to modern Rust. The heavy lifting is tucked away so you can move fast, and pulled back out the moment you need to scale.</p>
+      <h2>{tr('pillars.head')}</h2>
+      <p>{tr('pillars.sub')}</p>
     </div>
     <div class="grid">
       {PILLARS.map((p) => (

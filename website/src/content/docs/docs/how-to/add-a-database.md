@@ -43,7 +43,7 @@ validator = { version = "0.20" }
 uuid = { version = "1.6", features = ["v4"] }
 ```
 
-Add `ts-rs = { version = "12", features = ["chrono-impl", "serde-compat"] }` as well if you want the typed DTO bindings — see [Build a typed React SPA](/docs/how-to/build-a-spa).
+Add `ts-rs = { version = "12", features = ["chrono-impl", "serde-compat"] }` as well if you want the typed DTO bindings — see [Build a typed React SPA](/docs/how-to/build-a-spa/).
 
 ## 2. Create the `migration` crate
 
@@ -138,7 +138,7 @@ async fn seed(_ctx: &AppContext, _base: &Path) -> Result<()> {
 }
 ```
 
-Empty bodies are fine to start; fill them in when you need them (see [Seed data](/docs/how-to/seed-data)).
+Empty bodies are fine to start; fill them in when you need them (see [Seed data](/docs/how-to/seed-data/).
 
 Both binaries take the same parameter:
 
@@ -202,6 +202,6 @@ If `generate model` reports that it cannot inject into `migration/src/lib.rs`, t
 
 ## Next
 
-- [Add a model](/docs/how-to/add-model) — the field syntax and the normal workflow from here on
-- [Query data](/docs/how-to/query-data)
-- [Multi-database](/docs/how-to/multi-database) — if you need more than one connection
+- [Add a model](/docs/how-to/add-model/) — the field syntax and the normal workflow from here on
+- [Query data](/docs/how-to/query-data/)
+- [Multi-database](/docs/how-to/multi-database/) — if you need more than one connection

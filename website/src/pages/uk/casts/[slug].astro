@@ -1,0 +1,23 @@
+---
+// Ukrainian cast page at /uk/casts/<slug>/ — from the `castsUk` mirror
+// (same ids as `casts`, translated notes).
+import { getCollection } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
+import CastPost from '../../../components/CastPost.astro';
+import type { Locale } from '../../../lib/i18n';
+
+export async function getStaticPaths() {
+  const casts = await getCollection('castsUk');
+  return casts.map((cast) => ({
+    params: { slug: cast.id },
+    props: { cast: cast as unknown as CollectionEntry<'casts'>, locale: 'uk' as Locale },
+  }));
+}
+
+const { cast, locale } = Astro.props as {
+  cast: CollectionEntry<'casts'>;
+  locale: Locale;
+};
+---
+
+<CastPost cast={cast} locale={locale} />

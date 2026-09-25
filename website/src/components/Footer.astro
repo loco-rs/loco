@@ -1,16 +1,23 @@
 ---
 // Ported from the reference `<footer>` block (markup + styles), see
 // docs/superpowers/specs/2026-07-17-homepage-direction-a-reference.html.
+import { t, localizedPath, type Locale } from '../lib/i18n';
+
+interface Props {
+  locale?: Locale;
+}
+const { locale = 'en' } = Astro.props;
+const tr = t(locale);
 ---
 
 <footer>
   <div class="wrap">
-    <span>© Loco — the one-person framework for Rust</span>
+    <span>{tr('footer.tagline')}</span>
     <nav aria-label="Footer">
-      <a href="/docs/">Docs</a><span aria-hidden="true">·</span>
-      <a href="https://github.com/loco-rs/loco" target="_blank" rel="noopener noreferrer">GitHub</a><span aria-hidden="true">·</span>
-      <a href="https://discord.gg/fTvyBzwKS8" target="_blank" rel="noopener noreferrer">Discord</a><span aria-hidden="true">·</span>
-      <a href="/blog/">Blog</a>
+      <a href={localizedPath('/docs/', locale)}>{tr('footer.docs')}</a><span aria-hidden="true">·</span>
+      <a href="https://github.com/loco-rs/loco" target="_blank" rel="noopener noreferrer">{tr('footer.github')}</a><span aria-hidden="true">·</span>
+      <a href="https://discord.gg/fTvyBzwKS8" target="_blank" rel="noopener noreferrer">{tr('footer.discord')}</a><span aria-hidden="true">·</span>
+      <a href={localizedPath('/blog/', locale)}>{tr('footer.blog')}</a>
     </nav>
   </div>
 </footer>

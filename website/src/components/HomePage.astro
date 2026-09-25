@@ -1,0 +1,60 @@
+---
+// The homepage — locale parameterized so the same markup serves both the
+// English root page and /uk/. All strings come from src/lib/i18n.ts.
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+import Hero from '../components/Hero.astro';
+import Pillars from '../components/Pillars.astro';
+import Deck from '../components/Deck.astro';
+import { t, type Locale } from '../lib/i18n';
+
+interface Props {
+  locale?: Locale;
+}
+const { locale = 'en' } = Astro.props;
+const tr = t(locale);
+---
+<Base title={tr('home.title')} description={tr('home.description')} locale={locale}>
+  <Nav locale={locale} />
+  <Hero locale={locale} />
+  <div class="strip">
+    <div class="wrap">
+      <div class="row">
+        <span>{tr('strip.1')}</span><span>·</span><span>{tr('strip.2')}</span><span>·</span><span>{tr('strip.3')}</span><span>·</span><span>{tr('strip.4')}</span><span>·</span><span>{tr('strip.5')}</span><span>·</span><span>{tr('strip.6')}</span>
+      </div>
+    </div>
+  </div>
+  <Pillars locale={locale} />
+  <Deck locale={locale} />
+  <Footer locale={locale} />
+</Base>
+
+<script>
+  import '../lib/home.entry';
+</script>
+
+<style>
+  .wrap {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 0 32px;
+    width: 100%;
+  }
+  .strip {
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    padding: 20px 0;
+    margin-top: 20px;
+  }
+  .strip .row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 30px;
+    flex-wrap: wrap;
+    font-weight: 650;
+    color: #b7ab98;
+    font-size: 14.5px;
+  }
+</style>

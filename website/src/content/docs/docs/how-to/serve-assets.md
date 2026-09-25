@@ -7,7 +7,7 @@ sidebar:
 
 **Goal:** serve files (images, CSS, JS, a compiled SPA bundle) directly from Loco, either from disk or embedded into the compiled binary.
 
-This assumes a working app. For the full knob table, see the `static` entry in the [Middleware catalog reference](/docs/reference/middleware).
+This assumes a working app. For the full knob table, see the `static` entry in the [Middleware catalog reference](/docs/reference/middleware/).
 
 ## 1. Put files under `assets/static/`
 
@@ -80,7 +80,7 @@ server:
 
 Any request that doesn't match a real file under `assets/static/` falls back to `index.html`, letting your client-side router take over.
 
-If the SPA is Loco's own clientside mode — a Vite/React frontend in `frontend/`, with TypeScript types generated from your Rust DTOs — this config is already generated for you (pointing at `frontend/dist`). See [Build a typed React SPA](/docs/how-to/build-a-spa).
+If the SPA is Loco's own clientside mode — a Vite/React frontend in `frontend/`, with TypeScript types generated from your Rust DTOs — this config is already generated for you (pointing at `frontend/dist`). See [Build a typed React SPA](/docs/how-to/build-a-spa/).
 
 ## 5. Serve precompressed assets
 
@@ -130,6 +130,6 @@ curl -I localhost:5150/static/does-not-exist.png   # falls back per `fallback` c
 
 ## Next
 
-- [Render server-side views](/docs/how-to/render-views)
-- [Add middleware](/docs/how-to/add-middleware)
-- [Middleware catalog reference](/docs/reference/middleware)
+- [Render server-side views](/docs/how-to/render-views/)
+- [Add middleware](/docs/how-to/add-middleware/)
+- [Middleware catalog reference](/docs/reference/middleware/)

@@ -23,7 +23,7 @@ A plain `loco-rs = "..."` dependency (no `default-features = false`) pulls in JW
 | `cli` | **ON** | `dep:clap` | Enables the `cargo loco` runtime CLI (`src/cli.rs`). |
 | `with-db` | **ON** | `dep:sea-orm`, `dep:sea-orm-migration`, `dep:sqlx`, `loco-gen/with-db` | Sea-ORM 2.0 database support. Gates the `db` CLI subcommand and the DB-dependent generators (`model`, `migration`, `scaffold`). Postgres driver only unless `db-sqlite` is also enabled. |
 | `db-sqlite` | **ON** | `sea-orm?/sqlx-sqlite`, `sea-orm-migration?/sqlx-sqlite`, `sqlx?/sqlite` | SQLite SeaORM/sqlx drivers and the SQLite queue worker backend. Disable with `default-features = false` on Postgres-only apps to skip `libsqlite3-sys` compile cost. |
-| `multi-tenancy` | off | `with-db` | Explicit tenant scoping through `TenantEntity`, `TenantQueryExt`, and `TenantActiveModelExt`. See [Add row-level multi-tenancy](/docs/how-to/multi-tenancy). |
+| `multi-tenancy` | off | `with-db` | Explicit tenant scoping through `TenantEntity`, `TenantQueryExt`, and `TenantActiveModelExt`. See [Add row-level multi-tenancy](/docs/how-to/multi-tenancy/). |
 | `testing` | off | `dep:axum-test`, `dep:scraper`, `dep:tree-fs` | Test harness utilities. Enabled alongside `multi-tenancy` for docs.rs, and used by the crate's own `dev-dependencies`. |
 | `cache_inmem` | **ON** | `dep:moka` | In-memory cache backend. |
 | `cache_redis` | off | `dep:bb8-redis`, `dep:bb8` | Redis-backed cache pool. |
@@ -46,7 +46,7 @@ Source: root `Cargo.toml:27-64`.
 - **`multi-tenancy` implies `with-db`.** Tenant helpers build on Sea-ORM; enabling `with-db` alone does not enable them.
 - **`auth` selects `jsonwebtoken/rust_crypto`.** Because jsonwebtoken 10 unbundled its crypto backend, `auth` explicitly enables the `rust_crypto` sub-feature so JWT support keeps working without requiring a system C toolchain (e.g. OpenSSL).
 - **`with-db` is a prerequisite, not an implication.** Enabling `worker` does not itself pull in `with-db`; the two are independent flags that happen to share the `sqlx` dependency.
-- **The queue backend is chosen at runtime, not by feature flag.** `worker` builds in the Postgres and SQLite queue providers; which one actually runs is decided by `queue.kind` (`Postgres` or `Sqlite`) in your app config. `worker_redis` adds the Redis provider, selected the same way with `queue.kind: Redis`. See [Choose a queue backend](/docs/how-to/choose-queue-backend).
+- **The queue backend is chosen at runtime, not by feature flag.** `worker` builds in the Postgres and SQLite queue providers; which one actually runs is decided by `queue.kind` (`Postgres` or `Sqlite`) in your app config. `worker_redis` adds the Redis provider, selected the same way with `queue.kind: Redis`. See [Choose a queue backend](/docs/how-to/choose-queue-backend/).
 
 ## Disabling defaults
 

@@ -17,6 +17,13 @@ const blog = defineCollection({
   }),
 });
 
+// Ukrainian mirrors of the blog — same filenames/ids as `blog`, translated
+// frontmatter + body. Pages under /uk/blog/ read from this collection.
+const blogUk = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './src/content/blog-uk' }),
+  schema: blog.schema,
+});
+
 const casts = defineCollection({
   loader: glob({ pattern: '**/*.md', base: './src/content/casts' }),
   schema: z.object({
@@ -30,6 +37,12 @@ const casts = defineCollection({
   }),
 });
 
+// Ukrainian mirrors of the casts — same filenames/ids as `casts`.
+const castsUk = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './src/content/casts-uk' }),
+  schema: casts.schema,
+});
+
 const authors = defineCollection({
   loader: glob({ pattern: '**/*.md', base: './src/content/authors' }),
   schema: z.object({
@@ -38,9 +51,18 @@ const authors = defineCollection({
   }),
 });
 
+// Ukrainian author bios — same filenames/ids as `authors`.
+const authorsUk = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './src/content/authors-uk' }),
+  schema: authors.schema,
+});
+
 export const collections = {
   docs: defineCollection({ loader: docsLoader(), schema: docsSchema() }),
   blog,
+  blogUk,
   casts,
+  castsUk,
   authors,
+  authorsUk,
 };
