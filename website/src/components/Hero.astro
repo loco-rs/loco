@@ -14,13 +14,20 @@ import PostcardFrame from './PostcardFrame.astro';
 // Read from the workspace Cargo.toml — the eyebrow and the trust row both
 // hard-coded "1.0" and were still saying it after 1.1.0 shipped.
 import { locoVersion } from '../lib/versions';
+import { t, localizedPath, type Locale } from '../lib/i18n';
+
+interface Props {
+  locale?: Locale;
+}
+const { locale = 'en' } = Astro.props;
+const tr = t(locale);
 ---
 
 <div class="wrap">
   <div class="hero">
     <div>
       <div class="eyebrow-row">
-        <span class="eyebrow" data-reveal>● Batteries-included Rust · v{locoVersion}</span>
+        <span class="eyebrow" data-reveal>{tr('hero.eyebrow')} · v{locoVersion}</span>
         <span class="scribble-reveal" data-reveal><a
           class="scribble"
           href="/llms.txt"
@@ -33,14 +40,14 @@ import { locoVersion } from '../lib/versions';
           </svg>
         </a></span>
       </div>
-      <h1 data-reveal>The <span class="u">one-person</span><br />framework for Rust.</h1>
-      <p class="lede" data-reveal>Everything you need to take a side-project or startup from an idea to production — models, controllers, jobs, mailers, auth — generated and wired together.</p>
+      <h1 data-reveal>{tr('hero.title1')} <span class="u">{tr('hero.title2')}</span><br />{tr('hero.title3')}</h1>
+      <p class="lede" data-reveal>{tr('hero.lede')}</p>
       <div class="cta-row" data-reveal>
-        <a class="btn btn-primary" href="/docs/tutorials/your-first-app/">Start building →</a>
-        <div class="install" data-copy="cargo install loco" role="button" tabindex="0" aria-label="Copy install command: cargo install loco"><span><span class="dollar">$</span> cargo install loco</span><span class="cp">⧉ copy</span></div>
+        <a class="btn btn-primary" href={localizedPath('/docs/tutorials/your-first-app/', locale)}>{tr('hero.cta')}</a>
+        <div class="install" data-copy="cargo install loco" role="button" tabindex="0" aria-label="Copy install command: cargo install loco"><span><span class="dollar">$</span> cargo install loco</span><span class="cp">{tr('hero.copy')}</span></div>
       </div>
       <div class="trust" data-reveal>
-        <div><b>{locoVersion}</b> Sea-ORM 2.0 · edition 2024</div>
+        <div><b>{locoVersion}</b> {tr('hero.trust.version')}</div>
         <div>
           <a
             href="https://github.com/loco-rs/loco"
@@ -49,9 +56,9 @@ import { locoVersion } from '../lib/versions';
             data-github-stars
             data-star-placement="after"
             aria-label="Loco on GitHub"
-          ><b data-star-label>Stars</b> on GitHub</a>
+          ><b data-star-label>{tr('hero.trust.stars')}</b> {tr('hero.trust.starsOn')}</a>
         </div>
-        <div><b>0 → prod</b> in one command</div>
+        <div><b>{tr('hero.trust.prod')}</b> {tr('hero.trust.prodSuffix')}</div>
       </div>
     </div>
 

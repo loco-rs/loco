@@ -14,11 +14,13 @@
 // comment for why a link is appropriate there but not here).
 import { getEntry } from 'astro:content';
 import type { CollectionEntry } from 'astro:content';
+import { formatDate, localizedPath, type Locale } from '../lib/i18n';
 
 interface Props {
   post: CollectionEntry<'blog'>;
+  locale?: Locale;
 }
-const { post } = Astro.props;
+const { post, locale = 'en' } = Astro.props;
 
 function titleCase(slug: string) {
   return slug
@@ -34,14 +36,10 @@ const authorNames = await Promise.all(
   })
 );
 
-const dateStr = post.data.pubDate.toLocaleDateString('en-US', {
-  year: 'numeric',
-  month: 'long',
-  day: 'numeric',
-});
+const dateStr = formatDate(post.data.pubDate, locale);
 ---
 
-<a class="postcard" href={`/blog/${post.id}/`}>
+<a class="postcard" href={localizedPath(`/blog/${post.id}/`, locale)}>
   <h3>{post.data.title}</h3>
   <p class="desc">{post.data.description}</p>
   <div class="meta">

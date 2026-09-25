@@ -19,7 +19,7 @@ With `multi-tenancy` enabled, three traits are re-exported from `loco_rs::model`
 | `TenantQueryExt` | Loco, for `Select<E>`, `UpdateMany<E>`, and `DeleteMany<E>` where `E: TenantEntity` | Adds `in_tenant(tenant_id)`, an equality filter on the declared tenant column. |
 | `TenantActiveModelExt` | Loco, for active models whose entity implements `TenantEntity` | Adds `set_tenant(tenant_id) -> ModelResult<Self>`; sets an empty key, accepts the same key, and rejects reassignment with `ModelError::TenantMismatch`. |
 
-The scope is explicit rather than stored in thread-local or request-global state, so it can be passed between executor threads and used outside HTTP. Direct Sea-ORM builders remain available for intentional cross-tenant operations. See [Add row-level multi-tenancy](/docs/how-to/multi-tenancy) for feature configuration, trusted tenant resolution, and scoped reads and writes.
+The scope is explicit rather than stored in thread-local or request-global state, so it can be passed between executor threads and used outside HTTP. Direct Sea-ORM builders remain available for intentional cross-tenant operations. See [Add row-level multi-tenancy](/docs/how-to/multi-tenancy/) for feature configuration, trusted tenant resolution, and scoped reads and writes.
 
 ## `ConditionBuilder` — fluent filter DSL
 
@@ -206,7 +206,7 @@ let res = query::fetch_page(&db, Entity::find(), &query::PaginationQuery::page(2
 
 ## Model-layer error types
 
-`src/model/mod.rs` — the error type returned by model/authn code (distinct from the crate-wide `loco_rs::errors::Error`; see the [error model reference](/docs/reference/errors)).
+`src/model/mod.rs` — the error type returned by model/authn code (distinct from the crate-wide `loco_rs::errors::Error`; see the [error model reference](/docs/reference/errors/).
 
 ### `ModelError` / `ModelResult`
 

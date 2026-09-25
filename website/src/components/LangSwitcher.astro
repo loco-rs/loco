@@ -1,0 +1,229 @@
+---
+// Language switcher dropdown with flags — used by both the marketing nav
+// (Nav.astro) and the docs header override (starlight/Header.astro).
+//
+// Built on native <details>/<summary> so it works with zero JS: click (or
+// Enter/Space on the summary) opens the menu, and choosing a language
+// navigates. A tiny script adds Escape-to-close and click-outside-to-close
+// plus aria-expanded syncing for assistive tech.
+//
+// Colors use the marketing custom properties with Starlight's as fallbacks
+// (`var(--card, var(--sl-color-bg-nav))`), so one component fits both
+// surfaces.
+import { localizedPath, localeLabels, type Locale } from '../lib/i18n';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+
+// The same-page equivalent: strip the /uk prefix, then let localizedPath
+// rebuild it for the target locale. (Root `/uk/` strips to `/`.)
+const currentPath = Astro.url.pathname.startsWith('/uk/')
+  ? Astro.url.pathname.slice(3) || '/'
+  : Astro.url.pathname;
+
+const locales: Locale[] = ['en', 'uk'];
+---
+
+<details class="lang-dd" data-lang-dropdown>
+  <summary
+    class="lang-btn"
+    aria-label={`Language: ${localeLabels[locale]}`}
+    aria-haspopup="menu"
+  >
+    <span class="flag" aria-hidden="true">
+      {locale === 'uk' ? (
+        <svg viewBox="0 0 20 14" width="18" height="13">
+          <rect width="20" height="7" fill="#005BBB" />
+          <rect y="7" width="20" height="7" fill="#FFD500" />
+          <rect width="20" height="14" fill="none" stroke="rgba(128,128,128,.4)" stroke-width="1" />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 20 14" width="18" height="13">
+          <rect width="20" height="14" fill="#012169" />
+          <path d="M0 0L20 14M20 0L0 14" stroke="#fff" stroke-width="3" />
+          <path d="M0 0L20 14M20 0L0 14" stroke="#C8102E" stroke-width="1.4" />
+          <path d="M10 0V14M0 7H20" stroke="#fff" stroke-width="5" />
+          <path d="M10 0V14M0 7H20" stroke="#C8102E" stroke-width="2.6" />
+          <rect width="20" height="14" fill="none" stroke="rgba(128,128,128,.4)" stroke-width="1" />
+        </svg>
+      )}
+    </span>
+    <span class="lang-label">{localeLabels[locale]}</span>
+    <svg class="caret" viewBox="0 0 10 6" width="9" height="6" aria-hidden="true">
+      <path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  </summary>
+  <div class="lang-menu" role="menu">
+    {locales.map((l) => (
+      <a
+        role="menuitem"
+        href={localizedPath(currentPath, l)}
+        hreflang={l}
+        aria-current={l === locale ? 'true' : undefined}
+        class:list={['lang-item', { active: l === locale }]}
+      >
+        <span class="flag" aria-hidden="true">
+          {l === 'uk' ? (
+            <svg viewBox="0 0 20 14" width="18" height="13">
+              <rect width="20" height="7" fill="#005BBB" />
+              <rect y="7" width="20" height="7" fill="#FFD500" />
+              <rect width="20" height="14" fill="none" stroke="rgba(128,128,128,.4)" stroke-width="1" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 20 14" width="18" height="13">
+              <rect width="20" height="14" fill="#012169" />
+              <path d="M0 0L20 14M20 0L0 14" stroke="#fff" stroke-width="3" />
+              <path d="M0 0L20 14M20 0L0 14" stroke="#C8102E" stroke-width="1.4" />
+              <path d="M10 0V14M0 7H20" stroke="#fff" stroke-width="5" />
+              <path d="M10 0V14M0 7H20" stroke="#C8102E" stroke-width="2.6" />
+              <rect width="20" height="14" fill="none" stroke="rgba(128,128,128,.4)" stroke-width="1" />
+            </svg>
+          )}
+        </span>
+        <span class="lang-name">{localeLabels[l]}</span>
+        {l === locale && (
+          <svg class="check" viewBox="0 0 12 10" width="12" height="10" aria-hidden="true">
+            <path d="M1 5l3.5 3.5L11 1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        )}
+      </a>
+    ))}
+  </div>
+</details>
+
+<script>
+  // Progressive enhancement: close on Escape / outside click, and keep
+  // aria-expanded in sync. Module script — Astro dedupes it across pages.
+  function wireLangDropdowns(doc: Document) {
+    const dropdowns = [...doc.querySelectorAll<HTMLDetailsElement>('details[data-lang-dropdown]')];
+
+    const closeAll = (except?: HTMLDetailsElement) => {
+      for (const dd of dropdowns) {
+        if (dd !== except && dd.open) {
+          dd.open = false;
+          dd.querySelector('summary')?.setAttribute('aria-expanded', 'false');
+        }
+      }
+    };
+
+    for (const dd of dropdowns) {
+      const summary = dd.querySelector('summary');
+      if (!summary || summary.dataset.wired) continue;
+      summary.dataset.wired = '1';
+      summary.setAttribute('aria-expanded', String(dd.open));
+
+      summary.addEventListener('click', () => {
+        // Runs before the browser toggles `open`; sync after the toggle.
+        queueMicrotask(() => {
+          summary.setAttribute('aria-expanded', String(dd.open));
+          if (dd.open) closeAll(dd);
+        });
+      });
+    }
+
+    doc.addEventListener('keydown', (e) => {
+      if ((e as KeyboardEvent).key === 'Escape') closeAll();
+    });
+    doc.addEventListener('click', (e) => {
+      if (!dropdowns.some((dd) => dd.contains(e.target as Node))) closeAll();
+    });
+  }
+
+  wireLangDropdowns(document);
+</script>
+
+<style>
+  .lang-dd {
+    position: relative;
+    display: inline-flex;
+  }
+  .lang-dd[open] .lang-btn,
+  .lang-btn:hover {
+    color: var(--ink, var(--sl-color-white));
+    border-color: var(--ink-3, var(--sl-color-gray-4));
+  }
+
+  /* The trigger — pill-shaped, matching the GitHub-stars pill next to it. */
+  .lang-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--ink-2, var(--sl-color-gray-2));
+    border: 1px solid var(--line, var(--sl-color-gray-5));
+    padding: 7px 11px;
+    border-radius: 9px;
+    background: var(--card, var(--sl-color-bg-nav));
+    cursor: pointer;
+    list-style: none; /* remove the default details marker */
+    user-select: none;
+    white-space: nowrap;
+    transition:
+      color 0.15s ease,
+      border-color 0.15s ease;
+  }
+  .lang-btn::-webkit-details-marker {
+    display: none;
+  }
+  .flag {
+    display: inline-flex;
+    line-height: 0;
+  }
+  .flag svg {
+    border-radius: 2.5px;
+    display: block;
+  }
+  .caret {
+    opacity: 0.6;
+    transition: transform 0.15s ease;
+  }
+  .lang-dd[open] .caret {
+    transform: rotate(180deg);
+  }
+
+  /* The menu — floats below the pill, right-aligned to it. */
+  .lang-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 168px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px;
+    background: var(--card, var(--sl-color-bg-nav));
+    border: 1px solid var(--line, var(--sl-color-gray-5));
+    border-radius: 11px;
+    box-shadow: 0 16px 38px -18px rgba(28, 23, 18, 0.45);
+    z-index: 60;
+  }
+  .lang-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 10px;
+    border-radius: 7px;
+    font-size: 13.5px;
+    font-weight: 550;
+    color: var(--ink-2, var(--sl-color-gray-2));
+    text-decoration: none;
+    transition:
+      background 0.12s ease,
+      color 0.12s ease;
+  }
+  .lang-item:hover {
+    background: color-mix(in srgb, var(--line, var(--sl-color-gray-6)) 45%, transparent);
+    color: var(--ink, var(--sl-color-white));
+  }
+  .lang-item.active {
+    color: var(--ink, var(--sl-color-white));
+    font-weight: 700;
+  }
+  .check {
+    margin-left: auto;
+    color: var(--red-ink, var(--sl-color-red));
+  }
+</style>

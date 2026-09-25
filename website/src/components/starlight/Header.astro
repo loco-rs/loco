@@ -14,6 +14,13 @@ import config from 'virtual:starlight/user-config';
 import Search from 'virtual:starlight/components/Search';
 import ThemeToggle from '../ThemeToggle.astro';
 import VersionBadge from '../VersionBadge.astro';
+import LangSwitcher from '../LangSwitcher.astro';
+import { t as mt, localizedPath } from '../../lib/i18n';
+
+// Starlight's own localized UI strings for the current docs locale.
+const tr = Astro.locals.t;
+// The marketing-site locale that matches this docs locale ('uk' -> 'uk').
+const locale = Astro.locals.starlightRoute.locale === 'uk' ? 'uk' : 'en';
 
 const shouldRenderSearch =
   config.pagefind ||
@@ -22,7 +29,7 @@ const shouldRenderSearch =
 
 <div class="header">
   <div class="lead">
-    <a class="brand" href="/">
+    <a class="brand" href={localizedPath('/', locale)}>
       <img src="/loco-mark.svg" alt="" width="30" height="30" />
       <span>loco</span>
     </a>
@@ -30,9 +37,9 @@ const shouldRenderSearch =
   </div>
 
   <nav class="site-links sl-hidden md:sl-flex" aria-label="Site">
-    <a href="/docs/" aria-current="page">Docs</a>
-    <a href="/blog/">Blog</a>
-    <a href="/casts/">Screencasts</a>
+    <a href={localizedPath('/docs/', locale)} aria-current="page">{mt(locale)('nav.docs')}</a>
+    <a href={localizedPath('/blog/', locale)}>{mt(locale)('nav.blog')}</a>
+    <a href={localizedPath('/casts/', locale)}>{mt(locale)('nav.casts')}</a>
   </nav>
 
   <div class="right-group">
@@ -48,9 +55,10 @@ const shouldRenderSearch =
       rel="noopener noreferrer"
       data-github-stars
       aria-label="Loco on GitHub"
-    ><span data-star-label>★ GitHub</span></a>
+    ><span data-star-label>{mt(locale)('nav.github')}</span></a>
+    <LangSwitcher locale={locale} />
     <ThemeToggle />
-    <a class="cta sl-hidden md:sl-flex" href="/docs/tutorials/your-first-app/">Get started</a>
+    <a class="cta sl-hidden md:sl-flex" href={localizedPath('/docs/tutorials/your-first-app/', locale)}>{mt(locale)('nav.getStarted')}</a>
   </div>
 </div>
 

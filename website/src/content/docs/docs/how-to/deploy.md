@@ -115,7 +115,7 @@ export HOST='https://myapp.example.com'
 
 If you run more than one instance, or migrate as a separate release step, set `DB_AUTO_MIGRATE=false` so instances don't race to migrate the same database.
 
-See [Configure logging](/docs/how-to/configure-logging) for logging, and the [Configuration reference](/docs/reference/configuration) for every key in the file.
+See [Configure logging](/docs/how-to/configure-logging/) for logging, and the [Configuration reference](/docs/reference/configuration/) for every key in the file.
 
 ## 6. Run `loco doctor` before going live
 
@@ -150,5 +150,5 @@ ssh user@server 'LOCO_ENV=production /opt/myapp/myapp-cli start'
 
 ## Reference
 
-- `generate deployment` CLI shape (`docker`/`nginx`/`lambda` as `kind`): [CLI reference](/docs/reference/cli)
-- Every config key referenced above (`logger`, `server`, `database`, `auth`, `mailer`, `queue`): [Configuration reference](/docs/reference/configuration)
+- `generate deployment` CLI shape (`docker`/`nginx`/`lambda` as `kind`): [CLI reference](/docs/reference/cli/)
+- Every config key referenced above (`logger`, `server`, `database`, `auth`, `mailer`, `queue`): [Configuration reference](/docs/reference/configuration/)

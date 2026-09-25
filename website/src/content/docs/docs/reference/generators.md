@@ -5,7 +5,7 @@ sidebar:
   order: 3
 ---
 
-`cargo loco generate <kind>` (alias `cargo loco g <kind>`) scaffolds application code from templates baked into the `loco-gen` crate. The `generate` subcommand itself is compiled only under `#[cfg(debug_assertions)]` (`src/cli.rs:140`) — it is available in ordinary (dev/debug) builds but is compiled out of `--release` binaries. The kinds that touch the database (`model`, `migration`, `scaffold`) are additionally gated behind the `with-db` Cargo feature (on by default) — see [feature flags](/docs/reference/feature-flags).
+`cargo loco generate <kind>` (alias `cargo loco g <kind>`) scaffolds application code from templates baked into the `loco-gen` crate. The `generate` subcommand itself is compiled only under `#[cfg(debug_assertions)]` (`src/cli.rs:140`) — it is available in ordinary (dev/debug) builds but is compiled out of `--release` binaries. The kinds that touch the database (`model`, `migration`, `scaffold`) are additionally gated behind the `with-db` Cargo feature (on by default) — see [feature flags](/docs/reference/feature-flags/).
 
 This page is the exhaustive dictionary of generator kinds and the field-type mini-language (`name:type`) they all share. It transcribes `loco-gen/src/lib.rs` (the `Component` enum), `loco-gen/src/column.rs` (the field-type/column model), `loco-gen/src/infer.rs` (naming/inflection conventions), and `src/cli.rs` (the CLI surface), re-verified against `HEAD`.
 
@@ -52,7 +52,7 @@ After generating a `migration`, apply it and regenerate entities: `cargo loco db
 
 ### Scaffold / controller kind
 
-**There is no kind flag.** The 1.0 generators are adaptive: `controller` always generates a JSON API controller, and `scaffold` generates the JSON API plus — when the app has a `frontend/` (a clientside React SPA) — typed React Query hooks and pages for the resource. Headless apps get the backend only. Scaffold detects this from `frontend/src/routes.tsx` (`src/cli.rs`, `Component::Scaffold { frontend }`). For what the frontend half generates and how the TypeScript types stay in sync with your Rust DTOs, see [Build a typed React SPA](/docs/how-to/build-a-spa).
+**There is no kind flag.** The 1.0 generators are adaptive: `controller` always generates a JSON API controller, and `scaffold` generates the JSON API plus — when the app has a `frontend/` (a clientside React SPA) — typed React Query hooks and pages for the resource. Headless apps get the backend only. Scaffold detects this from `frontend/src/routes.tsx` (`src/cli.rs`, `Component::Scaffold { frontend }`). For what the frontend half generates and how the TypeScript types stay in sync with your Rust DTOs, see [Build a typed React SPA](/docs/how-to/build-a-spa/).
 
 ### Authentication on generated routes
 
@@ -74,7 +74,7 @@ A generated **controller is public by default** — it has no model behind it ye
 cargo loco generate controller posts --auth
 ```
 
-To add or remove auth after generating, add or delete the `_auth: auth::JWT,` argument on the handlers you care about — nothing else in the controller depends on it. For how the token is issued and where it is read from, see [JWT authentication](/docs/how-to/jwt-auth) and [JWT locations](/docs/how-to/jwt-locations).
+To add or remove auth after generating, add or delete the `_auth: auth::JWT,` argument on the handlers you care about — nothing else in the controller depends on it. For how the token is issued and where it is read from, see [JWT authentication](/docs/how-to/jwt-auth/) and [JWT locations](/docs/how-to/jwt-locations/).
 
 The pre-1.0 `--api` / `--html` / `--htmx` flags (and `-k/--kind`, plus the `ScaffoldKind` enum) were removed with the adaptive rebuild. For backward compatibility the generators still **accept** `--api` (a no-op — it's the headless default) and `--html`/`--htmx` (which error with a pointer to the React SPA frontend that replaced server-rendered views), so existing tutorials and scripts don't fail with a clap `unexpected argument` error (`warn_legacy_scaffold_kind`, `src/cli.rs`).
 
@@ -225,5 +225,5 @@ Documented at `loco-gen/src/infer.rs:1-14`: **`cruet`** is used *only* for plura
 
 ## Related reference pages
 
-- [Feature flags](/docs/reference/feature-flags) — `with-db` and the other Cargo features gating generators.
+- [Feature flags](/docs/reference/feature-flags/) — `with-db` and the other Cargo features gating generators.
 - Schema/`ColType` migration DSL and query pagination reference pages cover the migration-writer side (`add_column`, `add_reference`, `ColType`) in depth.

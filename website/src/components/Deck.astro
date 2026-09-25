@@ -20,16 +20,24 @@
 // panel isn't empty before hydration; home.ts's paint() overwrites these
 // via textContent/innerHTML assignment, which is idempotent for slide 0.
 import CodeWindow from './CodeWindow.astro';
-import { SLIDES, CODE } from '../lib/slides';
+import { SLIDES, SLIDES_UK, CODE } from '../lib/slides';
+import { t, type Locale } from '../lib/i18n';
 
-const slide = SLIDES[0];
+interface Props {
+  locale?: Locale;
+}
+const { locale = 'en' } = Astro.props;
+const tr = t(locale);
+const slides = locale === 'uk' ? SLIDES_UK : SLIDES;
+
+const slide = slides[0];
 const code = CODE[slide.k];
 ---
 
 <section class="deck-sec" data-reveal>
   <div class="wrap">
     <div class="deck-head">
-      <h2>One feature, a few small files.</h2>
+      <h2>{tr('deck.head')}</h2>
     </div>
     <div class="panel deck-panel">
       <div class="copy deck-copy">
@@ -41,8 +49,8 @@ const code = CODE[slide.k];
         </ul>
         <div class="deck-ctrl">
           <div class="dnav">
-            <button class="dbtn" id="dprev" aria-label="Previous part">←</button>
-            <button class="dbtn" id="dnext" aria-label="Next part">→</button>
+            <button class="dbtn" id="dprev" aria-label={tr('deck.prev')}>←</button>
+            <button class="dbtn" id="dnext" aria-label={tr('deck.next')}>→</button>
           </div>
           <div class="dots" id="ddots"></div>
           <span class="dcount"><b id="dnum">01</b>&thinsp;/&thinsp;06</span>

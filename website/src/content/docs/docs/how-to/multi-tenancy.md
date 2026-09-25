@@ -122,6 +122,6 @@ These traits do not automatically scope every database operation. Calling Sea-OR
 
 ## Next
 
-- [Query data](/docs/how-to/query-data) for filters that compose with tenant scope.
-- [Add a model](/docs/how-to/add-model) for generated entities and migrations.
-- [Add middleware](/docs/how-to/add-middleware) if tenant and permission resolution should be shared by a route group.
+- [Query data](/docs/how-to/query-data/) for filters that compose with tenant scope.
+- [Add a model](/docs/how-to/add-model/) for generated entities and migrations.
+- [Add middleware](/docs/how-to/add-middleware/) if tenant and permission resolution should be shared by a route group.

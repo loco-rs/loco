@@ -7,7 +7,7 @@ sidebar:
 
 **Goal:** return a page of rows plus paging metadata (`total_pages`, `total_items`, ...) from a controller endpoint, instead of loading an entire table.
 
-This builds on [Query data with the condition DSL](/docs/how-to/query-data). For exact signatures and the `PagerMeta` shape, see [Query DSL & pagination](/docs/reference/query-pagination#pagination).
+This builds on [Query data with the condition DSL](/docs/how-to/query-data/). For exact signatures and the `PagerMeta` shape, see [Query DSL & pagination](/docs/reference/query-pagination/#pagination).
 
 ## 1. Accept pagination params in your request
 
@@ -128,5 +128,5 @@ A request like `GET /posts?page=2&page_size=10&title=loco` returns exactly one p
 
 ## Next
 
-- [Query DSL & pagination reference](/docs/reference/query-pagination) for `PaginationQuery`'s exact defaults and the `paginate`/`fetch_page` signatures.
-- [Query data](/docs/how-to/query-data) for building the `Condition` you pass in.
+- [Query DSL & pagination reference](/docs/reference/query-pagination/) for `PaginationQuery`'s exact defaults and the `paginate`/`fetch_page` signatures.
+- [Query data](/docs/how-to/query-data/) for building the `Condition` you pass in.

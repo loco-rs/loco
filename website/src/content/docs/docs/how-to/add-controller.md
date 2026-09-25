@@ -7,7 +7,7 @@ sidebar:
 
 **Goal:** add a new HTTP endpoint group to your Loco app — generated, or written by hand — and get it showing up in `cargo loco routes`.
 
-This guide assumes a working Loco app (`cargo loco start` runs). For the full `Routes`/`AppRoutes` API and the exhaustive `Hooks` surface, see the [Hooks reference](/docs/reference/hooks).
+This guide assumes a working Loco app (`cargo loco start` runs). For the full `Routes`/`AppRoutes` API and the exhaustive `Hooks` surface, see the [Hooks reference](/docs/reference/hooks/).
 
 ## 1. Generate a controller
 
@@ -43,7 +43,7 @@ pub fn routes() -> Routes {
 }
 ```
 
-Edit the handler bodies and route methods (`get`/`post`/`put`/`delete`, etc.) to fit your endpoint. Controllers return JSON by default; if you'd rather render server-side HTML, see [Render server-side views](/docs/how-to/render-views).
+Edit the handler bodies and route methods (`get`/`post`/`put`/`delete`, etc.) to fit your endpoint. Controllers return JSON by default; if you'd rather render server-side HTML, see [Render server-side views](/docs/how-to/render-views/).
 
 ## 2. Confirm the routes are registered
 
@@ -163,7 +163,7 @@ Routes::new()
 
 ## 7. Apply a `tower::Layer` to just one controller or route
 
-`Routes::layer` attaches a `tower::Layer` (rate limiting, custom auth, tracing, etc.) to every handler in that `Routes` value only — for middleware that should run on *every* route, see [Add middleware](/docs/how-to/add-middleware) instead.
+`Routes::layer` attaches a `tower::Layer` (rate limiting, custom auth, tracing, etc.) to every handler in that `Routes` value only — for middleware that should run on *every* route, see [Add middleware](/docs/how-to/add-middleware/) instead.
 
 ```rust
 // src/controllers/notes.rs
@@ -189,6 +189,6 @@ curl -s localhost:5150/api/notes/
 
 ## Next
 
-- [Validate requests](/docs/how-to/validate-requests)
-- [Respond with different formats](/docs/how-to/respond-formats)
-- [Handle errors](/docs/how-to/handle-errors)
+- [Validate requests](/docs/how-to/validate-requests/)
+- [Respond with different formats](/docs/how-to/respond-formats/)
+- [Handle errors](/docs/how-to/handle-errors/)

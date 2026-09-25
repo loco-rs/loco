@@ -14,7 +14,7 @@ Loco ships two axum extractors for JWT-protected routes:
 
 Both live in `loco_rs::controller::extractor::auth` and are re-exported through `loco_rs::prelude::*` whenever the `auth` feature is on.
 
-If you generated your app with `loco new` and picked a database-backed starter, `with-db` and `auth` are already on by default — see the [feature flags reference](/docs/reference/feature-flags) if you need to check or change that.
+If you generated your app with `loco new` and picked a database-backed starter, `with-db` and `auth` are already on by default — see the [feature flags reference](/docs/reference/feature-flags/) if you need to check or change that.
 
 ## 1. Enable the `auth` feature
 
@@ -40,7 +40,7 @@ Two facts that will save you a confusing error message:
 - **The secret must be valid base64.** Loco encodes/decodes tokens with `EncodingKey::from_base64_secret` / `DecodingKey::from_base64_secret`. A plain, non-base64 string doesn't fail at config-load time — it fails later, when a token is generated or validated, with an error that doesn't obviously point at the config. Generate a base64 secret, e.g. `openssl rand -base64 64`, and inject it via `get_env` as above rather than hardcoding it.
 - **The default signing algorithm is HS512**, not HS256. It's set in code (`Algorithm::HS512`) and isn't a YAML key — override it only from Rust, via `JWT::algorithm(..)` when constructing the signer.
 
-For the full `auth.jwt` key reference, including `location`, see the [configuration reference](/docs/reference/configuration#auth). Token location (`Bearer` / `Query` / `Cookie`) is covered in its own guide: [Configure where Loco looks for the JWT](/docs/how-to/jwt-locations).
+For the full `auth.jwt` key reference, including `location`, see the [configuration reference](/docs/reference/configuration/#auth). Token location (`Bearer` / `Query` / `Cookie`) is covered in its own guide: [Configure where Loco looks for the JWT](/docs/how-to/jwt-locations/).
 
 ## 3. Generate a token
 
@@ -101,7 +101,7 @@ Internally, `JWTWithUser` validates the token exactly like `auth::JWT`, then cal
 
 ## The `Authenticable` contract
 
-Both `JWTWithUser<T>` and `ApiToken<T>` (see the [API-key guide](/docs/how-to/api-key-auth)) require your user model to implement `loco_rs::model::Authenticable`:
+Both `JWTWithUser<T>` and `ApiToken<T>` (see the [API-key guide](/docs/how-to/api-key-auth/) require your user model to implement `loco_rs::model::Authenticable`:
 
 ```rust
 #[async_trait]
@@ -134,7 +134,7 @@ impl Authenticable for super::_entities::users::Model {
 }
 ```
 
-**Note on scope:** the framework defines the `Authenticable` trait and the extractors above; the user model that implements it comes from `loco new`, not from `loco-gen`. Any app generated with a database — i.e. anything but `--db none`, which is what the `lightweight-service` template picks — already ships `src/models/users.rs` with an `Authenticable` implementation and `src/controllers/auth.rs` mounting the full `/api/auth/*` suite (`register`, `verify/{token}`, `login`, `forgot`, `reset`, `current`, `magic-link`, `resend-verification-mail`). See the [SaaS with auth tutorial](/docs/tutorials/saas-with-auth) for a walkthrough of that flow. With `--db none` there is no user model at all, and the pattern above is your starting point for wiring auth into a model of your own.
+**Note on scope:** the framework defines the `Authenticable` trait and the extractors above; the user model that implements it comes from `loco new`, not from `loco-gen`. Any app generated with a database — i.e. anything but `--db none`, which is what the `lightweight-service` template picks — already ships `src/models/users.rs` with an `Authenticable` implementation and `src/controllers/auth.rs` mounting the full `/api/auth/*` suite (`register`, `verify/{token}`, `login`, `forgot`, `reset`, `current`, `magic-link`, `resend-verification-mail`). See the [SaaS with auth tutorial](/docs/tutorials/saas-with-auth/) for a walkthrough of that flow. With `--db none` there is no user model at all, and the pattern above is your starting point for wiring auth into a model of your own.
 
 ## Verify it works
 
@@ -147,9 +147,9 @@ A missing, malformed, or expired token returns `401 Unauthorized`. A valid token
 
 ## Related
 
-- [Configure where Loco looks for the JWT](/docs/how-to/jwt-locations) — Bearer / Query / Cookie, single or multiple.
-- [Protect a route with an API key](/docs/how-to/api-key-auth) — `ApiToken<T>`, a separate always-Bearer-header mechanism.
-- [Hash and verify passwords](/docs/how-to/hash-passwords) — for the login handler that issues the token above.
-- [Configuration reference](/docs/reference/configuration#auth) — every `auth.jwt` key.
-- [Feature flags reference](/docs/reference/feature-flags) — `auth` / `with-db` defaults and interactions.
-- [AppContext & prelude reference](/docs/reference/app-context) — what `loco_rs::prelude::*` brings in under `auth`.
+- [Configure where Loco looks for the JWT](/docs/how-to/jwt-locations/) — Bearer / Query / Cookie, single or multiple.
+- [Protect a route with an API key](/docs/how-to/api-key-auth/) — `ApiToken<T>`, a separate always-Bearer-header mechanism.
+- [Hash and verify passwords](/docs/how-to/hash-passwords/) — for the login handler that issues the token above.
+- [Configuration reference](/docs/reference/configuration/#auth) — every `auth.jwt` key.
+- [Feature flags reference](/docs/reference/feature-flags/) — `auth` / `with-db` defaults and interactions.
+- [AppContext & prelude reference](/docs/reference/app-context/) — what `loco_rs::prelude::*` brings in under `auth`.

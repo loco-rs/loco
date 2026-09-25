@@ -1,0 +1,23 @@
+---
+// Ukrainian author page at /uk/authors/<slug>/ — from the `authorsUk`
+// mirror (same ids as `authors`, translated bios).
+import { getCollection } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
+import AuthorPage from '../../../components/AuthorPage.astro';
+import type { Locale } from '../../../lib/i18n';
+
+export async function getStaticPaths() {
+  const authors = await getCollection('authorsUk');
+  return authors.map((author) => ({
+    params: { slug: author.id },
+    props: { author: author as unknown as CollectionEntry<'authors'>, locale: 'uk' as Locale },
+  }));
+}
+
+const { author, locale } = Astro.props as {
+  author: CollectionEntry<'authors'>;
+  locale: Locale;
+};
+---
+
+<AuthorPage author={author} locale={locale} />

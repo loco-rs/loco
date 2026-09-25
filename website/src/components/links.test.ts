@@ -41,22 +41,30 @@ it('no component or page ships a placeholder `href="#"`', () => {
 
 it('the wordmark links home, so /blog and /casts can get back', () => {
   // Starlight's own header already did this; the marketing nav did not, which
-  // is exactly the asymmetry that got reported.
+  // is exactly the asymmetry that got reported. Since i18n, the brand href is
+  // built via localizedPath (root locale renders href="/"), so assert the
+  // call rather than the literal attribute.
   for (const component of ['components/Nav.astro', 'components/starlight/Header.astro']) {
-    expect(read(component)).toMatch(/<a[^>]*class="brand"[^>]*href="\/"/);
+    const source = read(component);
+    const hasLocalizedBrand =
+      /<a[^>]*class="brand"[^>]*href="\/"/.test(source) ||
+      (/<a[^>]*class="brand"[^>]*href=\{/.test(source) && source.includes('localizedPath'));
+    expect(hasLocalizedBrand).toBe(true);
   }
 });
 
 it('the footer names are links, not text', () => {
   const footer = read('components/Footer.astro');
-  for (const [label, href] of [
-    ['Docs', '/docs/'],
-    ['GitHub', 'https://github.com/loco-rs/loco'],
-    ['Discord', 'https://discord.gg/fTvyBzwKS8'],
-    ['Blog', '/blog/'],
+  for (const href of [
+    'localizedPath(\'/docs/\', locale)',
+    'https://github.com/loco-rs/loco',
+    'https://discord.gg/fTvyBzwKS8',
+    'localizedPath(\'/blog/\', locale)',
   ]) {
-    expect(footer).toContain(`href="${href}"`);
-    expect(footer).toContain(`>${label}</a>`);
+    expect(footer).toContain(href);
+  }
+  for (const label of ['footer.docs', 'footer.github', 'footer.discord', 'footer.blog']) {
+    expect(footer).toContain(label);
   }
 });
 

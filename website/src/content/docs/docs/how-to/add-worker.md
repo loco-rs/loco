@@ -9,7 +9,7 @@ Goal: move slow or non-request-critical work (sending a report, calling a third-
 
 ## Prerequisites
 
-- A queue backend configured (Redis, Postgres, or SQLite) if you want jobs to survive a restart. If you haven't decided yet, see [Choose a queue backend](/docs/how-to/choose-queue-backend). For local dev you can skip this — the default `BackgroundQueue` mode with no `queue:` config still works, it just won't persist jobs (jobs are dropped with a logged error if no provider is populated). Many apps start with `workers.mode: BackgroundAsync`, which needs no queue backend at all.
+- A queue backend configured (Redis, Postgres, or SQLite) if you want jobs to survive a restart. If you haven't decided yet, see [Choose a queue backend](/docs/how-to/choose-queue-backend/). For local dev you can skip this — the default `BackgroundQueue` mode with no `queue:` config still works, it just won't persist jobs (jobs are dropped with a logged error if no provider is populated). Many apps start with `workers.mode: BackgroundAsync`, which needs no queue backend at all.
 
 ## 1. Generate the worker
 
@@ -123,7 +123,7 @@ let job_id: String = DownloadWorker::perform_later(&ctx, args).await?;
 
 If `workers.mode` is `BackgroundQueue` but no queue provider is available, `perform_later` returns `Error::QueueProviderMissing` and the job is not run. A `BackgroundQueue` config without a `queue:` section fails at boot, so you normally see this at startup rather than at the call site.
 
-If you need higher/lower priority for this particular job, use `perform_later_with_priority` instead — see [Choose a queue backend](/docs/how-to/choose-queue-backend#priority-queues) for priority semantics shared across all three backends:
+If you need higher/lower priority for this particular job, use `perform_later_with_priority` instead — see [Choose a queue backend](/docs/how-to/choose-queue-backend/#priority-queues) for priority semantics shared across all three backends:
 
 ```rust
 DownloadWorker::perform_later_with_priority(&ctx, args, Some(50)).await?;
@@ -159,7 +159,7 @@ The worker's `queue()` and `tags()` apply to every job in the batch, exactly as 
 
 ## 5. Run the worker process
 
-How you run workers depends on `workers.mode` (see [Choose a queue backend](/docs/how-to/choose-queue-backend)):
+How you run workers depends on `workers.mode` (see [Choose a queue backend](/docs/how-to/choose-queue-backend/):
 
 ```sh
 # BackgroundQueue mode: run a dedicated worker process
@@ -216,6 +216,6 @@ Put worker tests under `tests/workers/` — the generator does this for you auto
 
 ## Reference
 
-- Every `queue:`/`workers:` YAML key: [Configuration reference](/docs/reference/configuration#queue)
-- `cargo loco start`/`jobs` flags: [CLI reference](/docs/reference/cli)
-- `worker`/`worker_redis` feature flags: [Feature flags reference](/docs/reference/feature-flags)
+- Every `queue:`/`workers:` YAML key: [Configuration reference](/docs/reference/configuration/#queue)
+- `cargo loco start`/`jobs` flags: [CLI reference](/docs/reference/cli/)
+- `worker`/`worker_redis` feature flags: [Feature flags reference](/docs/reference/feature-flags/)

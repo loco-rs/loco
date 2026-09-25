@@ -1,0 +1,67 @@
+---
+// The privacy policy — locale parameterized so the same markup serves both
+// /privacy-policy/ and /uk/privacy-policy/.
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+import { t, type Locale } from '../lib/i18n';
+
+interface Props {
+  locale?: Locale;
+}
+const { locale = 'en' } = Astro.props;
+const tr = t(locale);
+const title = tr('privacy.title');
+const description = tr('privacy.description');
+---
+
+<Base title={title} description={description} locale={locale}>
+  <Nav locale={locale} />
+  <main class="prose-page">
+    <h1>{title}</h1>
+
+    <p><strong>{tr('privacy.tldr')}</strong>: {tr('privacy.tldrText')}</p>
+
+    <h2>{tr('privacy.visitors')}</h2>
+    <ul>
+      <li>{tr('privacy.visitors1')}</li>
+      <li>{tr('privacy.visitors2')}</li>
+      <li>{tr('privacy.visitors3')}</li>
+      <li>{tr('privacy.visitors4')}</li>
+      <li>{tr('privacy.visitors5')}</li>
+      <li>{tr('privacy.visitors6')}</li>
+    </ul>
+
+    <h2>{locale === 'uk' ? 'Звʼяжіться з нами' : 'Contact us'}</h2>
+    <p>
+      <a href="https://github.com/loco-rs/loco/discussions">{tr('privacy.contact')}</a>
+      {tr('privacy.contactText')}
+    </p>
+
+    <p><em>{tr('privacy.effective')}</em></p>
+  </main>
+  <Footer locale={locale} />
+</Base>
+
+<style>
+  .prose-page {
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: 4rem 1.5rem 6rem;
+    line-height: 1.7;
+  }
+  .prose-page h1 {
+    font-size: 2.25rem;
+    margin-bottom: 1.5rem;
+  }
+  .prose-page h2 {
+    font-size: 1.25rem;
+    margin: 2.5rem 0 0.75rem;
+  }
+  .prose-page ul {
+    padding-left: 1.25rem;
+  }
+  .prose-page li {
+    margin: 0.35rem 0;
+  }
+</style>

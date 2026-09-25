@@ -63,9 +63,11 @@ const locoCodeTheme = {
 
 export default defineConfig({
   site: 'https://loco.rs',
-  // The old Zola-built docs used trailing slashes throughout; keep URLs
-  // stable across the migration.
-  trailingSlash: 'always',
+  // Keep the existing slash-terminated URLs stable while accepting links
+  // without a trailing slash too. This matters for locale-prefixed docs:
+  // `/uk/docs/how-to/add-model` should not become a 404 when a copied or
+  // external link omits the final slash.
+  trailingSlash: 'ignore',
   // Prefetch internal links on hover so docs sidebar navigation loads the
   // target page before the click resolves — kills the "content loading" flash
   // of a cold full-page (MPA) navigation.
@@ -73,6 +75,14 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'Loco',
+      // English stays at the root (`/docs/...`) so every existing URL keeps
+      // working; Ukrainian is served under `/uk/...`. Docs pages with no
+      // Ukrainian translation automatically fall back to the English content
+      // with Starlight's "not yet translated" notice.
+      locales: {
+        root: { label: 'English', lang: 'en' },
+        uk: { label: 'Українська', lang: 'uk' },
+      },
       customCss: ['./src/styles/starlight.css'],
       // The docs Header override (below) renders the marketing brand + a
       // VersionBadge itself, so Starlight's default SiteTitle isn't used.
@@ -88,15 +98,15 @@ export default defineConfig({
       // every published URL stays identical (URL parity preserved).
       sidebar: [
         {
-          label: 'Tutorials',
+          label: 'Tutorials', translations: { uk: 'Підручники' },
           items: [{ autogenerate: { directory: 'docs/tutorials' } }],
         },
         {
-          label: 'How-to guides',
+          label: 'How-to guides', translations: { uk: 'Інструкції' },
           items: [
             { slug: 'docs/how-to' },
             {
-              label: 'Data & models',
+              label: 'Data & models', translations: { uk: 'Дані та моделі' },
               items: [
                 { slug: 'docs/how-to/add-a-database' },
                 { slug: 'docs/how-to/add-model' },
@@ -109,7 +119,7 @@ export default defineConfig({
               ],
             },
             {
-              label: 'Web layer',
+              label: 'Web layer', translations: { uk: 'Вебрівень' },
               items: [
                 { slug: 'docs/how-to/add-controller' },
                 { slug: 'docs/how-to/validate-requests' },
@@ -123,7 +133,7 @@ export default defineConfig({
               ],
             },
             {
-              label: 'Background work',
+              label: 'Background work', translations: { uk: 'Фонова робота' },
               items: [
                 { slug: 'docs/how-to/add-worker' },
                 { slug: 'docs/how-to/choose-queue-backend' },
@@ -133,7 +143,7 @@ export default defineConfig({
               ],
             },
             {
-              label: 'Auth & security',
+              label: 'Auth & security', translations: { uk: 'Автентифікація та безпека' },
               items: [
                 { slug: 'docs/how-to/jwt-auth' },
                 { slug: 'docs/how-to/api-key-auth' },
@@ -142,7 +152,7 @@ export default defineConfig({
               ],
             },
             {
-              label: 'Testing',
+              label: 'Testing', translations: { uk: 'Тестування' },
               items: [
                 { slug: 'docs/how-to/request-tests' },
                 { slug: 'docs/how-to/model-tests' },
@@ -150,7 +160,7 @@ export default defineConfig({
               ],
             },
             {
-              label: 'Ops & configuration',
+              label: 'Ops & configuration', translations: { uk: 'Операції та налаштування' },
               items: [
                 { slug: 'docs/how-to/configure-storage' },
                 { slug: 'docs/how-to/use-cache' },
@@ -160,7 +170,7 @@ export default defineConfig({
               ],
             },
             {
-              label: 'Generators & tooling',
+              label: 'Generators & tooling', translations: { uk: 'Генератори та інструменти' },
               items: [
                 { slug: 'docs/how-to/use-generators' },
                 { slug: 'docs/how-to/override-templates' },
@@ -170,19 +180,19 @@ export default defineConfig({
           ],
         },
         {
-          label: 'Reference',
+          label: 'Reference', translations: { uk: 'Довідник' },
           items: [{ autogenerate: { directory: 'docs/reference' } }],
         },
         {
-          label: 'Explanation',
+          label: 'Explanation', translations: { uk: 'Пояснення' },
           items: [{ autogenerate: { directory: 'docs/explanation' } }],
         },
         {
-          label: 'Extras',
+          label: 'Extras', translations: { uk: 'Додатково' },
           items: [{ autogenerate: { directory: 'docs/extras' } }],
         },
         {
-          label: 'Resources',
+          label: 'Resources', translations: { uk: 'Ресурси' },
           items: [{ autogenerate: { directory: 'docs/resources' } }],
         },
       ],

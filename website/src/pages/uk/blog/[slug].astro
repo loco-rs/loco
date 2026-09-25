@@ -1,0 +1,23 @@
+---
+// Ukrainian blog post at /uk/blog/<slug>/ — from the `blogUk` mirror
+// collection (same ids as `blog`, translated frontmatter + body).
+import { getCollection } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
+import BlogPost from '../../../components/BlogPost.astro';
+import type { Locale } from '../../../lib/i18n';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blogUk');
+  return posts.map((post) => ({
+    params: { slug: post.id },
+    props: { post: post as unknown as CollectionEntry<'blog'>, locale: 'uk' as Locale },
+  }));
+}
+
+const { post, locale } = Astro.props as {
+  post: CollectionEntry<'blog'>;
+  locale: Locale;
+};
+---
+
+<BlogPost post={post} locale={locale} />

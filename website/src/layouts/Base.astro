@@ -1,9 +1,20 @@
 ---
-const { title = 'Loco — the one-person framework for Rust', description = '' } = Astro.props;
+import { type Locale } from '../lib/i18n';
+
+interface Props {
+  title?: string;
+  description?: string;
+  locale?: Locale;
+}
+const {
+  title = 'Loco — the one-person framework for Rust',
+  description = '',
+  locale = 'en',
+} = Astro.props;
 import '../styles/global.css';
 ---
 <!doctype html>
-<html lang="en">
+<html lang={locale}>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />

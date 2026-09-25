@@ -52,17 +52,17 @@ Every generator writes files relative to your project root and prints what it cr
 | `mailer` | no | Mailer struct + embedded `subject`/`html`/`text` templates |
 | `data` | no | Data-loader struct + a static `data/<name>/data.json` |
 | `deployment` | no | `docker`, `nginx`, or `lambda` deployment files |
-| `override` | no | Copies a built-in template locally so you can edit it — see [Override built-in templates](/docs/how-to/override-templates) |
+| `override` | no | Copies a built-in template locally so you can edit it — see [Override built-in templates](/docs/how-to/override-templates/) |
 
 `scaffold` and `controller` are **adaptive** — no kind flag. They generate a JSON API by default, and a scaffold additionally emits typed React hooks/pages when the app has a `frontend/`. (The old `--api`/`--html`/`--htmx` flags were removed in 1.0: `--api` is still accepted as a no-op so existing commands keep working; server-rendered HTML/HTMX views were replaced by the React SPA frontend.)
 
-Scaffolded routes require a JWT by default, so `curl`-ing one without a bearer token answers `401` — pass `--no-auth` for a public resource. A generated `controller` is public by default; `--auth` is its opt-in mirror. See [Authentication on generated routes](/docs/reference/generators#authentication-on-generated-routes).
+Scaffolded routes require a JWT by default, so `curl`-ing one without a bearer token answers `401` — pass `--no-auth` for a public resource. A generated `controller` is public by default; `--auth` is its opt-in mirror. See [Authentication on generated routes](/docs/reference/generators/#authentication-on-generated-routes).
 
-This is a summary for orientation only — the exhaustive, verified dictionary of every kind, every flag, and migration-name inference rules is the [Generators & field types reference](/docs/reference/generators); the raw CLI flag shapes are also in the [CLI reference](/docs/reference/cli#2-4-generate-subcommands).
+This is a summary for orientation only — the exhaustive, verified dictionary of every kind, every flag, and migration-name inference rules is the [Generators & field types reference](/docs/reference/generators/); the raw CLI flag shapes are also in the [CLI reference](/docs/reference/cli/#2-4-generate-subcommands).
 
 ## 4. Use the field-type mini-language
 
-`model`, `migration`, and `scaffold` all take `name:type` pairs after the resource name. The full table of ~50 base types (with their `!`/`^` suffix variants, arities, and Rust types) lives in the [field-type mini-language reference](/docs/reference/generators#field-type-mini-language) — check it before guessing a type name. A few load-bearing facts to keep in mind while typing field lists:
+`model`, `migration`, and `scaffold` all take `name:type` pairs after the resource name. The full table of ~50 base types (with their `!`/`^` suffix variants, arities, and Rust types) lives in the [field-type mini-language reference](/docs/reference/generators/#field-type-mini-language) — check it before guessing a type name. A few load-bearing facts to keep in mind while typing field lists:
 
 - No suffix = nullable (`Option<T>`); `!` = required; `^` = unique (implies required). Not every type has a `^` form (`bool`, `tstz`, `json` don't).
 - **`int` is `i64`/`BIGINT`** in Loco 1.0 (it was `i32` before) — `big_int` is just an alias. Use `small_int`/`small_unsigned` if you need a 16-bit column.

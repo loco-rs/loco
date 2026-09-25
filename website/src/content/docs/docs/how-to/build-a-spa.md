@@ -156,7 +156,7 @@ The `fallback` key inside `static` is what makes client-side routing survive a h
 `must_exist: true` means the app **refuses to start until `frontend/dist` exists**. On a freshly generated clientside app, `cargo loco start` fails before your code runs — that is not a broken app, it is the missing frontend build. Run `pnpm build` once first. The same applies in CI and in your Dockerfile: build the frontend before starting the binary, or set `must_exist: false` and accept 404s until you do.
 :::
 
-To ship a single self-contained binary with the bundle compiled in, see [`embedded_assets`](/docs/how-to/serve-assets#6-embed-assets-into-the-binary-with-embedded_assets).
+To ship a single self-contained binary with the bundle compiled in, see [`embedded_assets`](/docs/how-to/serve-assets/#6-embed-assets-into-the-binary-with-embedded_assets).
 
 ## 6. Authentication
 
@@ -185,9 +185,9 @@ export function RequireAuth() {
 }
 ```
 
-Scaffolded routes are injected **inside** the `RequireAuth` branch of the route table, matching the backend: generated controllers require a JWT. See [JWT authentication](/docs/how-to/jwt-auth) for the server side.
+Scaffolded routes are injected **inside** the `RequireAuth` branch of the route table, matching the backend: generated controllers require a JWT. See [JWT authentication](/docs/how-to/jwt-auth/) for the server side.
 
-The generated token store uses `localStorage`. That is the simplest thing that works for a getting-started app; if XSS-resistant storage matters for your threat model, move the token to an httpOnly cookie and switch the server to the cookie JWT location — see [JWT locations](/docs/how-to/jwt-locations).
+The generated token store uses `localStorage`. That is the simplest thing that works for a getting-started app; if XSS-resistant storage matters for your threat model, move the token to an httpOnly cookie and switch the server to the cookie JWT location — see [JWT locations](/docs/how-to/jwt-locations/).
 
 ## 7. A complete example
 
@@ -195,7 +195,7 @@ The generated token store uses `localStorage`. That is the simplest thing that w
 
 ## Related
 
-- [Serve static & SPA assets](/docs/how-to/serve-assets) — the static middleware in full
-- [Add a controller](/docs/how-to/add-controller) — the API the SPA calls
-- [Use the generators](/docs/how-to/use-generators) — every generator and flag
-- [Deploy](/docs/how-to/deploy) — remember to build the frontend in your pipeline
+- [Serve static & SPA assets](/docs/how-to/serve-assets/) — the static middleware in full
+- [Add a controller](/docs/how-to/add-controller/) — the API the SPA calls
+- [Use the generators](/docs/how-to/use-generators/) — every generator and flag
+- [Deploy](/docs/how-to/deploy/) — remember to build the frontend in your pipeline

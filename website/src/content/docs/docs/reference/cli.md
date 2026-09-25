@@ -98,7 +98,7 @@ Source: `loco-new/src/settings.rs:58-89`.
 - DB enabled → `Features::default()` (loco-rs default features apply to the generated app).
 - DB **disabled** (Lightweight template, or `--db none`) → `default-features = false`, feature names = `["cli"]`; if background is `queue-redis`, `"worker_redis"` is appended; if background is `queue-postgres` or `queue-sqlite`, `"worker"` is appended.
 - `auth` and `mailer` scaffolding are enabled iff DB is enabled.
-- The DB choice is **expensive to reverse**: `--db none` removes the `migration` crate, the `models` module, `AppContext::db`, and the two `with-db`-only `Hooks` methods, and no generator puts them back. Adding a database later is a manual procedure — see [Add a database to an existing app](/docs/how-to/add-a-database).
+- The DB choice is **expensive to reverse**: `--db none` removes the `migration` crate, the `models` module, `AppContext::db`, and the two `with-db`-only `Hooks` methods, and no generator puts them back. Adding a database later is a manual procedure — see [Add a database to an existing app](/docs/how-to/add-a-database/).
 - Serverside assets → generated `Initializers { view_engine: true }`.
 - `loco_version_text`: normally `version = "<LOCO_VERSION>"` (`loco-new/src/lib.rs:27`, currently `1.1`); when env var `LOCO_DEV_MODE_PATH` is set, becomes `version = "*", path = "<that path>"` — this is how the local framework checkout is dogfooded.
 - Generated app's own edition is pinned in `loco-new/base_template/Cargo.toml.t` independent of the `loco-rs` framework edition.
@@ -169,7 +169,7 @@ when it moves anything.
 
 ### 2.4 `generate` subcommands
 
-`enum ComponentArg`, `src/cli.rs:173-382` — only present in debug builds (`#[cfg(debug_assertions)]` on `Commands::Generate`). `model`/`migration`/`scaffold` are additionally gated on `#[cfg(feature = "with-db")]`. Full field-type syntax is covered in the [Generators & field types](/docs/reference/generators) reference; this table lists CLI shape only.
+`enum ComponentArg`, `src/cli.rs:173-382` — only present in debug builds (`#[cfg(debug_assertions)]` on `Commands::Generate`). `model`/`migration`/`scaffold` are additionally gated on `#[cfg(feature = "with-db")]`. Full field-type syntax is covered in the [Generators & field types](/docs/reference/generators/) reference; this table lists CLI shape only.
 
 | Command | Gated | Args / flags | Notes |
 |---|---|---|---|

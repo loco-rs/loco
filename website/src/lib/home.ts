@@ -1,4 +1,10 @@
-import { SLIDES, CODE, stripTags } from './slides';
+import { SLIDES, SLIDES_UK, CODE, stripTags } from './slides';
+
+// The deck copy follows the document language: Ukrainian pages render
+// /uk/ with <html lang="uk">, everything else uses the English slides.
+function slidesFor(doc: Document) {
+  return doc.documentElement.lang === 'uk' ? SLIDES_UK : SLIDES;
+}
 
 // ---- terminal text that STREAMS as you scroll ----------------------------
 // Ported verbatim from the reference `seg` array / `renderTerm` (see
@@ -61,6 +67,7 @@ export function initHome(doc: Document): void {
   const dcopyBox = doc.querySelector('.deck-copy');
   const ddots = doc.getElementById('ddots');
   const dnum = doc.getElementById('dnum');
+  const SLIDES = slidesFor(doc);
 
   let di = 0;
 
