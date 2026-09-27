@@ -38,6 +38,7 @@ mod logger;
 mod mailer;
 mod queue;
 mod server;
+mod storage;
 mod template;
 
 pub use auth::*;
@@ -47,6 +48,7 @@ pub use logger::*;
 pub use mailer::*;
 pub use queue::*;
 pub use server::*;
+pub use storage::*;
 
 use crate::{environment::Environment, scheduler, Error, Result};
 
@@ -68,6 +70,8 @@ pub struct Config {
     pub database: Database,
     #[serde(default)]
     pub cache: CacheConfig,
+    #[serde(default)]
+    pub storage: StorageConfig,
     pub queue: Option<QueueConfig>,
     pub auth: Option<Auth>,
     #[serde(default)]

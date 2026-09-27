@@ -66,6 +66,58 @@ pub struct Storage {
     pub strategy: Box<dyn strategies::StorageStrategy>,
 }
 
+/// Builds the default [`Storage`] from `config.storage`.
+///
+/// Mirrors [`crate::cache::create_cache_provider`]: the `kind`-tagged config
+/// selects a driver via its factory function. Runs during
+/// [`crate::boot::create_context`], before [`crate::app::Hooks::after_context`]
+/// — which still runs afterward and can freely replace the result via
+/// `ctx.into_builder().storage(..).build()`, exactly as it does today.
+///
+/// # Errors
+///
+/// Returns an error if the selected driver fails to initialize (e.g. an
+/// invalid `local` path, or a malformed cloud-provider client).
+pub fn create_storage_provider(config: &crate::config::Config) -> StorageResult<Storage> {
+    use crate::config::StorageConfig;
+
+    let driver = match &config.storage {
+        #[cfg(feature = "storage_aws_s3")]
+        StorageConfig::Aws(c) => match (&c.access_key_id, &c.secret_access_key, &c.endpoint) {
+            (Some(key_id), Some(secret_key), endpoint) => {
+                let credentials = drivers::aws::Credential {
+                    key_id: key_id.clone(),
+                    secret_key: secret_key.clone(),
+                    token: c.session_token.clone(),
+                };
+                match endpoint {
+                    Some(endpoint) => drivers::aws::with_credentials_and_endpoint(
+                        &c.bucket,
+                        &c.region,
+                        endpoint,
+                        credentials,
+                    )?,
+                    None => drivers::aws::with_credentials(&c.bucket, &c.region, credentials)?,
+                }
+            }
+            _ => drivers::aws::new(&c.bucket, &c.region)?,
+        },
+        #[cfg(feature = "storage_gcp")]
+        StorageConfig::Gcp(c) => drivers::gcp::new(&c.bucket, &c.credential_path)?,
+        #[cfg(feature = "storage_azure")]
+        StorageConfig::Azure(c) => {
+            drivers::azure::new(&c.container, &c.account_name, &c.access_key, &c.endpoint)?
+        }
+        StorageConfig::Local(c) => match &c.path {
+            Some(path) => drivers::local::new_with_prefix(path)?,
+            None => drivers::local::new(),
+        },
+        StorageConfig::Null => drivers::null::new(),
+    };
+
+    Ok(Storage::single(driver))
+}
+
 impl Storage {
     /// Creates a new storage instance with a single store and the default
     /// strategy.
@@ -660,5 +712,50 @@ impl Storage {
         strategy: &dyn strategies::StorageStrategy,
     ) -> StorageResult<()> {
         strategy.upload_stream(self, path, stream).await
+    }
+}
+
+#[cfg(test)]
+mod config_provider_tests {
+    use super::create_storage_provider;
+    use crate::config::StorageConfig;
+
+    /// Absent `storage:` (the `Null` default) must still produce a usable
+    /// `Storage` — the same fallback `boot::create_context` hardcoded before
+    /// this config field existed.
+    #[tokio::test]
+    async fn null_config_builds_a_storage_whose_default_store_refuses_reads() {
+        let mut config = crate::tests_cfg::config::test_config();
+        config.storage = StorageConfig::Null;
+
+        let storage = create_storage_provider(&config).expect("null driver always builds");
+        let err = storage
+            .exists(std::path::Path::new("anything"))
+            .await
+            .expect_err("null storage refuses every operation");
+        assert!(err.to_string().contains("not supported"));
+    }
+
+    /// A `local` config with a path builds a store rooted there, distinct
+    /// from `local::new()`'s cwd-rooted default.
+    #[tokio::test]
+    async fn local_config_with_path_roots_the_store_there() {
+        let tree = tree_fs::TreeBuilder::default()
+            .drop(true)
+            .create()
+            .expect("temp dir");
+
+        let mut config = crate::tests_cfg::config::test_config();
+        config.storage = StorageConfig::Local(crate::config::LocalStorageConfig {
+            path: Some(tree.root.display().to_string()),
+        });
+
+        let storage = create_storage_provider(&config).expect("local driver builds");
+        let path = std::path::Path::new("probe.txt");
+        storage
+            .upload(path, &bytes::Bytes::from("loco"))
+            .await
+            .expect("upload into the configured root");
+        assert!(tree.root.join("probe.txt").exists());
     }
 }
