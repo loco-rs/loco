@@ -105,11 +105,27 @@ multi-tenancy = ["with-db"]
 all_storage = ["storage_aws_s3", "storage_azure", "storage_gcp"]
 # The local and in-memory drivers are plain tokio; OpenDAL comes in only for
 # the cloud backends, or for wrapping another OpenDAL service yourself with
-# `drivers::opendal_adapter`.
+# `drivers::opendal_adapter`. The cloud backends also need opendal's HTTP
+# client, which opendal installs at startup through `auto-register-services`.
 storage_opendal = ["dep:opendal"]
-storage_aws_s3 = ["storage_opendal", "opendal/services-s3"]
-storage_azure = ["storage_opendal", "opendal/services-azblob"]
-storage_gcp = ["storage_opendal", "opendal/services-gcs"]
+storage_aws_s3 = [
+    "storage_opendal",
+    "opendal/services-s3",
+    "opendal/http-transport-reqwest",
+    "opendal/auto-register-services",
+]
+storage_azure = [
+    "storage_opendal",
+    "opendal/services-azblob",
+    "opendal/http-transport-reqwest",
+    "opendal/auto-register-services",
+]
+storage_gcp = [
+    "storage_opendal",
+    "opendal/services-gcs",
+    "opendal/http-transport-reqwest",
+    "opendal/auto-register-services",
+]
 # Cache feature
 cache_inmem = []
 cache_redis = ["dep:bb8-redis", "dep:bb8"]
