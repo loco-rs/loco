@@ -17,7 +17,7 @@ use sqlx::{
 use std::fmt::Write;
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, trace};
+use tracing::{debug, error, trace, warn};
 use ulid::Ulid;
 
 /// [`Driver`] implementation delegating to the Postgres-specific
@@ -253,6 +253,130 @@ pub async fn initialize_database(pool: &PgPool) -> Result<()> {
         .await?;
     }
 
+    ensure_indexes(pool).await?;
+
+    Ok(())
+}
+
+/// An index [`initialize_database`] maintains on `pg_loco_queue`.
+struct QueueIndex {
+    name: &'static str,
+    unique: bool,
+    /// Everything after `ON pg_loco_queue`.
+    definition: &'static str,
+}
+
+/// Without these, every dequeue and every status update is a sequential scan
+/// of a table that also keeps every finished job.
+const QUEUE_INDEXES: &[QueueIndex] = &[
+    // `complete_job`, `fail_job`, `cancel_job` and friends all update by id.
+    QueueIndex {
+        name: "pg_loco_queue_id_key",
+        unique: true,
+        definition: "(id)",
+    },
+    // Matches `dequeue`'s `ORDER BY`, so the next job is read straight off the
+    // index. Partial on `queued`, so it stays small however many finished jobs
+    // the table accumulates.
+    QueueIndex {
+        name: "pg_loco_queue_dequeue_idx",
+        unique: false,
+        definition: "(priority DESC, run_at, id) WHERE status = 'queued'",
+    },
+];
+
+/// Advisory lock key held while indexes are built, so app instances booting
+/// together build them one at a time.
+const INDEX_LOCK_KEY: i64 = 0x6c6f_636f_7071_6978; // "locopqix"
+
+/// Create any missing [`QUEUE_INDEXES`], and rebuild any left invalid by an
+/// interrupted build.
+///
+/// Indexes are built `CONCURRENTLY` so upgrading an app with a large existing
+/// queue table does not block enqueues while they build. A concurrent build
+/// that fails leaves an invalid index behind, which `IF NOT EXISTS` would then
+/// skip forever, so invalid indexes are dropped and rebuilt. An index another
+/// instance is still building also reads as invalid, which is why the whole
+/// pass runs under an advisory lock.
+async fn ensure_indexes(pool: &PgPool) -> Result<()> {
+    // Session-level lock: every statement must run on this one connection.
+    let mut conn = pool.acquire().await?;
+    sqlx::query("SELECT pg_advisory_lock($1)")
+        .bind(INDEX_LOCK_KEY)
+        .execute(&mut *conn)
+        .await?;
+
+    let mut result = Ok(());
+    for index in QUEUE_INDEXES {
+        result = ensure_index(&mut conn, index).await;
+        if result.is_err() {
+            break;
+        }
+    }
+
+    sqlx::query("SELECT pg_advisory_unlock($1)")
+        .bind(INDEX_LOCK_KEY)
+        .execute(&mut *conn)
+        .await?;
+    result
+}
+
+async fn ensure_index(conn: &mut sqlx::PgConnection, index: &QueueIndex) -> Result<()> {
+    let valid: Option<bool> = sqlx::query_scalar(
+        "SELECT i.indisvalid FROM pg_index i WHERE i.indexrelid = to_regclass($1)",
+    )
+    .bind(index.name)
+    .fetch_optional(&mut *conn)
+    .await?;
+
+    match valid {
+        Some(true) => return Ok(()),
+        Some(false) => {
+            warn!(index = index.name, "Rebuilding invalid pg_loco_queue index");
+            drop_index(conn, index.name).await?;
+        }
+        None => debug!(index = index.name, "Creating pg_loco_queue index"),
+    }
+
+    let create = format!(
+        "CREATE {}INDEX CONCURRENTLY IF NOT EXISTS {} ON pg_loco_queue {}",
+        if index.unique { "UNIQUE " } else { "" },
+        index.name,
+        index.definition
+    );
+    match sqlx::query(AssertSqlSafe(create)).execute(&mut *conn).await {
+        Ok(_) => Ok(()),
+        // Duplicate ids are not something loco produces (ids are ULIDs), but
+        // an app must not fail to boot over them. Leave the index out, say
+        // how to fix it, and carry on.
+        Err(sqlx::Error::Database(e)) if index.unique && e.is_unique_violation() => {
+            let duplicates: i64 = sqlx::query_scalar(
+                "SELECT count(*) FROM (
+                    SELECT id FROM pg_loco_queue GROUP BY id HAVING count(*) > 1
+                ) d",
+            )
+            .fetch_one(&mut *conn)
+            .await?;
+            error!(
+                index = index.name,
+                duplicate_ids = duplicates,
+                "pg_loco_queue has duplicate job ids, so its unique id index was not created \
+                 and job status updates will scan the table. Find them with `SELECT id, \
+                 count(*) FROM pg_loco_queue GROUP BY id HAVING count(*) > 1`, remove the \
+                 extra rows, and restart to create the index."
+            );
+            drop_index(conn, index.name).await
+        }
+        Err(e) => Err(e.into()),
+    }
+}
+
+async fn drop_index(conn: &mut sqlx::PgConnection, name: &str) -> Result<()> {
+    sqlx::query(AssertSqlSafe(format!(
+        "DROP INDEX CONCURRENTLY IF EXISTS {name}"
+    )))
+    .execute(&mut *conn)
+    .await?;
     Ok(())
 }
 
@@ -790,6 +914,107 @@ mod tests {
         assert_debug_snapshot!(table_info);
     }
 
+    /// `(name, is_unique, is_valid)` for every index on `pg_loco_queue`, by name.
+    async fn queue_indexes(pool: &PgPool) -> Vec<(String, bool, bool)> {
+        sqlx::query_as(
+            "SELECT c.relname::text, i.indisunique, i.indisvalid
+             FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
+             WHERE i.indrelid = 'pg_loco_queue'::regclass
+             ORDER BY 1",
+        )
+        .fetch_all(pool)
+        .await
+        .expect("list indexes")
+    }
+
+    fn expected_indexes() -> Vec<(String, bool, bool)> {
+        vec![
+            ("pg_loco_queue_dequeue_idx".to_string(), false, true),
+            ("pg_loco_queue_id_key".to_string(), true, true),
+        ]
+    }
+
+    #[tokio::test]
+    async fn initialize_database_creates_queue_indexes() {
+        let (pool, _container) = setup_pg_test().await;
+        assert_eq!(queue_indexes(&pool).await, expected_indexes());
+    }
+
+    #[tokio::test]
+    async fn initialize_database_is_idempotent() {
+        let (pool, _container) = setup_pg_test().await;
+        initialize_database(&pool).await.expect("second initialize");
+        assert_eq!(queue_indexes(&pool).await, expected_indexes());
+    }
+
+    #[tokio::test]
+    async fn initialize_database_indexes_an_existing_unindexed_table() {
+        let (pool, _container) = setup_pg_test().await;
+        // A table created by an older loco, with jobs in it.
+        sqlx::raw_sql("DROP INDEX pg_loco_queue_id_key; DROP INDEX pg_loco_queue_dequeue_idx;")
+            .execute(&pool)
+            .await
+            .unwrap();
+        for _ in 0..3 {
+            enqueue(
+                &pool,
+                "Job",
+                serde_json::json!({}),
+                Utc::now(),
+                None,
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+        }
+
+        initialize_database(&pool).await.expect("initialize");
+
+        assert_eq!(queue_indexes(&pool).await, expected_indexes());
+        assert_eq!(get_all_jobs(&pool).await.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn initialize_database_rebuilds_an_invalid_index() {
+        let (pool, _container) = setup_pg_test().await;
+        // What an interrupted `CREATE INDEX CONCURRENTLY` leaves behind.
+        sqlx::query(
+            "UPDATE pg_index SET indisvalid = false
+             WHERE indexrelid = 'pg_loco_queue_dequeue_idx'::regclass",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        initialize_database(&pool).await.expect("initialize");
+
+        assert_eq!(queue_indexes(&pool).await, expected_indexes());
+    }
+
+    #[tokio::test]
+    async fn duplicate_job_ids_skip_the_unique_index_without_failing_startup() {
+        let (pool, _container) = setup_pg_test().await;
+        sqlx::raw_sql(
+            "DROP INDEX pg_loco_queue_id_key;
+             INSERT INTO pg_loco_queue (id, name, task_data, run_at)
+             VALUES ('dup', 'Job', '{}', NOW()), ('dup', 'Job', '{}', NOW());",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        initialize_database(&pool)
+            .await
+            .expect("duplicate ids must not fail startup");
+
+        // No invalid leftover, and the dequeue index is unaffected.
+        assert_eq!(
+            queue_indexes(&pool).await,
+            vec![("pg_loco_queue_dequeue_idx".to_string(), false, true)]
+        );
+    }
+
     #[tokio::test]
     async fn can_enqueue() {
         let (pool, _container) = setup_pg_test().await;
@@ -1323,7 +1548,7 @@ mod tests {
              ('job2', 'Test Job 2', '{}', 'processing', NOW(),NOW(), NOW() - INTERVAL '5 minutes'),
              ('job3', 'Test Job 3', '{}', 'completed', NOW(),NOW(),NOW() - INTERVAL '5 minutes'),
              ('job4', 'Test Job 4', '{}', 'queued', NOW(),NOW(), NOW()),
-             ('job4', 'Test Job 5', '{}', 'processing', NOW(), NOW(), NOW())"
+             ('job5', 'Test Job 5', '{}', 'processing', NOW(), NOW(), NOW())"
         )
         .execute(&pool)
         .await

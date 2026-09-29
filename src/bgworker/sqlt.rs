@@ -17,7 +17,7 @@ use sqlx::{
 use std::fmt::Write;
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, trace};
+use tracing::{debug, error, trace};
 use ulid::Ulid;
 
 /// [`Driver`] implementation delegating to the `SQLite`-specific
@@ -241,6 +241,27 @@ pub async fn initialize_database(pool: &SqlitePool) -> Result<()> {
         sqlx::query("ALTER TABLE sqlt_loco_queue ADD COLUMN priority INTEGER NOT NULL DEFAULT 0")
             .execute(pool)
             .await?;
+    }
+
+    // `complete_job`, `fail_job`, `cancel_job` and friends all update by id.
+    let id_index =
+        sqlx::query("CREATE UNIQUE INDEX IF NOT EXISTS idx_sqlt_queue_id ON sqlt_loco_queue(id)")
+            .execute(pool)
+            .await;
+    match id_index {
+        Ok(_) => {}
+        // Duplicate ids are not something loco produces (ids are ULIDs), but an
+        // app must not fail to boot over them. SQLite builds indexes
+        // transactionally, so a failed build leaves nothing to clean up.
+        Err(sqlx::Error::Database(e)) if e.is_unique_violation() => {
+            error!(
+                "sqlt_loco_queue has duplicate job ids, so its unique id index was not created \
+                 and job status updates will scan the table. Find them with `SELECT id, \
+                 count(*) FROM sqlt_loco_queue GROUP BY id HAVING count(*) > 1`, remove the \
+                 extra rows, and restart to create the index."
+            );
+        }
+        Err(e) => return Err(e.into()),
     }
 
     Ok(())
@@ -812,6 +833,62 @@ mod tests {
                 .unwrap();
 
         assert_debug_snapshot!(table, table_info);
+    }
+
+    /// Names of the indexes on `sqlt_loco_queue`, sorted.
+    async fn queue_indexes(pool: &SqlitePool) -> Vec<String> {
+        sqlx::query_scalar(
+            "SELECT name FROM sqlite_master
+             WHERE type = 'index' AND tbl_name = 'sqlt_loco_queue' ORDER BY name",
+        )
+        .fetch_all(pool)
+        .await
+        .expect("list indexes")
+    }
+
+    #[tokio::test]
+    async fn initialize_database_creates_a_unique_id_index() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .drop(true)
+            .create()
+            .expect("create temp folder");
+        let pool = init(&tree_fs.root).await;
+
+        initialize_database(&pool).await.expect("initialize");
+        initialize_database(&pool).await.expect("second initialize");
+
+        assert_eq!(
+            queue_indexes(&pool).await,
+            vec!["idx_sqlt_queue_id", "idx_sqlt_queue_status_run_at"]
+        );
+    }
+
+    #[tokio::test]
+    async fn duplicate_job_ids_skip_the_unique_index_without_failing_startup() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .drop(true)
+            .create()
+            .expect("create temp folder");
+        let pool = init(&tree_fs.root).await;
+        initialize_database(&pool).await.expect("initialize");
+        sqlx::raw_sql(
+            "DROP INDEX idx_sqlt_queue_id;
+             INSERT INTO sqlt_loco_queue (id, name, task_data, run_at)
+             VALUES ('dup', 'Job', '{}', CURRENT_TIMESTAMP),
+                    ('dup', 'Job', '{}', CURRENT_TIMESTAMP);",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        initialize_database(&pool)
+            .await
+            .expect("duplicate ids must not fail startup");
+
+        assert_eq!(
+            queue_indexes(&pool).await,
+            vec!["idx_sqlt_queue_status_run_at"]
+        );
     }
 
     #[tokio::test]
