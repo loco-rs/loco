@@ -61,6 +61,7 @@ impl MultiDb {
 #[cfg_attr(not(feature = "db-sqlite"), allow(unreachable_patterns))]
 pub async fn verify_access(db: &DatabaseConnection) -> AppResult<()> {
     match db.inner {
+        #[cfg(feature = "db-postgres")]
         DatabaseConnectionType::SqlxPostgresPoolConnection(_) => {
             let res = db
                 .query_all_raw(Statement::from_string(

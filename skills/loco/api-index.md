@@ -440,7 +440,7 @@ since they restate the trait's own API.
 
 ### `QueueConfig`
 
-- `variant` **Postgres** — Postgres queue
+- `variant` **Postgres** — Postgres queue (requires `db-postgres` feature)
 - `variant` **Redis** — Redis queue
 - `variant` **Sqlite** — Sqlite queue (requires `db-sqlite` feature)
 - `fn` **dangerously_flush**`(self: &Self) -> bool` — Whether this queue is configured to discard all jobs on startup,

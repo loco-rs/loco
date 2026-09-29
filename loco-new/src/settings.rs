@@ -77,7 +77,10 @@ impl Settings {
 
         match prompt_selection.background {
             BackgroundOption::QueueRedis => features.names.push("worker_redis".to_string()),
-            BackgroundOption::QueuePostgres => features.names.push("worker".to_string()),
+            BackgroundOption::QueuePostgres => {
+                features.names.push("worker".to_string());
+                features.names.push("db-postgres".to_string());
+            }
             BackgroundOption::QueueSqlite => {
                 features.names.push("worker".to_string());
                 features.names.push("db-sqlite".to_string());
@@ -205,12 +208,18 @@ impl Default for Features {
 }
 
 impl Features {
-    /// Disables default features.
+    /// Disables default features, keeping the ones every generated app uses:
+    /// the `cargo loco` CLI, `cargo loco generate`, and the `compression`
+    /// middleware with the same codecs the default feature set ships.
     #[must_use]
     pub fn disable_features() -> Self {
         Self {
             default_features: false,
-            names: vec!["cli".to_string()],
+            names: vec![
+                "cli".to_string(),
+                "generators".to_string(),
+                "compression-full".to_string(),
+            ],
         }
     }
 }

@@ -7,6 +7,7 @@
 
 use axum::Router as AXRouter;
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "compression")]
 use tower_http::compression::CompressionLayer;
 
 use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
@@ -33,7 +34,18 @@ impl MiddlewareLayer for Compression {
     }
 
     /// Applies the Compression middleware layer to the Axum router.
+    #[cfg(feature = "compression")]
     fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
         Ok(app.layer(CompressionLayer::new()))
+    }
+
+    /// Without the `compression` feature an enabled `compression` middleware
+    /// is a boot error rather than a silent no-op.
+    #[cfg(not(feature = "compression"))]
+    fn apply(&self, _app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
+        Err(crate::Error::string(
+            "server.middlewares.compression is enabled but loco-rs was built without the \
+             `compression` feature",
+        ))
     }
 }
