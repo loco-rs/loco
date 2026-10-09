@@ -387,5 +387,6 @@ fn build_api_context(
         "frontend_imports_injection": frontend_imports_injection,
         "frontend_routes_injection": frontend_routes_injection,
         "frontend_nav_injection": frontend_nav_injection,
+        "has_routes_file": appinfo.has_routes_file(),
     })
 }
