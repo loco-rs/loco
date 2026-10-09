@@ -7,9 +7,23 @@ injections:
 - into: src/controllers/mod.rs
   append: true
   content: "pub mod {{ file_name }};"
+{% if has_routes_file -%}
+- into: src/routes.rs
+  after: "AppRoutes::"
+  content: |2-
+            .add_route(
+                Routes::new()
+                    .prefix("api/{{file_name | plural}}/")
+                    .add("/", get(crate::controllers::{{ file_name }}::index))
+                    {%- for action in actions %}
+                    .add("{{action.name}}", {{action.verb}}(crate::controllers::{{ file_name }}::{{action.name}}))
+                    {%- endfor %}
+            )
+{% else -%}
 - into: src/app.rs
   after: "AppRoutes::"
   content: "            .add_route(controllers::{{ file_name }}::routes())"
+{% endif -%}
 ---
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::unnecessary_struct_initialization)]
@@ -29,6 +43,7 @@ pub async fn {{action.name}}({% if auth %}_auth: auth::JWT, {% endif %}State(_ct
 
 {% endfor -%}
 
+{% if not has_routes_file -%}
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("api/{{file_name | plural}}/")
@@ -37,3 +52,4 @@ pub fn routes() -> Routes {
         .add("{{action.name}}", {{action.verb}}({{action.name}}))
         {%- endfor %}
 }
+{% endif -%}
