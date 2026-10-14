@@ -836,6 +836,7 @@ since they restate the trait's own API.
 - `fn` **not_ilike**`(self: &Self, s: T) -> Expr where T: IntoLikeExpr` — Postgres Only
 - `fn` **not_in_subquery**`(self: &Self, s: SelectStatement) -> Expr`
 - `fn` **not_like**`(self: &Self, s: T) -> Expr where T: IntoLikeExpr` — ```
+- `fn` **save_array_as**`(self: &Self, val: Expr) -> Expr` — Array counterpart of [`ColumnTrait::save_as`], applied to the array
 - `fn` **save_as**`(self: &Self, val: Expr) -> Expr` — Apply the standard write-side cast: convert text into the database's
 - `fn` **save_enum_as**`(self: &Self, val: Expr) -> Expr` — Cast a value into the column's enum type; no-op for non-enum columns
 - `fn` **select_as**`(self: &Self, expr: Expr) -> Expr` — Apply the standard SELECT-side cast for this column. By default,
@@ -1702,6 +1703,7 @@ since they restate the trait's own API.
 - `fn` **right_join**`(self: Self, _: R) -> Self where R: EntityTrait, E: Related<R>` — Right Join with a Related Entity
 - `fn` **select_also**`(self: Self, _: F) -> SelectTwo<E, F> where F: EntityTrait` — Selects extra Entity and returns it together with the Entity from `Self`
 - `fn` **select_also_dyn_model**`(self: Self, table: DynIden, dyn_model: ModelType) -> DynSelector<SelectModelAndDynModel<E::Model>>`
+- `fn` **select_except**`(self: Self, except: impl Trait) -> Self` — Select all columns of this entity except the given ones
 - `fn` **select_two_required**`(self: Self, _: F) -> SelectTwoRequired<E, F> where F: EntityTrait` — Selects extra Entity and returns it together with the Entity from `Self`
 - `fn` **select_with**`(self: Self, _: F) -> SelectTwoMany<E, F> where F: EntityTrait` — Makes a SELECT operation in conjunction to another relation
 - `fn` **stream**`(self: Self, db: &C) -> Result<impl Trait, DbErr> where C: ConnectionTrait + StreamTrait + Send` — Stream the results of a SELECT operation on a Model

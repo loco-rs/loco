@@ -22,7 +22,7 @@ fn repo_root() -> PathBuf {
 const SHIPPED: [&str; 4] = [
     "loco-new/base_template/README.md",
     "loco-new/base_template/AGENTS.md",
-    "loco-new/base_template/.claude/skills/loco",
+    "loco-new/base_template/.agents/skills/loco",
     "loco-gen/src/templates",
 ];
 
