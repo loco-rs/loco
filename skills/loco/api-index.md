@@ -162,12 +162,12 @@ since they restate the trait's own API.
 - `fn` **clear_by_status**`(self: &Self, status: Vec<JobStatus>) -> Result<()>` — Clears jobs based on their status for the configured queue provider
 - `fn` **clear_jobs_older_than**`(self: &Self, age_days: i64, status: &Vec<JobStatus>) -> Result<()>` — Clears jobs older than a specified number of days for the configured queue provider
 - `fn` **describe**`(self: &Self) -> String`
-- `fn` **dump**`(self: &Self, path: &Path, status: Option<&Vec<JobStatus>>, age_days: Option<i64>) -> Result<PathBuf>` — Dumps the list of jobs to a YAML file at the specified path
+- `fn` **dump**`(self: &Self, path: &Path, status: Option<&Vec<JobStatus>>, age_days: Option<i64>) -> Result<PathBuf>` — Dumps the list of jobs to a YAML-compatible JSON file at the specified path
 - `fn` **empty**`() -> Self` — A [`Queue`] with no configured provider. Replaces the old
 - `fn` **enqueue**`(self: &Self, class: String, queue: Option<String>, args: A, tags: Option<Vec<String>>, priority: Option<i32>) -> Result<Option<String>>` — Add a job to the queue
 - `fn` **enqueue_batch**`(self: &Self, class: String, queue: Option<String>, jobs: Vec<(A, Option<i32>)>, tags: Option<Vec<String>>) -> Result<Vec<JobId>>` — Add multiple jobs to the queue in a single batch operation, returning
 - `fn` **from_provider**`(provider: Arc<dyn QueueProvider>) -> Self` — Wraps a third-party (or built-in) [`QueueProvider`] as a [`Queue`]
-- `fn` **import**`(self: &Self, path: &Path) -> Result<()>` — Imports jobs from a YAML file into the configured queue provider
+- `fn` **import**`(self: &Self, path: &Path) -> Result<()>` — Imports jobs from a JSON or legacy YAML file into the configured queue provider
 - `fn` **ping**`(self: &Self) -> Result<()>` — Returns a ping of this [`Queue`]
 - `fn` **register**`(self: &Self, worker: W) -> Result<()>` — Register a worker
 - `fn` **requeue**`(self: &Self, age_minutes: &i64) -> Result<()>` — Requeued job with the given minutes ages
