@@ -123,6 +123,9 @@ jobs:
       - name: Run cargo test
         run: cargo test --all-features --workspace --exclude loco-gen --exclude loco
 
+      - name: Test queue dumps with arbitrary-precision JSON
+        run: cargo test -p loco-rs --lib --features serde_json/arbitrary_precision bgworker::tests
+
   # `--all-features` turns `embedded_assets` ON, which `#[cfg]`s out
   # `controller/views/engine.rs` in favour of `engine_embedded.rs`. That file's
   # test module — the on-disk Tera engine, hot reloading, autoescaping,
