@@ -53,6 +53,23 @@ pub fn get_columns_and_references(
     Ok((columns, references))
 }
 
+const SEAORM_CLI: &str = "sea-orm-cli";
+
+fn ensure_seaorm_cli(program: &str) -> Result<()> {
+    let found = std::process::Command::new(program)
+        .arg("--version")
+        .output()
+        .is_ok_and(|out| out.status.success());
+    if found {
+        Ok(())
+    } else {
+        Err(Error::Message(format!(
+            "SeaORM CLI was not found (`{program}`), and generating a model needs it to write \
+             entities. Nothing was generated. To fix, run `cargo install sea-orm-cli`"
+        )))
+    }
+}
+
 pub fn generate(
     rrgen: &RRgen,
     name: &str,
@@ -64,6 +81,12 @@ pub fn generate(
     let ts = Utc::now();
 
     let (columns, references) = get_columns_and_references(fields)?;
+
+    // `db entities` needs sea-orm-cli, and it runs after the migration is
+    // written and applied; checking first keeps a failure from leaving those behind.
+    if std::env::var("SKIP_MIGRATION").is_err() {
+        ensure_seaorm_cli(SEAORM_CLI)?;
+    }
 
     let vars = json!({"name": name, "ts": ts, "with_tz": with_tz,"pkg_name": pkg_name, "columns": columns, "references": references});
     let gen_result = render_template(rrgen, Path::new("model"), &vars)?;
@@ -234,5 +257,18 @@ mod tests {
         let fields = [to_field("price", "decimal!")];
         let res = get_columns_and_references(&fields).expect("Failed to parse fields");
         assert_eq!(res, (vec![to_field("price", "Decimal")], vec![]));
+    }
+
+    #[test]
+    fn missing_seaorm_cli_is_an_error_with_the_fix() {
+        let err = ensure_seaorm_cli("sea-orm-cli-that-does-not-exist").unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("Nothing was generated"), "{msg}");
+        assert!(msg.contains("cargo install sea-orm-cli"), "{msg}");
+    }
+
+    #[test]
+    fn failing_seaorm_cli_is_treated_as_missing() {
+        assert!(ensure_seaorm_cli("false").is_err());
     }
 }
