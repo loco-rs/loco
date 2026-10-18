@@ -44,6 +44,18 @@ subcommand.
 
   `loco new` lists `generators` and `compression` whenever it emits
   `default-features = false`, and `db-postgres` for a Postgres queue.
+- **Unique jobs.** `Queue::enqueue_unique` and
+  `BackgroundWorker::perform_later_unique`: a queued job with the same worker
+  and key absorbs repeat enqueues. A partial unique index enforces it, so
+  concurrent callers share one job, and a new one can queue while the
+  previous one runs. SQL queues only; Redis returns an error.
+- **Retries with backoff.** `BackgroundWorker::max_retries` and
+  `retry_backoff` requeue a failed job with exponential backoff, capped at
+  one hour. The defaults keep failing on the first error.
+- **Heartbeats.** A running job refreshes `updated_at`, so the reaper only
+  requeues jobs whose worker died.
+- `initialize_database` adds the `attempts` and `unique_key` columns to an
+  existing queue table on Postgres and SQLite.
 
 ### Build
 
