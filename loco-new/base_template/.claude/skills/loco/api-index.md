@@ -36,6 +36,7 @@ since they restate the trait's own API.
 - `trait` **Initializer** — An initializer
 - `struct` **RefGuard**
 - `struct` **SharedStore** — Type-safe heterogeneous storage for arbitrary application data
+- `fn` **serve_router**`(app: Router, serve_params: &ServeParams, on_shutdown: Pin<Box<dyn Future + Send>>) -> Result<()>` — Serves `app` until a shutdown signal arrives, then runs `on_shutdown`
 
 ### `AppContext`
 
