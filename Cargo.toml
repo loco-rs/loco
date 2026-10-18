@@ -98,9 +98,13 @@ compression-full = ["compression", "tower-http/compression-full"]
 multi-tenancy = ["with-db"]
 # Storage features
 all_storage = ["storage_aws_s3", "storage_azure", "storage_gcp"]
-storage_aws_s3 = ["opendal/services-s3"]
-storage_azure = ["opendal/services-azblob"]
-storage_gcp = ["opendal/services-gcs"]
+# The local and in-memory drivers are plain tokio; OpenDAL comes in only for
+# the cloud backends, or for wrapping another OpenDAL service yourself with
+# `drivers::opendal_adapter`.
+storage_opendal = ["dep:opendal"]
+storage_aws_s3 = ["storage_opendal", "opendal/services-s3"]
+storage_azure = ["storage_opendal", "opendal/services-azblob"]
+storage_gcp = ["storage_opendal", "opendal/services-gcs"]
 # Cache feature
 cache_inmem = ["dep:moka"]
 cache_redis = ["dep:bb8-redis", "dep:bb8"]
@@ -128,8 +132,8 @@ sea-orm = { version = "2.0", features = [
     "macros",
 ], optional = true }
 
-tokio = { version = "1.45", default-features = false, features = ["signal", "time"] }
-tokio-util = "0.7"
+tokio = { version = "1.45", default-features = false, features = ["fs", "signal", "time"] }
+tokio-util = { version = "0.7", features = ["io"] }
 # the rest
 
 serde = { workspace = true }
@@ -193,10 +197,8 @@ uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
 
 # File Upload
 opendal = { version = "0.58.1", default-features = false, features = [
-    "services-memory",
-    "services-fs",
     "layers-retry",
-] }
+], optional = true }
 http = "1"
 
 # cache

@@ -7,7 +7,7 @@ sidebar:
 
 Goal: give your app a place to put uploaded files — on disk, in memory (for tests), or in a cloud bucket — through one consistent `Storage` API, without hand-rolling an OpenDAL client yourself.
 
-Loco's storage layer is a thin abstraction over [Apache OpenDAL](https://opendal.apache.org/). Every driver ends up implementing the same `StoreDriver` trait, so your controller code doesn't change when you swap local disk for S3.
+Every driver implements the same `StoreDriver` trait, so your controller code doesn't change when you swap local disk for S3. The local-disk and in-memory drivers are plain `tokio`; the cloud drivers sit on [Apache OpenDAL](https://opendal.apache.org/), which compiles only when you enable a `storage_*` feature. To wrap another OpenDAL service yourself, enable `storage_opendal` and pass its `Operator` to `drivers::opendal_adapter::OpendalAdapter::new`.
 
 ## Prerequisites
 
