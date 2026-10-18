@@ -22,8 +22,10 @@ personal overrides go, not in the committed file.
 
 ## Your own settings
 
-Anything the framework does not define goes under the free-form `settings:` key,
-which reaches you as `ctx.config.settings` (an `Option<serde_json::Value>`).
+Anything the framework does not define goes under the free-form `settings:` key.
+Read it typed with `ctx.config.settings::<T>()`; the raw block is
+`ctx.config.settings` (an `Option<serde_json::Value>`), which you should not
+need to touch.
 
 `config/development.yaml`:
 
@@ -57,20 +59,18 @@ const fn default_ttl_days() -> u32 { 30 }
 
 impl Settings {
     /// # Errors
-    /// When `settings:` is absent or does not match the schema.
+    /// When `settings:` does not match the schema.
     pub fn from_context(ctx: &AppContext) -> Result<Self> {
-        let raw = ctx
-            .config
-            .settings
-            .clone()
-            .ok_or_else(|| Error::string("missing `settings:` in config"))?;
-        Ok(serde_json::from_value(raw)?)
+        ctx.config.settings::<Self>()
     }
 }
 ```
 
-Now a missing or misspelled key is one clear error at the point of use, rather
-than a `None` that silently degrades three layers down.
+`Config::settings::<T>()` deserializes the block into `T`. A missing
+`settings:` block is treated as an empty map, so it fails only if `T` has a
+required field; give every field a `#[serde(default)]` and an absent block is
+fine. Now a missing or misspelled key is one clear error at the point of use,
+rather than a `None` that silently degrades three layers down.
 
 ## Secrets
 
@@ -79,16 +79,33 @@ your code:
 
 ```yaml
 database:
-  uri: "{{ get_env(name='DATABASE_URL', default='sqlite://dev.sqlite?mode=rwc') }}"
+  uri: <%= get_env(name="DATABASE_URL", default="sqlite://dev.sqlite?mode=rwc") %>
 
 settings:
-  stripe_key: "{{ get_env(name='STRIPE_KEY') }}"
+  stripe_key: '<%= get_env(name="STRIPE_KEY") %>'
+  support_email: '<%= get_env(name="SUPPORT_EMAIL", default="") %>'
 ```
 
 The template function is evaluated when config loads. Your code still just reads
 `ctx.config`, so there is exactly one place that knows a value came from the
 environment. `get_env` without a `default` fails loudly at boot if the variable
 is unset — which is what you want for a required secret.
+
+`<%= ... %>` is the config delimiter. Tera's `{{ ... }}` still renders but is
+deprecated and prints a warning at boot.
+
+**Quote every templated string under `settings:`: `key: '<%= get_env(...) %>'`.**
+The template renders first and YAML parses the result, so an empty value
+(`default=""`, or an env var set to empty) leaves `key:` with nothing after
+it, which YAML reads as `null`. A `String` field then fails to load with
+`invalid type: null, expected a string`, and a value such as `0123`, `true` or
+`1e3` turns into a number or a bool. Single quotes keep it a string; use them
+because the template already uses double quotes inside. Numbers and booleans the
+framework reads (`port`, `max_connections`, `enable_logging`) stay unquoted.
+A value containing `: ` or ` #` needs the quotes too.
+
+An empty `default=""` on a secret is usually wrong in `production.yaml`: it
+boots with an empty secret instead of refusing to. Leave the default off there.
 
 **Never commit a real secret to `config/production.yaml`.** Interpolate it.
 

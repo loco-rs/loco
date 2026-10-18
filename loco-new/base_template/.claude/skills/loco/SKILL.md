@@ -48,7 +48,9 @@ src/
   models/
     _entities/            GENERATED from schema — never hand-edit
     <name>.rs             your domain logic; re-exports from _entities
-  views/                  response DTOs — entities never go on the wire directly
+  dtos/                   typed JSON DTOs: `common.rs` (Page<T>, ApiError) + one per scaffolded model (db apps)
+  views/                  the starter's own response types (auth.rs, or home.rs without a db)
+                          — either way, entities never go on the wire directly
   workers/                BackgroundWorker impls
   mailers/                mailer structs + templates/
   tasks/                  Task impls (the `rake task` equivalent)

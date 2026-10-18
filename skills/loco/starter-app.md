@@ -74,7 +74,7 @@ src/
   tasks/user_create.rs      a working Task
   tasks/user_delete.rs      a second working Task
   workers/downloader.rs     a working BackgroundWorker
-  dtos/common.rs            shared response types
+  dtos/common.rs            Page<T> and ApiError; `scaffold` adds dtos/<plural>.rs (ts-rs DTOs) beside it
   fixtures/users.yaml       seed data
 migration/src/
   m20220101_000001_users.rs the users table

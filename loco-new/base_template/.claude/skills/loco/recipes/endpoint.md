@@ -93,7 +93,8 @@ Path parameters use Axum 0.8 brace syntax: `/{id}`, not `/:id`.
 ## Responses — never serialize an entity
 
 `format::json(user)` on a `users::Model` puts the password hash and API key on
-the wire. Render a view type from `src/views/`:
+the wire. Render a response type from `src/dtos/` (where `scaffold` puts them) or
+`src/views/` (where the starter keeps its auth responses):
 
 ```rust
 // src/views/post.rs

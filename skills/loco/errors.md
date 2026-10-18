@@ -60,6 +60,29 @@ If a query-building method is missing, check the spelling against
 `sea-orm-index.md` before adding an import — the prelude almost certainly
 already has the trait.
 
+**Generated model files are the exception: they do not import the Loco
+prelude.** `src/models/<name>.rs` (written by `cargo loco db entities`) starts
+with `use sea_orm::entity::prelude::*;`, and Sea-ORM's entity prelude is much
+narrower. Code you add to that file's `impl Model` / `impl ActiveModel` /
+`impl Entity` blocks hits this:
+
+```
+error[E0599]: no method named `into_active_model` found for struct `_entities::repos::Model`
+```
+
+| Missing from `sea_orm::entity::prelude` | Add to the model file |
+|---|---|
+| `IntoActiveModel` — `.into_active_model()` | `use sea_orm::IntoActiveModel;` |
+| `QueryOrder` / `QuerySelect` — `.order_by_*()`, `.limit()` | `use sea_orm::{QueryOrder, QuerySelect};` |
+| `TransactionTrait` — `.begin()` | `use sea_orm::TransactionTrait;` |
+| `Set` (bare) | `use sea_orm::ActiveValue::Set;` |
+
+Import only what the file uses (an unused import is a warning, and generated
+apps are kept warning-free). The same applies to a test file that does not glob
+`loco_rs::prelude::*`: `Entity::find()` without `EntityTrait` in scope fails as
+"`Entity` is not an iterator" (E0599), because `find` then resolves to
+`Iterator::find`. Add `use loco_rs::prelude::*;` or `use sea_orm::EntityTrait;`.
+
 **`ExprTrait` is the one exception, and do not glob it into a module.** It is
 `impl<T> ExprTrait for T`, so `use sea_orm::ExprTrait;` at the top of a file
 reaches every value in it: `n.max(1)` stops compiling, and `n.eq(&3)` quietly
