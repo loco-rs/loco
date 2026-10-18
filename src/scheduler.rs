@@ -15,6 +15,8 @@ use uuid::Uuid;
 
 use crate::{app::Hooks, environment::Environment, task::Tasks};
 
+mod cron;
+
 static RE_IS_CRON_SYNTAX: OnceLock<Regex> = OnceLock::new();
 
 fn get_re_is_cron_syntax() -> &'static Regex {
@@ -293,10 +295,6 @@ impl Scheduler {
     ///
     /// When could not add job to the scheduler
     pub async fn run(self) -> Result<()> {
-        let parser = croner::parser::CronParser::builder()
-            .seconds(croner::parser::Seconds::Required)
-            .dom_and_dow(true)
-            .build();
         let mut tasks = tokio::task::JoinSet::new();
 
         for (job_name, job) in self.jobs {
@@ -313,18 +311,17 @@ impl Scheduler {
                     }
                 })?
             };
-            let cron = parser
-                .parse(&cron_syntax)
-                .map_err(|err| Error::InvalidCronSyntax {
+            let cron =
+                cron::Cron::parse(&cron_syntax).map_err(|error| Error::InvalidCronSyntax {
                     cron: cron_syntax.clone(),
-                    error: err.to_string(),
+                    error,
                 })?;
 
             tasks.spawn(async move {
                 if job.run_on_start {
                     spawn_job(&job_name, &job_description);
                 }
-                while let Ok(next) = cron.find_next_occurrence(&chrono::Utc::now(), false) {
+                while let Some(next) = cron.next_after(chrono::Utc::now()) {
                     let wait = (next - chrono::Utc::now()).to_std().unwrap_or_default();
                     tokio::time::sleep(wait).await;
                     spawn_job(&job_name, &job_description);

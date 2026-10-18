@@ -204,7 +204,6 @@ bb8-redis = { version = "0.26", optional = true }
 bb8 = { version = "0.9", optional = true }
 
 # Scheduler
-croner = "3"
 english-to-cron = { version = "0.1.2" }
 
 # worker: pg + sqlite backed queue workers.
