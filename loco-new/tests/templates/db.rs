@@ -243,3 +243,29 @@ fn postgres_queue_does_not_list_worker_twice() {
         .count();
     assert_eq!(n, 1, "{:?}", settings.features.names);
 }
+
+/// A Postgres pool of one connection stalls any code that holds a transaction
+/// (or an advisory lock) while another query or a job needs a connection: the
+/// second acquire waits `connect_timeout` and fails, in development and test
+/// only. SQLite keeps one, since it has a single writer.
+#[rstest]
+fn postgres_dev_and_test_pools_have_more_than_one_connection(
+    #[values("config/development.yaml", "config/test.yaml")] config_file: &str,
+) {
+    let max = |db: DBOption| {
+        let generator = run_generator(db);
+        let content = assertion::yaml::load(generator.path(config_file));
+        assertion::yaml::get_value_at_path(&content, &["database", "max_connections"])
+            .and_then(serde_yaml::Value::as_str)
+            .unwrap()
+            .to_string()
+    };
+    assert_eq!(
+        max(DBOption::Postgres),
+        r#"<%= get_env(name="DB_MAX_CONNECTIONS", default="5") %>"#
+    );
+    assert_eq!(
+        max(DBOption::Sqlite),
+        r#"<%= get_env(name="DB_MAX_CONNECTIONS", default="1") %>"#
+    );
+}

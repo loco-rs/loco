@@ -132,8 +132,16 @@ database:
   idle_timeout: <%= get_env(name="DB_IDLE_TIMEOUT", default="500") %>
   # Minimum number of connections for a pool.
   min_connections: <%= get_env(name="DB_MIN_CONNECTIONS", default="1") %>
-  # Maximum number of connections for a pool.
+{%- if settings.db.kind == "pg" %}
+  # Maximum number of connections for a pool. More than one, so code that holds
+  # a transaction (or a lock) while another query or a background job needs a
+  # connection does not stall until `connect_timeout` fails it.
+  max_connections: <%= get_env(name="DB_MAX_CONNECTIONS", default="5") %>
+{%- else %}
+  # Maximum number of connections for a pool. One for SQLite: it has a single
+  # writer, and a second pooled connection only waits on `busy_timeout`.
   max_connections: <%= get_env(name="DB_MAX_CONNECTIONS", default="1") %>
+{%- endif %}
   # Run migration up when application loaded
   auto_migrate: true
   # Truncate database when application loaded. This is a dangerous operation, make sure that you using this flag only on dev environments or test mode
