@@ -35,6 +35,8 @@ subcommand.
   `jsonwebtoken::Algorithm`, errors are `auth::jwt::JWTError`, and
   `ModelError::Jwt` wraps it. Tokens are byte-identical to the ones
   jsonwebtoken issued; only HS256/384/512 were ever supported.
+- **`hash_password` and `verify_password` need `auth`.**
+  `hash::random_string` does not.
 
 ### Added
 
@@ -88,6 +90,7 @@ subcommand.
   num-derive they brought.
 - Gone from the graph: jsonwebtoken and the RSA, P-256/P-384 and ed25519
   code it compiled.
+- argon2 compiles only with `auth`.
 
 ### Fixed
 
