@@ -89,8 +89,12 @@ since they restate the trait's own API.
 - `fn` **remove**`(self: &Self) -> Option<T>` — Remove a value of type T from the shared store
 ## `auth::jwt`
 
+- `struct` **Header**` { typ: Option<String>, alg: JWTAlgorithm }` — The JOSE header of a token
 - `struct` **JWT** — Represents the JWT configuration and operations
 - `enum` **JWTAlgorithm** — The HMAC-based JWT signing algorithms supported by [`JWT`]
+- `enum` **JWTError** — Why a token could not be generated or validated
+- `type` **JWTResult**
+- `struct` **TokenData**` { header: Header, claims: T }` — A validated token: its header and decoded claims
 - `struct` **UserClaims**` { pid: String, claims: Map<String, Value> }` — Represents the claims associated with a user JWT
 
 ### `JWT`
@@ -105,6 +109,17 @@ since they restate the trait's own API.
 - `variant` **HS256**
 - `variant` **HS384**
 - `variant` **HS512**
+
+### `JWTError`
+
+- `variant` **Base64**
+- `variant` **ExpiredSignature**
+- `variant` **InvalidAlgorithm**
+- `variant` **InvalidAudience**
+- `variant` **InvalidSecret**
+- `variant` **InvalidSignature**
+- `variant` **InvalidToken**
+- `variant` **Json**
 ## `bgworker`
 
 - `trait` **BackgroundWorker**
