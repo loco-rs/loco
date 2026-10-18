@@ -91,4 +91,22 @@ expression: table_info
         ),
         pk: false,
     },
+    TableInfo {
+        cid: 10,
+        name: "attempts",
+        _type: "INTEGER",
+        notnull: true,
+        dflt_value: Some(
+            "0",
+        ),
+        pk: false,
+    },
+    TableInfo {
+        cid: 11,
+        name: "unique_key",
+        _type: "TEXT",
+        notnull: false,
+        dflt_value: None,
+        pk: false,
+    },
 ]

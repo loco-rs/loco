@@ -4,7 +4,7 @@ use std::time::Duration;
 pub use super::sql::{Job, JobData, JobId, JobRegistry, RunOpts};
 use super::{
     sql::{to_job, Driver},
-    JobHandler, JobStatus, Queue, QueueProvider,
+    JobHandler, JobStatus, Queue, QueueProvider, RetryPolicy,
 };
 use crate::{config::SqliteQueueConfig, Result};
 use async_trait::async_trait;
@@ -45,6 +45,40 @@ impl Driver for SqliteDriver {
 
     async fn fail_job(pool: &Self::Pool, id: &JobId, error: &crate::Error) -> crate::Result<()> {
         fail_job(pool, id, error).await
+    }
+
+    async fn record_attempt(pool: &Self::Pool, id: &JobId) -> crate::Result<u32> {
+        let attempts: i64 = sqlx::query_scalar(
+            "UPDATE sqlt_loco_queue SET attempts = attempts + 1 WHERE id = $1 RETURNING attempts",
+        )
+        .bind(id)
+        .fetch_one(pool)
+        .await?;
+        Ok(u32::try_from(attempts).unwrap_or(u32::MAX))
+    }
+
+    async fn retry_job(pool: &Self::Pool, id: &JobId, run_at: DateTime<Utc>) -> crate::Result<()> {
+        sqlx::query(
+            "UPDATE sqlt_loco_queue SET status = $1, updated_at = CURRENT_TIMESTAMP, run_at = \
+             DATETIME($2) WHERE id = $3",
+        )
+        .bind(JobStatus::Queued.to_string())
+        .bind(run_at)
+        .bind(id)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    async fn heartbeat(pool: &Self::Pool, id: &JobId) -> crate::Result<()> {
+        sqlx::query(
+            "UPDATE sqlt_loco_queue SET updated_at = CURRENT_TIMESTAMP WHERE id = $1 AND status = $2",
+        )
+        .bind(id)
+        .bind(JobStatus::Processing.to_string())
+        .execute(pool)
+        .await?;
+        Ok(())
     }
 }
 
@@ -91,9 +125,27 @@ impl QueueProvider for SqliteQueue {
         enqueue_batch(&self.pool, &class, jobs, tags).await
     }
 
+    async fn enqueue_unique(
+        &self,
+        class: String,
+        _queue: Option<String>,
+        args: serde_json::Value,
+        tags: Option<Vec<String>>,
+        priority: Option<i32>,
+        key: String,
+    ) -> Result<Option<String>> {
+        Ok(Some(
+            enqueue_unique(&self.pool, &class, args, tags, priority, &key).await?,
+        ))
+    }
+
     async fn register_handler(&self, name: String, handler: JobHandler) -> Result<()> {
         let mut registry = self.registry.lock().await;
         registry.insert_handler(name, handler)
+    }
+
+    async fn set_retry_policy(&self, name: String, policy: RetryPolicy) -> Result<()> {
+        self.registry.lock().await.set_retry_policy(name, policy)
     }
 
     async fn run(&self, tags: Vec<String>) -> Result<()> {
@@ -243,7 +295,99 @@ pub async fn initialize_database(pool: &SqlitePool) -> Result<()> {
             .await?;
     }
 
+    // Columns added after the first release, on new and existing tables
+    // alike. SQLite has no `ADD COLUMN IF NOT EXISTS`.
+    for (column, definition) in [
+        ("attempts", "INTEGER NOT NULL DEFAULT 0"),
+        ("unique_key", "TEXT"),
+    ] {
+        let exists: bool = sqlx::query_scalar(
+            "SELECT EXISTS (SELECT 1 FROM pragma_table_info('sqlt_loco_queue') WHERE name = $1)",
+        )
+        .bind(column)
+        .fetch_one(pool)
+        .await?;
+        if !exists {
+            debug!(column, "Adding column to existing sqlt_loco_queue table");
+            sqlx::query(AssertSqlSafe(format!(
+                "ALTER TABLE sqlt_loco_queue ADD COLUMN {column} {definition}"
+            )))
+            .execute(pool)
+            .await?;
+        }
+    }
+
+    // At most one *queued* job per (name, unique_key); see `enqueue_unique`.
+    sqlx::query(AssertSqlSafe(format!(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_sqlt_queue_unique_queued ON sqlt_loco_queue(name, \
+         unique_key) WHERE {UNIQUE_QUEUED}"
+    )))
+    .execute(pool)
+    .await?;
+
     Ok(())
+}
+
+/// Predicate of the partial unique index behind `enqueue_unique`. The
+/// `ON CONFLICT` target must repeat it verbatim.
+const UNIQUE_QUEUED: &str = "status = 'queued' AND unique_key IS NOT NULL";
+
+/// Add a job unless a queued job with the same `name` and `key` exists, and
+/// return the ID of the queued job either way. See
+/// [`Queue::enqueue_unique`](super::Queue::enqueue_unique).
+///
+/// # Errors
+///
+/// This function will return an error if it fails
+pub async fn enqueue_unique(
+    pool: &SqlitePool,
+    name: &str,
+    data: JobData,
+    tags: Option<Vec<String>>,
+    priority: Option<i32>,
+    key: &str,
+) -> Result<JobId> {
+    let tags_json = match &tags {
+        Some(tags) => Some(serde_json::to_value(tags)?),
+        None => None,
+    };
+    // A worker can take the existing job between the insert and the lookup,
+    // leaving nothing queued under the key; the second insert then succeeds.
+    for _ in 0..2 {
+        let id = Ulid::new().to_string();
+        let inserted: Option<String> = sqlx::query_scalar(AssertSqlSafe(format!(
+            "INSERT INTO sqlt_loco_queue (id, task_data, name, run_at, tags, priority, \
+             unique_key) VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, $6) ON CONFLICT (name, \
+             unique_key) WHERE {UNIQUE_QUEUED} DO NOTHING RETURNING id"
+        )))
+        .bind(&id)
+        .bind(&data)
+        .bind(name)
+        .bind(&tags_json)
+        .bind(priority.unwrap_or(0))
+        .bind(key)
+        .fetch_optional(pool)
+        .await?;
+        if let Some(id) = inserted {
+            debug!(job_id = %id, job_name = %name, key, "Enqueued unique job");
+            return Ok(id);
+        }
+        let existing: Option<String> = sqlx::query_scalar(
+            "SELECT id FROM sqlt_loco_queue WHERE name = $1 AND unique_key = $2 AND status = $3",
+        )
+        .bind(name)
+        .bind(key)
+        .bind(JobStatus::Queued.to_string())
+        .fetch_optional(pool)
+        .await?;
+        if let Some(id) = existing {
+            debug!(job_id = %id, job_name = %name, key, "Unique job already queued");
+            return Ok(id);
+        }
+    }
+    Err(crate::Error::string(&format!(
+        "could not enqueue unique job `{name}` with key `{key}`"
+    )))
 }
 
 /// Add a job
@@ -1918,5 +2062,357 @@ mod tests {
         // 6. No more jobs should be available for untagged worker
         let job = dequeue(&pool, &[]).await.expect("dequeue failed");
         assert!(job.is_none());
+    }
+
+    async fn fresh_queue() -> (tree_fs::Tree, SqlitePool) {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .drop(true)
+            .create()
+            .expect("create temp folder");
+        let pool = init(&tree_fs.root).await;
+        initialize_database(&pool).await.expect("init queue tables");
+        (tree_fs, pool)
+    }
+
+    async fn attempts(pool: &SqlitePool, id: &str) -> i64 {
+        sqlx::query_scalar("SELECT attempts FROM sqlt_loco_queue WHERE id = $1")
+            .bind(id)
+            .fetch_one(pool)
+            .await
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn enqueue_unique_returns_the_queued_job_for_a_repeated_key() {
+        let (_tree, pool) = fresh_queue().await;
+        let data = serde_json::json!({"account": 42});
+
+        let first = enqueue_unique(&pool, "Sync", data.clone(), None, None, "account:42")
+            .await
+            .unwrap();
+        let second = enqueue_unique(&pool, "Sync", data.clone(), None, None, "account:42")
+            .await
+            .unwrap();
+        let other_key = enqueue_unique(&pool, "Sync", data.clone(), None, None, "account:7")
+            .await
+            .unwrap();
+        let other_worker = enqueue_unique(&pool, "Audit", data, None, None, "account:42")
+            .await
+            .unwrap();
+
+        assert_eq!(first, second);
+        assert_ne!(first, other_key);
+        assert_ne!(first, other_worker);
+        assert_eq!(get_all_jobs(&pool).await.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn enqueue_unique_adds_a_new_job_once_the_queued_one_is_running() {
+        let (_tree, pool) = fresh_queue().await;
+        let data = serde_json::json!(null);
+
+        let first = enqueue_unique(&pool, "Sync", data.clone(), None, None, "k")
+            .await
+            .unwrap();
+        let running = dequeue(&pool, &[]).await.unwrap().expect("job is due");
+        assert_eq!(running.id, first);
+
+        let second = enqueue_unique(&pool, "Sync", data.clone(), None, None, "k")
+            .await
+            .unwrap();
+        assert_ne!(first, second);
+        let third = enqueue_unique(&pool, "Sync", data, None, None, "k")
+            .await
+            .unwrap();
+        assert_eq!(second, third);
+    }
+
+    #[tokio::test]
+    async fn plain_enqueue_is_never_deduplicated() {
+        let (_tree, pool) = fresh_queue().await;
+        for _ in 0..2 {
+            enqueue(
+                &pool,
+                "Sync",
+                serde_json::json!({"n": 1}),
+                Utc::now(),
+                None,
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+        }
+        assert_eq!(get_all_jobs(&pool).await.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn initialize_database_upgrades_a_table_from_before_retries() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .drop(true)
+            .create()
+            .expect("create temp folder");
+        let pool = init(&tree_fs.root).await;
+        sqlx::query(
+            "CREATE TABLE sqlt_loco_queue (id TEXT NOT NULL, name TEXT NOT NULL, task_data JSON \
+             NOT NULL, status TEXT NOT NULL DEFAULT 'queued', run_at TIMESTAMP NOT NULL, \
+             interval INTEGER, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, \
+             updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, tags JSON, priority \
+             INTEGER NOT NULL DEFAULT 0)",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        let old = enqueue(
+            &pool,
+            "Old",
+            serde_json::json!(1),
+            Utc::now(),
+            None,
+            None,
+            None,
+        )
+        .await
+        .unwrap();
+
+        initialize_database(&pool).await.unwrap();
+        initialize_database(&pool).await.unwrap();
+
+        assert_eq!(attempts(&pool, &old).await, 0);
+        let a = enqueue_unique(&pool, "Old", serde_json::json!(1), None, None, "k").await;
+        let b = enqueue_unique(&pool, "Old", serde_json::json!(1), None, None, "k").await;
+        assert_eq!(a.unwrap(), b.unwrap());
+    }
+
+    fn retrying(max_retries: u32, backoff: Duration) -> RetryPolicy {
+        RetryPolicy {
+            max_retries,
+            backoff,
+        }
+    }
+
+    /// Fails its first `fail_first` runs, then succeeds, counting every run.
+    struct Flaky {
+        fail_first: usize,
+        runs: Arc<std::sync::atomic::AtomicUsize>,
+    }
+
+    #[async_trait::async_trait]
+    impl BackgroundWorker<()> for Flaky {
+        fn build(_ctx: &crate::app::AppContext) -> Self {
+            unreachable!()
+        }
+        async fn perform(&self, (): ()) -> crate::Result<()> {
+            let run = self.runs.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            if run < self.fail_first {
+                Err(crate::Error::string("flaky failure"))
+            } else {
+                Ok(())
+            }
+        }
+    }
+
+    fn registry_with(worker: Flaky, policy: Option<RetryPolicy>) -> JobRegistry {
+        let mut registry = JobRegistry::new();
+        registry
+            .insert_handler("Flaky".to_string(), crate::bgworker::erase_worker(worker))
+            .unwrap();
+        if let Some(policy) = policy {
+            registry
+                .set_retry_policy("Flaky".to_string(), policy)
+                .unwrap();
+        }
+        registry
+    }
+
+    async fn run_for(registry: &JobRegistry, pool: &SqlitePool, wait: Duration) {
+        let opts = RunOpts {
+            num_workers: 1,
+            poll_interval_sec: 1,
+            reaper: None,
+        };
+        let token = CancellationToken::new();
+        let handles = registry.run::<SqliteDriver>(pool, &opts, &token, &[]);
+        sleep(wait).await;
+        for handle in handles {
+            handle.abort();
+        }
+    }
+
+    #[tokio::test]
+    async fn a_failing_job_runs_max_retries_more_times_then_fails() {
+        let (_tree, pool) = fresh_queue().await;
+        let id = enqueue(
+            &pool,
+            "Flaky",
+            serde_json::json!(null),
+            Utc::now(),
+            None,
+            None,
+            None,
+        )
+        .await
+        .unwrap();
+        let runs = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let flaky = Flaky {
+            fail_first: usize::MAX,
+            runs: runs.clone(),
+        };
+        let registry = registry_with(flaky, Some(retrying(2, Duration::ZERO)));
+
+        run_for(&registry, &pool, Duration::from_millis(1500)).await;
+
+        assert_eq!(runs.load(std::sync::atomic::Ordering::SeqCst), 3);
+        assert_eq!(get_job(&pool, &id).await.status, JobStatus::Failed);
+        assert_eq!(attempts(&pool, &id).await, 3);
+    }
+
+    #[tokio::test]
+    async fn a_job_that_succeeds_on_retry_completes() {
+        let (_tree, pool) = fresh_queue().await;
+        let id = enqueue(
+            &pool,
+            "Flaky",
+            serde_json::json!(null),
+            Utc::now(),
+            None,
+            None,
+            None,
+        )
+        .await
+        .unwrap();
+        let runs = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let flaky = Flaky {
+            fail_first: 1,
+            runs: runs.clone(),
+        };
+        let registry = registry_with(flaky, Some(retrying(3, Duration::ZERO)));
+
+        run_for(&registry, &pool, Duration::from_millis(1500)).await;
+
+        assert_eq!(runs.load(std::sync::atomic::Ordering::SeqCst), 2);
+        assert_eq!(get_job(&pool, &id).await.status, JobStatus::Completed);
+    }
+
+    #[tokio::test]
+    async fn a_retry_waits_for_its_backoff() {
+        let (_tree, pool) = fresh_queue().await;
+        let id = enqueue(
+            &pool,
+            "Flaky",
+            serde_json::json!(null),
+            Utc::now(),
+            None,
+            None,
+            None,
+        )
+        .await
+        .unwrap();
+        let runs = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let flaky = Flaky {
+            fail_first: usize::MAX,
+            runs: runs.clone(),
+        };
+        let registry = registry_with(flaky, Some(retrying(5, Duration::from_secs(3600))));
+
+        run_for(&registry, &pool, Duration::from_millis(1500)).await;
+
+        assert_eq!(runs.load(std::sync::atomic::Ordering::SeqCst), 1);
+        let job = get_job(&pool, &id).await;
+        assert_eq!(job.status, JobStatus::Queued);
+        assert!(
+            job.run_at > Utc::now() + chrono::Duration::minutes(50),
+            "{}",
+            job.run_at
+        );
+    }
+
+    #[tokio::test]
+    async fn without_a_retry_policy_the_first_failure_is_final() {
+        let (_tree, pool) = fresh_queue().await;
+        let id = enqueue(
+            &pool,
+            "Flaky",
+            serde_json::json!(null),
+            Utc::now(),
+            None,
+            None,
+            None,
+        )
+        .await
+        .unwrap();
+        let runs = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let flaky = Flaky {
+            fail_first: usize::MAX,
+            runs: runs.clone(),
+        };
+        let registry = registry_with(flaky, None);
+
+        run_for(&registry, &pool, Duration::from_millis(1500)).await;
+
+        assert_eq!(runs.load(std::sync::atomic::Ordering::SeqCst), 1);
+        assert_eq!(get_job(&pool, &id).await.status, JobStatus::Failed);
+    }
+
+    #[tokio::test]
+    async fn a_running_job_heartbeats_so_the_reaper_skips_it() {
+        let (_tree, pool) = fresh_queue().await;
+        let id = enqueue(
+            &pool,
+            "Slow",
+            serde_json::json!(null),
+            Utc::now(),
+            None,
+            None,
+            None,
+        )
+        .await
+        .unwrap();
+        dequeue(&pool, &[]).await.unwrap().expect("job is due");
+        // Pretend the job was picked up an hour ago.
+        age_an_hour(&pool).await;
+
+        let result = crate::bgworker::sql::run_with_heartbeat::<SqliteDriver>(
+            &pool,
+            &id,
+            Duration::from_millis(100),
+            async {
+                sleep(Duration::from_millis(350)).await;
+                Ok(())
+            },
+        )
+        .await;
+        assert!(result.is_ok());
+
+        requeue(&pool, &30).await.unwrap();
+        assert_eq!(get_job(&pool, &id).await.status, JobStatus::Processing);
+    }
+
+    #[tokio::test]
+    async fn the_reaper_requeues_a_job_without_heartbeats() {
+        let (_tree, pool) = fresh_queue().await;
+        let id = enqueue(
+            &pool,
+            "Slow",
+            serde_json::json!(null),
+            Utc::now(),
+            None,
+            None,
+            None,
+        )
+        .await
+        .unwrap();
+        dequeue(&pool, &[]).await.unwrap().expect("job is due");
+        age_an_hour(&pool).await;
+
+        requeue(&pool, &30).await.unwrap();
+        assert_eq!(get_job(&pool, &id).await.status, JobStatus::Queued);
+    }
+
+    async fn age_an_hour(pool: &SqlitePool) {
+        sqlx::query("UPDATE sqlt_loco_queue SET updated_at = DATETIME('now', '-60 minute')")
+            .execute(pool)
+            .await
+            .unwrap();
     }
 }
