@@ -46,6 +46,9 @@ subcommand.
 - **New default-on `mailer` feature.** It carries the mailer and lettre.
   With `default-features = false`, list it if you send mail. Configuring a
   mailer without it fails at boot with a message naming the feature.
+- **In-memory cache.** `Inmem::new(max_capacity)` replaces
+  `Inmem::from(moka::Cache)`; `InMemExpiry` and `Expiration` are gone.
+  `max_capacity` counts entries, as it always did; the docs said bytes.
 
 ### Added
 
@@ -106,6 +109,7 @@ subcommand.
 - lettre compiles only with `mailer`.
 - byte-unit is gone; `body_limit` and the `number_to_human_size` filter parse
   and format sizes in Loco.
+- moka is gone from the graph.
 
 ### Fixed
 
@@ -117,6 +121,8 @@ subcommand.
   one-connection pool stalled any code that held a transaction while another
   query or a job needed a connection. SQLite keeps 1.
 - **The scheduler stops on SIGTERM.**
+- **Overwriting an in-memory cache key kept its old expiry.** A plain
+  `insert` over a key set with `insert_with_expiry` now keeps it for good.
 
 ## 1.2.0 - 2026-09-22
 
