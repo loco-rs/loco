@@ -25,6 +25,9 @@ subcommand.
 - **Compression builds gzip only by default.** The `compression` middleware
   used to speak brotli, deflate, gzip and zstd. Enable `compression-full` to
   keep all four.
+- **sea-orm-migration without its CLI.** Loco, the app template and the
+  examples depend on it with `default-features = false`. An app that calls
+  `sea_orm_migration::cli` itself must enable its `cli` feature.
 
 ### Added
 
@@ -56,6 +59,10 @@ subcommand.
   requeues jobs whose worker died.
 - `initialize_database` adds the `attempts` and `unique_key` columns to an
   existing queue table on Postgres and SQLite.
+- **`testing-core`**: the request, mailer and database test helpers without
+  the HTML selector assertions (`testing-html`). `testing` is both.
+  Generated apps use `testing-core`, which saves recompiling about 60 crates
+  on the first `cargo test`.
 
 ### Build
 
@@ -64,6 +71,10 @@ subcommand.
   and without `db-sqlite` for a Postgres app, and the template emits only
   the matching sea-orm driver. Connecting to a `postgres://` URL without
   `db-postgres` fails at boot with a message naming the feature.
+- Generated apps build dependencies without debug info, which halves
+  `target/` while keeping debug info for app crates.
+- Gone from generated apps: rstest, insta `redactions` and `yaml`, and
+  sea-orm-cli.
 
 ### Fixed
 
