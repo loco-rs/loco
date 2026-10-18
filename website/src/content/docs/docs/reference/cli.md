@@ -95,7 +95,7 @@ Source: `wizard.rs:12-27`, branch logic `wizard.rs:304-333`.
 
 Source: `loco-new/src/settings.rs:58-89`.
 
-- DB enabled → `Features::default()` (loco-rs default features apply to the generated app).
+- DB enabled → `default-features = false` with loco-rs's default features spelled out, minus the driver the app does not use: a SQLite app leaves out `db-postgres`, a Postgres app `db-sqlite`. The template lists only the matching sea-orm driver.
 - DB **disabled** (Lightweight template, or `--db none`) → `default-features = false`, feature names = `["cli", "generators", "compression-full"]`; if background is `queue-redis`, `"worker_redis"` is appended; if background is `queue-postgres`, `"worker"` and `"db-postgres"` are appended; if background is `queue-sqlite`, `"worker"` and `"db-sqlite"` are appended.
 - `auth` and `mailer` scaffolding are enabled iff DB is enabled.
 - The DB choice is **expensive to reverse**: `--db none` removes the `migration` crate, the `models` module, `AppContext::db`, and the two `with-db`-only `Hooks` methods, and no generator puts them back. Adding a database later is a manual procedure — see [Add a database to an existing app](/docs/how-to/add-a-database).
