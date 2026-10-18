@@ -5,13 +5,13 @@
 **Upgrading:** nothing to do if you use `loco-rs`'s default features. If your
 `Cargo.toml` sets `default-features = false`, add whichever of the new
 features below your app uses: `db-postgres` if it talks to Postgres (database
-or `queue.kind: Postgres`), `compression-full` if it enables the
+or `queue.kind: Postgres`), `compression` if it enables the
 `compression` middleware, and `generators` if you run `cargo loco generate`.
 For example:
 
 ```toml
 loco-rs = { version = "...", default-features = false, features = [
-    "cli", "with-db", "db-postgres", "compression-full", "generators",
+    "cli", "with-db", "db-postgres", "compression", "generators",
 ] }
 ```
 
@@ -20,24 +20,38 @@ becomes an unknown config variant, an enabled `compression` middleware is a
 boot error naming the missing feature, and `generate` is an unrecognized
 subcommand.
 
+### Breaking
+
+- **Compression builds gzip only by default.** The `compression` middleware
+  used to speak brotli, deflate, gzip and zstd. Enable `compression-full` to
+  keep all four.
+
 ### Added
 
-- **`db-postgres`, `compression`, `compression-full` and `generators`
-  features**, all on by default, so apps built with
+- **`db-postgres`, `compression` and `generators` features**, on by
+  default, plus `compression-full`, so apps built with
   `default-features = false` can leave out dependencies they never use. The
   mirror image of `db-sqlite` (#1828), and the "feature-flag heavy
   middleware" item from #937.
   - `db-postgres`: the Postgres SeaORM/sqlx drivers, the Postgres queue and
     Postgres test helpers. A SQLite-only app skips `sqlx-postgres`.
   - `compression`: the `compression` middleware, gzip only.
-    `compression-full` adds brotli, deflate and zstd (today's behaviour), and
-    with them a C build of libzstd.
+    `compression-full` adds brotli, deflate and zstd, and with them a C build
+    of libzstd.
   - `generators`: `cargo loco generate`. `loco-gen` pulls a second (Tera 1)
     template engine through `rrgen` and was compiled into release builds,
     where `generate` does not exist.
 
-  `loco new` lists `generators` and `compression-full` whenever it emits
+  `loco new` lists `generators` and `compression` whenever it emits
   `default-features = false`, and `db-postgres` for a Postgres queue.
+
+### Build
+
+- **Generated apps compile only their own database driver.** `loco new`
+  lists loco-rs's default features without `db-postgres` for a SQLite app
+  and without `db-sqlite` for a Postgres app, and the template emits only
+  the matching sea-orm driver. Connecting to a `postgres://` URL without
+  `db-postgres` fails at boot with a message naming the feature.
 
 ## 1.2.0 - 2026-09-22
 
