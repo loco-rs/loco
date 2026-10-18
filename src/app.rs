@@ -5,7 +5,9 @@ use {sea_orm::DatabaseConnection, std::path::Path};
 
 use std::{
     any::{Any, TypeId},
+    future::Future,
     net::SocketAddr,
+    pin::Pin,
     sync::Arc,
 };
 
@@ -478,25 +480,13 @@ pub trait Hooks: Send {
     /// # Returns
     /// A Result indicating success () or an error if the server fails to start.
     async fn serve(app: AxumRouter, ctx: &AppContext, serve_params: &ServeParams) -> Result<()> {
-        let listener = tokio::net::TcpListener::bind(&format!(
-            "{}:{}",
-            serve_params.binding, serve_params.port
-        ))
-        .await?;
-
-        let cloned_ctx = ctx.clone();
-        axum::serve(
-            listener,
-            app.into_make_service_with_connect_info::<SocketAddr>(),
+        let ctx = ctx.clone();
+        serve_router(
+            app,
+            serve_params,
+            Box::pin(async move { Self::on_shutdown(&ctx).await }),
         )
-        .with_graceful_shutdown(async move {
-            shutdown_signal().await;
-            tracing::info!("shutting down...");
-            Self::on_shutdown(&cloned_ctx).await;
-        })
-        .await?;
-
-        Ok(())
+        .await
     }
 
     /// Override and return `Ok(true)` to provide an alternative logging and
@@ -644,6 +634,36 @@ pub trait Initializer: Sync + Send {
     }
 }
 // </snip>
+
+/// Serves `app` until a shutdown signal arrives, then runs `on_shutdown`.
+///
+/// The default [`Hooks::serve`] calls this. It takes the hook as a boxed
+/// future so the server stack compiles once in Loco instead of once per app.
+///
+/// # Errors
+/// Fails if the listener cannot bind or the server fails.
+pub async fn serve_router(
+    app: AxumRouter,
+    serve_params: &ServeParams,
+    on_shutdown: Pin<Box<dyn Future<Output = ()> + Send>>,
+) -> Result<()> {
+    let listener =
+        tokio::net::TcpListener::bind(&format!("{}:{}", serve_params.binding, serve_params.port))
+            .await?;
+
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .with_graceful_shutdown(async move {
+        shutdown_signal().await;
+        tracing::info!("shutting down...");
+        on_shutdown.await;
+    })
+    .await?;
+
+    Ok(())
+}
 
 #[cfg(test)]
 mod tests {
