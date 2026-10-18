@@ -121,7 +121,7 @@ application code must not copy. For "what does good app code look like," read
 ```sh
 cargo loco start                          # run the server
 cargo loco generate model posts title:string content:text
-cargo loco generate scaffold posts title:string --api
+cargo loco generate scaffold posts title:string   # adaptive: no --api/--html flag
 cargo loco generate controller|worker|mailer|task|migration <name>
 cargo loco db migrate|entities|reset|seed
 cargo loco task <name>                    # run a task
