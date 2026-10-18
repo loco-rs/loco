@@ -104,6 +104,8 @@ subcommand.
   reads `Cargo.lock` line by line.
 - OpenDAL compiles only with the storage features that use it.
 - lettre compiles only with `mailer`.
+- byte-unit is gone; `body_limit` and the `number_to_human_size` filter parse
+  and format sizes in Loco.
 
 ### Fixed
 
