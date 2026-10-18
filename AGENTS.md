@@ -45,7 +45,9 @@ src/
   models/
     _entities/            GENERATED from schema — never hand-edit
     <name>.rs             your domain logic; re-exports from _entities
-  views/                  response DTOs — entities never go on the wire directly
+  dtos/                   typed JSON DTOs: `common.rs` (Page<T>, ApiError) + one per scaffolded model (db apps)
+  views/                  the starter's own response types (auth.rs, or home.rs without a db)
+                          — either way, entities never go on the wire directly
   workers/                BackgroundWorker impls
   mailers/                mailer structs + templates/
   tasks/                  Task impls (the `rake task` equivalent)
@@ -118,7 +120,7 @@ application code must not copy. For "what does good app code look like," read
 ```sh
 cargo loco start                          # run the server
 cargo loco generate model posts title:string content:text
-cargo loco generate scaffold posts title:string --api
+cargo loco generate scaffold posts title:string   # adaptive: no --api/--html flag
 cargo loco generate controller|worker|mailer|task|migration <name>
 cargo loco db migrate|entities|reset|seed
 cargo loco task <name>                    # run a task
