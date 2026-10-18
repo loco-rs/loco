@@ -75,6 +75,8 @@ subcommand.
   `target/` while keeping debug info for app crates.
 - Gone from generated apps: rstest, insta `redactions` and `yaml`, and
   sea-orm-cli.
+- The generator templating that came from rrgen lives in loco-gen on Tera 2,
+  so apps no longer build two Tera stacks.
 
 ### Fixed
 
