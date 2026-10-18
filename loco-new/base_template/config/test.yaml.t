@@ -68,7 +68,7 @@ queue:
   dangerously_flush: false
   {% elif settings.background.queue_kind == "Postgres" %}
   # Postgres connection URI
-  uri: <%= get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco_test") %>
+  uri: <%= get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/{{settings.package_name}}_test") %>
   # Dangerously flush all data in the queue table on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_flush: false
   {% elif settings.background.queue_kind == "Sqlite" %}
