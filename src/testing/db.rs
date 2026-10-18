@@ -148,7 +148,10 @@ impl TestSupport for PostgresTest {
         // safe to call from `Drop::drop` since nothing here is `.await`ed on
         // the caller's runtime.
         std::thread::spawn(move || {
-            let rt = tokio::runtime::Runtime::new().expect("create cleanup runtime");
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("create cleanup runtime");
 
             rt.block_on(async {
                 let pool = Pool::<Postgres>::connect(&connection_string)
