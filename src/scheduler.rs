@@ -6,12 +6,11 @@ use std::{
     fmt, io,
     path::{Path, PathBuf},
     sync::OnceLock,
-    time::{Duration, Instant},
+    time::Instant,
 };
 
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use tokio_cron_scheduler::{JobScheduler, JobSchedulerError};
 use uuid::Uuid;
 
 use crate::{app::Hooks, environment::Environment, task::Tasks};
@@ -39,9 +38,6 @@ pub enum Error {
 
     #[error("Invalid cron {cron}. err: '{}'", error.as_display())]
     InvalidCronSyntax { cron: String, error: String },
-
-    #[error(transparent)]
-    Question(#[from] JobSchedulerError),
 
     #[error(transparent)]
     IO(#[from] std::io::Error),
@@ -297,9 +293,13 @@ impl Scheduler {
     ///
     /// When could not add job to the scheduler
     pub async fn run(self) -> Result<()> {
-        let mut sched = JobScheduler::new().await?;
+        let parser = croner::parser::CronParser::builder()
+            .seconds(croner::parser::Seconds::Required)
+            .dom_and_dow(true)
+            .build();
+        let mut tasks = tokio::task::JoinSet::new();
 
-        for (job_name, job) in &self.jobs {
+        for (job_name, job) in self.jobs {
             let job_description =
                 job.prepare_command(&self.binary_path, &self.default_output, &self.environment);
 
@@ -313,58 +313,42 @@ impl Scheduler {
                     }
                 })?
             };
+            let cron = parser
+                .parse(&cron_syntax)
+                .map_err(|err| Error::InvalidCronSyntax {
+                    cron: cron_syntax.clone(),
+                    error: err.to_string(),
+                })?;
 
-            if job.run_on_start {
-                let job_description = job_description.clone();
-                let job_name = job_name.clone();
-                sched
-                    .add(tokio_cron_scheduler::Job::new_one_shot_async(
-                        Duration::from_secs(0),
-                        move |uuid, _l| {
-                            let job_description = job_description.clone();
-                            let job_name = job_name.clone();
-                            Box::pin(async move {
-                                // `job_description.run()` blocks the thread for the
-                                // whole child-process lifetime; keep it off the
-                                // async runtime's worker threads.
-                                let _ = tokio::task::spawn_blocking(move || {
-                                    execute_job(job_name.as_str(), uuid, &job_description);
-                                })
-                                .await;
-                            })
-                        },
-                    )?)
-                    .await?;
-            }
-
-            let job_name = job_name.clone();
-            sched
-                .add(tokio_cron_scheduler::Job::new_async(
-                    cron_syntax.as_str(),
-                    move |uuid, mut _l| {
-                        let job_description = job_description.clone();
-                        let job_name = job_name.clone();
-                        Box::pin(async move {
-                            // `job_description.run()` blocks the thread for the whole
-                            // child-process lifetime; keep it off the async runtime's
-                            // worker threads.
-                            let _ = tokio::task::spawn_blocking(move || {
-                                execute_job(job_name.as_str(), uuid, &job_description);
-                            })
-                            .await;
-                        })
-                    },
-                )?)
-                .await?;
+            tasks.spawn(async move {
+                if job.run_on_start {
+                    spawn_job(&job_name, &job_description);
+                }
+                while let Ok(next) = cron.find_next_occurrence(&chrono::Utc::now(), false) {
+                    let wait = (next - chrono::Utc::now()).to_std().unwrap_or_default();
+                    tokio::time::sleep(wait).await;
+                    spawn_job(&job_name, &job_description);
+                }
+                tracing::warn!(job_name, "cron has no further occurrences; job stopped");
+            });
         }
 
-        sched.start().await?;
-
-        tokio::signal::ctrl_c().await?;
-        sched.shutdown().await?;
+        crate::boot::shutdown_signal().await;
+        tasks.shutdown().await;
 
         Ok(())
     }
+}
+
+/// Starts a run without waiting for it, so a slow run never delays the next
+/// tick. `job_description.run()` blocks for the whole child-process lifetime,
+/// so it runs off the async runtime's worker threads.
+fn spawn_job(job_name: &str, job_description: &JobDescription) {
+    let job_name = job_name.to_string();
+    let job_description = job_description.clone();
+    tokio::task::spawn_blocking(move || {
+        execute_job(&job_name, Uuid::new_v4(), &job_description);
+    });
 }
 
 fn execute_job(job_name: &str, uuid: Uuid, job_description: &JobDescription) {
