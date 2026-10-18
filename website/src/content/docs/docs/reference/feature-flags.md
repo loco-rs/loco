@@ -33,7 +33,7 @@ A plain `loco-rs = "..."` dependency (no `default-features = false`) pulls in JW
 | `mailer` | **ON** | `dep:lettre`, `dep:include_dir` | The `Mailer` trait, SMTP and stub delivery, and the `mailer` queue worker. An app that sends no mail leaves it off to skip lettre and its SMTP parser and rustls stack. A config that enables a mailer (`stub: true` or an enabled `smtp` block) fails at boot without it. |
 | `multi-tenancy` | off | `with-db` | Explicit tenant scoping through `TenantEntity`, `TenantQueryExt`, and `TenantActiveModelExt`. See [Add row-level multi-tenancy](/docs/how-to/multi-tenancy). |
 | `testing` | off | `dep:axum-test`, `dep:scraper`, `dep:tree-fs` | Test harness utilities. Enabled alongside `multi-tenancy` for docs.rs, and used by the crate's own `dev-dependencies`. |
-| `cache_inmem` | **ON** | `dep:moka` | In-memory cache backend. |
+| `cache_inmem` | **ON** | none | In-memory cache backend: a map in the process, entries expire, and the least recently used entry goes when `max_capacity` is reached. |
 | `cache_redis` | off | `dep:bb8-redis`, `dep:bb8` | Redis-backed cache pool. |
 | `worker` | **ON** | `dep:sqlx`, `dep:ulid` | Background job queue/workers: the Postgres backend with `db-postgres`, the SQLite backend with `db-sqlite`. Which one runs is chosen at runtime by `queue.kind` in config (`Postgres` or `Sqlite`), not by a separate feature per database. |
 | `worker_redis` | off | `worker`, `dep:redis` | Adds the Redis-backed queue backend on top of `worker` (implies it). Enable this if your app's `queue.kind` is `Redis`. |
