@@ -12,7 +12,7 @@ sidebar:
 ```toml
 default = [
     "auth", "cli", "with-db", "cache_inmem", "worker",
-    "db-sqlite", "db-postgres", "compression", "generators",
+    "db-sqlite", "db-postgres", "compression", "generators", "mailer",
 ]
 ```
 
@@ -30,6 +30,7 @@ A plain `loco-rs = "..."` dependency (no `default-features = false`) pulls in JW
 | `compression` | **ON** | `tower-http/compression-gzip` | The `compression` middleware, gzip only. Enough for the clients that send `Accept-Encoding: gzip`, which is practically all of them. |
 | `compression-full` | off | `compression`, `tower-http/compression-full` | The `compression` middleware with brotli, deflate, gzip and zstd. zstd is a C build of libzstd. |
 | `generators` | **ON** | `dep:loco-gen` | `cargo loco generate` (debug builds only). `loco-gen` brings a second, Tera 1, template engine through `rrgen`; leaving the feature out keeps it out of the build. |
+| `mailer` | **ON** | `dep:lettre`, `dep:include_dir` | The `Mailer` trait, SMTP and stub delivery, and the `mailer` queue worker. An app that sends no mail leaves it off to skip lettre and its SMTP parser and rustls stack. A config that enables a mailer (`stub: true` or an enabled `smtp` block) fails at boot without it. |
 | `multi-tenancy` | off | `with-db` | Explicit tenant scoping through `TenantEntity`, `TenantQueryExt`, and `TenantActiveModelExt`. See [Add row-level multi-tenancy](/docs/how-to/multi-tenancy). |
 | `testing` | off | `dep:axum-test`, `dep:scraper`, `dep:tree-fs` | Test harness utilities. Enabled alongside `multi-tenancy` for docs.rs, and used by the crate's own `dev-dependencies`. |
 | `cache_inmem` | **ON** | `dep:moka` | In-memory cache backend. |

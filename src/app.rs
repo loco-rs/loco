@@ -14,6 +14,9 @@ use axum::extract::FromRef;
 use axum::Router as AxumRouter;
 use dashmap::DashMap;
 
+#[cfg(feature = "mailer")]
+use crate::mailer::EmailSender;
+
 use crate::{
     bgworker::{self, Queue},
     boot::{shutdown_signal, BootResult, ServeParams, StartMode},
@@ -24,7 +27,6 @@ use crate::{
         AppRoutes,
     },
     environment::Environment,
-    mailer::EmailSender,
     storage::{self, Storage},
     task::Tasks,
     Result,
@@ -264,6 +266,7 @@ pub struct AppContext {
     /// Configuration settings for the application
     pub config: Config,
     /// An optional email sender component that can be used to send email.
+    #[cfg(feature = "mailer")]
     pub mailer: Option<EmailSender>,
     // An optional storage instance for the application
     pub storage: Arc<Storage>,
@@ -287,6 +290,7 @@ pub struct AppContextBuilder {
     db: DatabaseConnection,
     config: Config,
     queue_provider: Option<Arc<bgworker::Queue>>,
+    #[cfg(feature = "mailer")]
     mailer: Option<EmailSender>,
     storage: Option<Arc<Storage>>,
     cache: Option<Arc<cache::Cache>>,
@@ -306,6 +310,7 @@ impl AppContext {
             db,
             config,
             queue_provider: None,
+            #[cfg(feature = "mailer")]
             mailer: None,
             storage: None,
             cache: None,
@@ -320,6 +325,7 @@ impl AppContext {
             environment,
             config,
             queue_provider: None,
+            #[cfg(feature = "mailer")]
             mailer: None,
             storage: None,
             cache: None,
@@ -354,6 +360,7 @@ impl AppContext {
             db: self.db,
             config: self.config,
             queue_provider: self.queue_provider,
+            #[cfg(feature = "mailer")]
             mailer: self.mailer,
             storage: Some(self.storage),
             cache: Some(self.cache),
@@ -369,6 +376,7 @@ impl AppContextBuilder {
         self
     }
     /// Set the email sender (default: none).
+    #[cfg(feature = "mailer")]
     pub fn mailer(mut self, mailer: EmailSender) -> Self {
         self.mailer = Some(mailer);
         self
@@ -398,6 +406,7 @@ impl AppContextBuilder {
             db: self.db,
             queue_provider: self.queue_provider,
             config: self.config,
+            #[cfg(feature = "mailer")]
             mailer: self.mailer,
             storage: self
                 .storage
@@ -878,7 +887,10 @@ mod tests {
     #[tokio::test]
     async fn into_builder_carries_every_component_over() {
         let mut ctx = get_app_context().await;
-        ctx.mailer = Some(crate::mailer::EmailSender::stub());
+        #[cfg(feature = "mailer")]
+        {
+            ctx.mailer = Some(crate::mailer::EmailSender::stub());
+        }
         ctx.shared_store.insert(TestService {
             name: "attached-at-boot".to_string(),
             value: 7,
@@ -905,6 +917,7 @@ mod tests {
             Arc::ptr_eq(&before.shared_store, &after.shared_store),
             "shared store was dropped"
         );
+        #[cfg(feature = "mailer")]
         assert!(after.mailer.is_some(), "mailer was dropped");
         assert_eq!(after.environment, before.environment);
         assert!(
