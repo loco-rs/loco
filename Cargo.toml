@@ -137,7 +137,7 @@ serde_json = { workspace = true }
 # continuation. Kept under the `serde_yaml` name so source paths are unchanged.
 serde_yaml = { package = "serde_yaml_ng", version = "0.10" }
 serde_variant = "0.1.2"
-toml = "0.8"
+toml = { version = "1", default-features = false, features = ["std", "parse", "display", "serde"] }
 
 async-trait = { workspace = true }
 
@@ -179,9 +179,8 @@ futures-util = "0.3"
 tower = { workspace = true }
 bytes = "1.11"
 axum-client-ip = { version = "1.3", features = ["forwarded-header"] }
-semver = "1"
+semver = { version = "1", features = ["serde"] }
 url = "2"
-cargo-lock = { version = "11", default-features = false }
 
 axum-test = { version = "17.0.1", optional = true }
 tree-fs = { version = "0.3", optional = true }
