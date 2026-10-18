@@ -22,7 +22,7 @@ A plain `loco-rs = "..."` dependency (no `default-features = false`) pulls in JW
 
 | Flag | Default | Enables (deps / sub-features) | Purpose |
 |---|---|---|---|
-| `auth` | **ON** | `dep:jsonwebtoken`, `jsonwebtoken/rust_crypto` | JWT authentication. Selects `jsonwebtoken`'s pure-Rust `rust_crypto` backend (jsonwebtoken 10 no longer bundles a crypto backend by default), so the flag stays self-contained and needs no C toolchain, even when enabled alone with `default-features = false`. |
+| `auth` | **ON** | `dep:hmac`, `dep:sha2`, `dep:base64` | JWT authentication (HS256/HS384/HS512). Pure Rust, so the flag stays self-contained and needs no C toolchain, even when enabled alone with `default-features = false`. |
 | `cli` | **ON** | `dep:clap` | Enables the `cargo loco` runtime CLI (`src/cli.rs`). |
 | `with-db` | **ON** | `dep:sea-orm`, `dep:sea-orm-migration`, `dep:sqlx`, `loco-gen?/with-db` | Sea-ORM 2.0 database support. Gates the `db` CLI subcommand and the DB-dependent generators (`model`, `migration`, `scaffold`). Needs a driver: `db-postgres`, `db-sqlite`, or both. |
 | `db-sqlite` | **ON** | `sea-orm?/sqlx-sqlite`, `sea-orm-migration?/sqlx-sqlite`, `sqlx?/sqlite` | SQLite SeaORM/sqlx drivers and the SQLite queue worker backend. Disable with `default-features = false` on Postgres-only apps to skip `libsqlite3-sys` compile cost. |
@@ -52,7 +52,7 @@ Source: root `Cargo.toml:41-109`.
 - **Missing features fail loudly.** Without `db-postgres`, `queue.kind: Postgres` is an unknown variant when the config loads. Without `compression`, a `compression` middleware with `enable: true` is a boot error naming the feature. A disabled `compression` middleware needs no feature.
 - **`all_storage` is a pure umbrella.** It has no dependency of its own; it just turns on `storage_aws_s3`, `storage_azure`, and `storage_gcp` together.
 - **`multi-tenancy` implies `with-db`.** Tenant helpers build on Sea-ORM; enabling `with-db` alone does not enable them.
-- **`auth` selects `jsonwebtoken/rust_crypto`.** Because jsonwebtoken 10 unbundled its crypto backend, `auth` explicitly enables the `rust_crypto` sub-feature so JWT support keeps working without requiring a system C toolchain (e.g. OpenSSL).
+- **`auth` is pure Rust.** Loco signs and verifies its HMAC JWTs itself on the RustCrypto `hmac` and `sha2` crates, with a constant-time signature check, so JWT support needs no system C toolchain (e.g. OpenSSL) and pulls no RSA or elliptic-curve code.
 - **`with-db` is a prerequisite, not an implication.** Enabling `worker` does not itself pull in `with-db`; the two are independent flags that happen to share the `sqlx` dependency.
 - **The queue backend is chosen at runtime, among the ones compiled in.** `worker` builds in the Postgres queue provider with `db-postgres` and the SQLite one with `db-sqlite`; which one actually runs is decided by `queue.kind` (`Postgres` or `Sqlite`) in your app config. `worker_redis` adds the Redis provider, selected the same way with `queue.kind: Redis`. See [Choose a queue backend](/docs/how-to/choose-queue-backend).
 

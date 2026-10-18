@@ -2,39 +2,103 @@
 //!
 //! This module provides functionality for working with JSON Web Tokens (JWTs)
 //! and password hashing.
-use jsonwebtoken::{
-    decode, encode, errors::Result as JWTResult, get_current_timestamp, Algorithm, DecodingKey,
-    EncodingKey, Header, TokenData, Validation,
+//!
+//! Loco signs tokens with a shared secret, so only the HMAC algorithms apply.
+//! They are implemented here on `hmac` + `sha2` (RFC 7519 / RFC 7515 compact
+//! serialization) instead of a general-purpose JWT crate, whose RSA and
+//! elliptic-curve backends a shared-secret token never uses.
+use base64::{
+    engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD},
+    Engine,
 };
-use serde::{Deserialize, Serialize};
+use hmac::{Hmac, Mac};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{Map, Value};
+use sha2::{Sha256, Sha384, Sha512};
 
 /// Represents the default JWT algorithm used by the [`JWT`] struct.
-const JWT_ALGORITHM: Algorithm = Algorithm::HS512;
+const JWT_ALGORITHM: JWTAlgorithm = JWTAlgorithm::HS512;
 
 /// The HMAC-based JWT signing algorithms supported by [`JWT`].
 ///
 /// [`JWT`] always derives its signing/verification key from a shared
-/// base64-encoded secret (see [`EncodingKey::from_base64_secret`] and
-/// [`DecodingKey::from_base64_secret`]), so only the HMAC family of
-/// algorithms can ever work here. Asymmetric algorithms (RSA, EC, `EdDSA`, ...)
-/// require a public/private key pair, not a shared secret, so they are
-/// intentionally not exposed through [`JWT::algorithm`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// base64-encoded secret, so only the HMAC family of algorithms can ever work
+/// here. Asymmetric algorithms (RSA, EC, `EdDSA`, ...) require a
+/// public/private key pair, not a shared secret, so they are intentionally not
+/// exposed through [`JWT::algorithm`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum JWTAlgorithm {
     HS256,
     HS384,
     HS512,
 }
 
-impl From<JWTAlgorithm> for Algorithm {
-    fn from(algorithm: JWTAlgorithm) -> Self {
-        match algorithm {
-            JWTAlgorithm::HS256 => Self::HS256,
-            JWTAlgorithm::HS384 => Self::HS384,
-            JWTAlgorithm::HS512 => Self::HS512,
+impl JWTAlgorithm {
+    fn sign(self, key: &[u8], message: &[u8]) -> Vec<u8> {
+        fn run<M: Mac + hmac::digest::KeyInit>(key: &[u8], message: &[u8]) -> Vec<u8> {
+            let mut mac = <M as Mac>::new_from_slice(key).expect("HMAC accepts any key length");
+            mac.update(message);
+            mac.finalize().into_bytes().to_vec()
+        }
+        match self {
+            Self::HS256 => run::<Hmac<Sha256>>(key, message),
+            Self::HS384 => run::<Hmac<Sha384>>(key, message),
+            Self::HS512 => run::<Hmac<Sha512>>(key, message),
         }
     }
+
+    /// Constant-time signature check.
+    fn verify(self, key: &[u8], message: &[u8], signature: &[u8]) -> bool {
+        fn run<M: Mac + hmac::digest::KeyInit>(key: &[u8], message: &[u8], sig: &[u8]) -> bool {
+            let mut mac = <M as Mac>::new_from_slice(key).expect("HMAC accepts any key length");
+            mac.update(message);
+            mac.verify_slice(sig).is_ok()
+        }
+        match self {
+            Self::HS256 => run::<Hmac<Sha256>>(key, message, signature),
+            Self::HS384 => run::<Hmac<Sha384>>(key, message, signature),
+            Self::HS512 => run::<Hmac<Sha512>>(key, message, signature),
+        }
+    }
+}
+
+/// Why a token could not be generated or validated.
+#[derive(thiserror::Error, Debug)]
+#[non_exhaustive]
+pub enum JWTError {
+    #[error("the JWT secret is not valid base64: {0}")]
+    InvalidSecret(base64::DecodeError),
+    #[error("the token is not a `header.claims.signature` triple")]
+    InvalidToken,
+    #[error("a token segment is not valid base64url: {0}")]
+    Base64(base64::DecodeError),
+    #[error("the token header or claims are not valid JSON: {0}")]
+    Json(#[from] serde_json::Error),
+    #[error("the token was signed with a different algorithm")]
+    InvalidAlgorithm,
+    #[error("the token signature does not match")]
+    InvalidSignature,
+    #[error("the token has expired")]
+    ExpiredSignature,
+    #[error("the token carries an `aud` claim, which this validator does not accept")]
+    InvalidAudience,
+}
+
+pub type JWTResult<T> = std::result::Result<T, JWTError>;
+
+/// The JOSE header of a token.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Header {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub typ: Option<String>,
+    pub alg: JWTAlgorithm,
+}
+
+/// A validated token: its header and decoded claims.
+#[derive(Debug, Clone)]
+pub struct TokenData<T> {
+    pub header: Header,
+    pub claims: T,
 }
 
 /// Represents the claims associated with a user JWT.
@@ -58,7 +122,18 @@ pub struct UserClaims {
 #[derive(Debug)]
 pub struct JWT {
     secret: String,
-    algorithm: Algorithm,
+    algorithm: JWTAlgorithm,
+}
+
+fn now() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs())
+}
+
+fn decode_segment<T: DeserializeOwned>(segment: &str) -> JWTResult<T> {
+    let bytes = URL_SAFE_NO_PAD.decode(segment).map_err(JWTError::Base64)?;
+    Ok(serde_json::from_slice(&bytes)?)
 }
 
 impl JWT {
@@ -79,8 +154,14 @@ impl JWT {
     /// cannot work with a shared secret and are therefore not selectable.
     #[must_use]
     pub fn algorithm(mut self, algorithm: JWTAlgorithm) -> Self {
-        self.algorithm = algorithm.into();
+        self.algorithm = algorithm;
         self
+    }
+
+    fn key(&self) -> JWTResult<Vec<u8>> {
+        STANDARD
+            .decode(&self.secret)
+            .map_err(JWTError::InvalidSecret)
     }
 
     /// Generates a new JWT with specified claims and an expiration time.
@@ -103,16 +184,20 @@ impl JWT {
         pid: String,
         claims: Map<String, Value>,
     ) -> JWTResult<String> {
-        let exp = get_current_timestamp().saturating_add(expiration);
-
+        let key = self.key()?;
+        let exp = now().saturating_add(expiration);
         let claims = UserClaims { pid, exp, claims };
+        let header = Header {
+            typ: Some("JWT".to_string()),
+            alg: self.algorithm,
+        };
 
-        let token = encode(
-            &Header::new(self.algorithm),
-            &claims,
-            &EncodingKey::from_base64_secret(&self.secret)?,
-        )?;
-
+        let mut token = URL_SAFE_NO_PAD.encode(serde_json::to_vec(&header)?);
+        token.push('.');
+        token.push_str(&URL_SAFE_NO_PAD.encode(serde_json::to_vec(&claims)?));
+        let signature = self.algorithm.sign(&key, token.as_bytes());
+        token.push('.');
+        token.push_str(&URL_SAFE_NO_PAD.encode(signature));
         Ok(token)
     }
 
@@ -130,14 +215,36 @@ impl JWT {
     /// auth::jwt::JWT::new("PqRwLF2rhHe8J22oBeHy").validate("JWT-TOKEN");
     /// ```
     pub fn validate(&self, token: &str) -> JWTResult<TokenData<UserClaims>> {
-        let mut validate = Validation::new(self.algorithm);
-        validate.leeway = 0;
+        let (message, signature) = token.rsplit_once('.').ok_or(JWTError::InvalidToken)?;
+        let (header, claims) = message.split_once('.').ok_or(JWTError::InvalidToken)?;
+        if claims.contains('.') {
+            return Err(JWTError::InvalidToken);
+        }
 
-        decode::<UserClaims>(
-            token,
-            &DecodingKey::from_base64_secret(&self.secret)?,
-            &validate,
-        )
+        let key = self.key()?;
+        let header: Header = decode_segment(header)?;
+        if header.alg != self.algorithm {
+            return Err(JWTError::InvalidAlgorithm);
+        }
+        let signature = URL_SAFE_NO_PAD
+            .decode(signature)
+            .map_err(JWTError::Base64)?;
+        if !self.algorithm.verify(&key, message.as_bytes(), &signature) {
+            return Err(JWTError::InvalidSignature);
+        }
+
+        let raw: Map<String, Value> = decode_segment(claims)?;
+        // Kept from the previous `jsonwebtoken` validator: an `aud` claim is
+        // rejected unless an audience is configured, and none can be.
+        if matches!(raw.get("aud"), Some(Value::String(_) | Value::Array(_))) {
+            return Err(JWTError::InvalidAudience);
+        }
+        let claims: UserClaims = serde_json::from_value(Value::Object(raw))?;
+        if claims.exp < now() {
+            return Err(JWTError::ExpiredSignature);
+        }
+
+        Ok(TokenData { header, claims })
     }
 }
 
@@ -195,7 +302,7 @@ mod tests {
 
         let claims = jwt.validate(&token).unwrap();
         assert_eq!(claims.claims.pid, "pid");
-        assert_eq!(Algorithm::from(algorithm), jwt.algorithm);
+        assert_eq!(algorithm, jwt.algorithm);
     }
 
     #[rstest]
