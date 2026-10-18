@@ -65,6 +65,16 @@ subcommand.
   the matching sea-orm driver. Connecting to a `postgres://` URL without
   `db-postgres` fails at boot with a message naming the feature.
 
+### Fixed
+
+- **A new Postgres app with a Postgres queue pointed the queue at a database
+  that did not exist.** `queue.uri` in the generated development and test
+  config defaulted to `loco_development` / `loco_test`; it now uses the app
+  name, like `database.uri`.
+- **Generated Postgres apps get 5 connections in development and test.** A
+  one-connection pool stalled any code that held a transaction while another
+  query or a job needed a connection. SQLite keeps 1.
+
 ## 1.2.0 - 2026-09-22
 
 Ships a Loco skill so coding agents write idiomatic Loco without guessing,
