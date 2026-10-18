@@ -63,6 +63,7 @@ testing-core = ["dep:axum-test", "dep:tree-fs"]
 # `assert_css_*` HTML selector assertions (pulls in `scraper`).
 testing-html = ["testing-core", "dep:scraper"]
 with-db = [
+    "dep:toml",
     "dep:sea-orm",
     "dep:sea-orm-migration",
     "dep:sqlx",
@@ -137,7 +138,8 @@ serde_json = { workspace = true }
 # continuation. Kept under the `serde_yaml` name so source paths are unchanged.
 serde_yaml = { package = "serde_yaml_ng", version = "0.10" }
 serde_variant = "0.1.2"
-toml = { version = "1", default-features = false, features = ["std", "parse", "display", "serde"] }
+# Reads `[package.metadata.db.entity]` for `cargo loco db entities`.
+toml = { version = "1", default-features = false, features = ["std", "parse", "display", "serde"], optional = true }
 
 async-trait = { workspace = true }
 
