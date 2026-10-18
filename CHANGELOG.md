@@ -37,6 +37,8 @@ subcommand.
   jsonwebtoken issued; only HS256/384/512 were ever supported.
 - **`hash_password` and `verify_password` need `auth`.**
   `hash::random_string` does not.
+- **`cargo_config` needs `with-db`.** It only served `cargo loco db
+  entities`.
 
 ### Added
 
@@ -91,6 +93,8 @@ subcommand.
 - Gone from the graph: jsonwebtoken and the RSA, P-256/P-384 and ed25519
   code it compiled.
 - argon2 compiles only with `auth`.
+- Gone from the graph: cargo-lock and its second toml stack. `loco doctor`
+  reads `Cargo.lock` line by line.
 
 ### Fixed
 
