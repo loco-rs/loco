@@ -4,6 +4,10 @@
 //! the data being transmitted. This can improve performance by decreasing load
 //! times and reducing bandwidth usage. The middleware configuration allows for
 //! enabling or disabling compression based on the application settings.
+//!
+//! The default `compression` feature builds gzip. Enable `compression-full`
+//! for brotli, deflate and zstd; the client's `Accept-Encoding` picks among
+//! what is built.
 
 use axum::Router as AXRouter;
 use serde::{Deserialize, Serialize};

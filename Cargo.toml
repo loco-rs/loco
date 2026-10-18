@@ -47,7 +47,7 @@ default = [
     "worker",
     "db-sqlite",
     "db-postgres",
-    "compression-full",
+    "compression",
     "generators",
 ]
 # jsonwebtoken 10 no longer bundles a crypto backend, so `auth` selects the
@@ -82,8 +82,10 @@ db-postgres = [
 # `cargo loco generate` (debug builds only). Pulls `loco-gen` and, through
 # `rrgen`, a second (Tera 1) template engine; release builds never use it.
 generators = ["dep:loco-gen"]
-# The `compression` middleware. `compression` is gzip only; `compression-full`
-# adds brotli, deflate and zstd (a C build of libzstd).
+# The `compression` middleware. `compression` is gzip only, which every client
+# accepts, and is the default. `compression-full` adds brotli, deflate and zstd;
+# zstd is a C build and brotli a large one, together more compile time than the
+# rest of tower-http.
 compression = ["tower-http/compression-gzip"]
 compression-full = ["compression", "tower-http/compression-full"]
 # Explicit tenant scoping for Sea-ORM models and queries.

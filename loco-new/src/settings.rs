@@ -218,7 +218,7 @@ impl Features {
             names: vec![
                 "cli".to_string(),
                 "generators".to_string(),
-                "compression-full".to_string(),
+                "compression".to_string(),
             ],
         }
     }
@@ -256,6 +256,6 @@ pub const LOCO_DEFAULT_FEATURES: &[&str] = &[
     "worker",
     "db-sqlite",
     "db-postgres",
-    "compression-full",
+    "compression",
     "generators",
 ];

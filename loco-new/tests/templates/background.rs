@@ -33,7 +33,7 @@ fn test_queue_sqlite_without_db_includes_db_sqlite_feature() {
         &[
             toml::Value::String("cli".into()),
             toml::Value::String("generators".into()),
-            toml::Value::String("compression-full".into()),
+            toml::Value::String("compression".into()),
             toml::Value::String("worker".into()),
             toml::Value::String("db-sqlite".into()),
         ],
@@ -67,7 +67,7 @@ fn test_queue_postgres_without_db_includes_db_postgres_feature() {
         &[
             toml::Value::String("cli".into()),
             toml::Value::String("generators".into()),
-            toml::Value::String("compression-full".into()),
+            toml::Value::String("compression".into()),
             toml::Value::String("worker".into()),
             toml::Value::String("db-postgres".into()),
         ],

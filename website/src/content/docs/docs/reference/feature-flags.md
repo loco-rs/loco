@@ -12,11 +12,11 @@ sidebar:
 ```toml
 default = [
     "auth", "cli", "with-db", "cache_inmem", "worker",
-    "db-sqlite", "db-postgres", "compression-full", "generators",
+    "db-sqlite", "db-postgres", "compression", "generators",
 ]
 ```
 
-A plain `loco-rs = "..."` dependency (no `default-features = false`) pulls in JWT auth, the `cargo loco` CLI, Sea-ORM database support, the in-memory cache, the Postgres/SQLite drivers and queue workers, every `compression` codec, and `cargo loco generate`. The Redis-backed queue worker (`worker_redis`) is *not* in the default set — opt in explicitly if your app uses a Redis queue.
+A plain `loco-rs = "..."` dependency (no `default-features = false`) pulls in JWT auth, the `cargo loco` CLI, Sea-ORM database support, the in-memory cache, the Postgres/SQLite drivers and queue workers, gzip for the `compression` middleware, and `cargo loco generate`. The Redis-backed queue worker (`worker_redis`) is *not* in the default set — opt in explicitly if your app uses a Redis queue.
 
 ## The matrix
 
@@ -27,8 +27,8 @@ A plain `loco-rs = "..."` dependency (no `default-features = false`) pulls in JW
 | `with-db` | **ON** | `dep:sea-orm`, `dep:sea-orm-migration`, `dep:sqlx`, `loco-gen?/with-db` | Sea-ORM 2.0 database support. Gates the `db` CLI subcommand and the DB-dependent generators (`model`, `migration`, `scaffold`). Needs a driver: `db-postgres`, `db-sqlite`, or both. |
 | `db-sqlite` | **ON** | `sea-orm?/sqlx-sqlite`, `sea-orm-migration?/sqlx-sqlite`, `sqlx?/sqlite` | SQLite SeaORM/sqlx drivers and the SQLite queue worker backend. Disable with `default-features = false` on Postgres-only apps to skip `libsqlite3-sys` compile cost. |
 | `db-postgres` | **ON** | `sea-orm?/sqlx-postgres`, `sea-orm-migration?/sqlx-postgres`, `sqlx?/postgres` | Postgres SeaORM/sqlx drivers, the Postgres queue worker backend, and the Postgres test helpers. Leave it out with `default-features = false` on SQLite-only apps to skip `sqlx-postgres` and its dependencies. |
-| `compression` | off (implied by `compression-full`) | `tower-http/compression-gzip` | The `compression` middleware, gzip only. Enough for the clients that send `Accept-Encoding: gzip`, which is practically all of them. |
-| `compression-full` | **ON** | `compression`, `tower-http/compression-full` | The `compression` middleware with brotli, deflate, gzip and zstd. zstd is a C build of libzstd. |
+| `compression` | **ON** | `tower-http/compression-gzip` | The `compression` middleware, gzip only. Enough for the clients that send `Accept-Encoding: gzip`, which is practically all of them. |
+| `compression-full` | off | `compression`, `tower-http/compression-full` | The `compression` middleware with brotli, deflate, gzip and zstd. zstd is a C build of libzstd. |
 | `generators` | **ON** | `dep:loco-gen` | `cargo loco generate` (debug builds only). `loco-gen` brings a second, Tera 1, template engine through `rrgen`; leaving the feature out keeps it out of the build. |
 | `multi-tenancy` | off | `with-db` | Explicit tenant scoping through `TenantEntity`, `TenantQueryExt`, and `TenantActiveModelExt`. See [Add row-level multi-tenancy](/docs/how-to/multi-tenancy). |
 | `testing` | off | `dep:axum-test`, `dep:scraper`, `dep:tree-fs` | Test harness utilities. Enabled alongside `multi-tenancy` for docs.rs, and used by the crate's own `dev-dependencies`. |
@@ -64,7 +64,7 @@ To opt out of the default set (e.g. a DB-less app), depend with `default-feature
 loco-rs = { version = "...", default-features = false, features = ["cli"] }
 ```
 
-This is the pattern the `loco new` generator itself uses when the app is created without a database (see the CLI reference's app-creation flow): it emits `default-features = false` with `features = ["cli", "generators", "compression-full"]`, plus `worker_redis` if a Redis-backed queue was selected, `worker` and `db-postgres` if a Postgres-backed queue was selected, or `worker` and `db-sqlite` if a SQLite-backed queue was selected.
+This is the pattern the `loco new` generator itself uses when the app is created without a database (see the CLI reference's app-creation flow): it emits `default-features = false` with `features = ["cli", "generators", "compression"]`, plus `worker_redis` if a Redis-backed queue was selected, `worker` and `db-postgres` if a Postgres-backed queue was selected, or `worker` and `db-sqlite` if a SQLite-backed queue was selected.
 
 A SQLite-only app that wants the smallest build lists the drivers and codecs it uses instead of taking the defaults:
 
