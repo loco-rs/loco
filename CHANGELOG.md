@@ -31,6 +31,10 @@ subcommand.
 - **Cron.** Loco parses cron itself. Runs land on the whole second, a `*`
   inside a list (`*,5`) parses, and a bare `L` in day of week or a day field
   of only commas is an error (croner accepted both, then never ran them).
+- **JWT types are Loco's own.** `JWTAlgorithm` no longer converts from
+  `jsonwebtoken::Algorithm`, errors are `auth::jwt::JWTError`, and
+  `ModelError::Jwt` wraps it. Tokens are byte-identical to the ones
+  jsonwebtoken issued; only HS256/384/512 were ever supported.
 
 ### Added
 
@@ -82,6 +86,8 @@ subcommand.
   so apps no longer build two Tera stacks.
 - Gone from the graph: tokio-cron-scheduler, croner, and the chrono-tz and
   num-derive they brought.
+- Gone from the graph: jsonwebtoken and the RSA, P-256/P-384 and ed25519
+  code it compiled.
 
 ### Fixed
 
