@@ -265,6 +265,8 @@ duct = { version = "1.0.0" }
 [dependencies.sea-orm-migration]
 optional = true
 version = "2.0"
+# Its default `cli` feature builds sea-orm-cli; Loco runs migrations itself.
+default-features = false
 features = [
     # Enable at least one `ASYNC_RUNTIME` and `DATABASE_DRIVER` feature if you want to run migration via CLI.
     # View the list of supported features at https://www.sea-ql.org/SeaORM/docs/install-and-config/database-and-async-runtime.
