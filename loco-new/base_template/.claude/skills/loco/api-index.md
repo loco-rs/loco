@@ -1296,6 +1296,7 @@ since they restate the trait's own API.
 ### `StorageError`
 
 - `variant` **Any**
+- `variant` **Io**
 - `variant` **Multi**
 - `variant` **Store**
 - `variant` **StoreNotFound**
@@ -1356,10 +1357,12 @@ since they restate the trait's own API.
 - `fn` **new**`(bucket_name: &str, credential_path: &str) -> StorageResult<Box<dyn StoreDriver>>` — Create new GCP storage
 ## `storage::drivers::local`
 
+- `struct` **LocalStore** — Filesystem storage on `tokio::fs`, rooted at a directory
 - `fn` **new**`() -> Box<dyn StoreDriver>` — Create new filesystem storage rooted at the current working directory
 - `fn` **new_with_prefix**`(prefix: impl Trait) -> StorageResult<Box<dyn StoreDriver>>` — Create new filesystem storage with `prefix` applied to all paths
 ## `storage::drivers::mem`
 
+- `struct` **MemStore** — In-memory storage: a sorted map from key to content
 - `fn` **new**`() -> Box<dyn StoreDriver>` — Create new in-memory storage
 ## `storage::drivers::null`
 
