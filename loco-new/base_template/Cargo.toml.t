@@ -81,7 +81,6 @@ required-features = []
 # switch to `testing` to get them, at the cost of a slower first `cargo test`.
 loco-rs = { workspace = true, features = ["testing-core"] }
 serial_test = { version = "3.1.1" }
-rstest = { version = "0.25" }
 insta = { version = "1.34", features = ["filters"] }
 
 # Dependencies build without debug info. Your own crates keep it, so
