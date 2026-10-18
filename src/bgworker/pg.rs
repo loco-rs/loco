@@ -882,10 +882,7 @@ mod tests {
     }
 
     // New setup function that uses our testcontainer
-    async fn setup_pg_test() -> (
-        PgPool,
-        Option<testcontainers::ContainerAsync<testcontainers::GenericImage>>,
-    ) {
+    async fn setup_pg_test() -> (PgPool, tests_cfg::postgres::TestPostgres) {
         let (pg_url, container) = setup_postgres_database().await;
         let pool = PgPool::connect(&pg_url)
             .await
