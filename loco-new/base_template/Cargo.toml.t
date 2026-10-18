@@ -82,7 +82,7 @@ required-features = []
 loco-rs = { workspace = true, features = ["testing-core"] }
 serial_test = { version = "3.1.1" }
 rstest = { version = "0.25" }
-insta = { version = "1.34", features = ["redactions", "yaml", "filters"] }
+insta = { version = "1.34", features = ["filters"] }
 
 # Dependencies build without debug info. Your own crates keep it, so
 # breakpoints and backtraces in app code work as before; this roughly halves
