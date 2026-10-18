@@ -58,14 +58,13 @@ impl Driver for SqliteDriver {
     }
 
     async fn retry_job(pool: &Self::Pool, id: &JobId, run_at: DateTime<Utc>) -> crate::Result<()> {
-        sqlx::query(
-            "UPDATE sqlt_loco_queue SET status = $1, updated_at = CURRENT_TIMESTAMP, run_at = \
-             DATETIME($2) WHERE id = $3",
+        requeue_unless_twin(
+            pool,
+            id,
+            JobStatus::Processing,
+            JobStatus::Cancelled,
+            Some(run_at),
         )
-        .bind(JobStatus::Queued.to_string())
-        .bind(run_at)
-        .bind(id)
-        .execute(pool)
         .await?;
         Ok(())
     }
@@ -331,6 +330,43 @@ pub async fn initialize_database(pool: &SqlitePool) -> Result<()> {
 /// Predicate of the partial unique index behind `enqueue_unique`. The
 /// `ON CONFLICT` target must repeat it verbatim.
 const UNIQUE_QUEUED: &str = "status = 'queued' AND unique_key IS NOT NULL";
+
+/// True when another job with this row's name and unique key is queued. The
+/// unique index allows only one, so this row cannot become queued too.
+const QUEUED_TWIN: &str = "unique_key IS NOT NULL AND EXISTS (SELECT 1 FROM sqlt_loco_queue AS twin \
+                           WHERE twin.name = sqlt_loco_queue.name AND twin.unique_key = sqlt_loco_queue.unique_key \
+                           AND twin.status = 'queued' AND twin.id <> sqlt_loco_queue.id)";
+
+/// Moves job `id` from `from` back to queued. If a twin with the same unique
+/// key is already queued, it moves to `on_twin` instead: the twin will do the
+/// work, and requeueing would violate the unique index behind
+/// `enqueue_unique`. `run_at: None` keeps the current `run_at`. Returns
+/// whether the job was queued.
+async fn requeue_unless_twin(
+    pool: &SqlitePool,
+    id: &str,
+    from: JobStatus,
+    on_twin: JobStatus,
+    run_at: Option<DateTime<Utc>>,
+) -> Result<bool> {
+    let status: Option<String> = sqlx::query_scalar(AssertSqlSafe(format!(
+        "UPDATE sqlt_loco_queue SET status = CASE WHEN {QUEUED_TWIN} THEN $1 ELSE $2 END, \
+         updated_at = CURRENT_TIMESTAMP, run_at = COALESCE(DATETIME($3), run_at) WHERE id = $4 AND status = $5 \
+         RETURNING status"
+    )))
+    .bind(on_twin.to_string())
+    .bind(JobStatus::Queued.to_string())
+    .bind(run_at)
+    .bind(id)
+    .bind(from.to_string())
+    .fetch_optional(pool)
+    .await?;
+    let queued = status.as_deref() == Some(JobStatus::Queued.to_string().as_str());
+    if status.is_some() && !queued {
+        debug!(job_id = %id, "A twin with the same unique key is queued; not requeueing");
+    }
+    Ok(queued)
+}
 
 /// Add a job unless a queued job with the same `name` and `key` exists, and
 /// return the ID of the queued job either way. See
@@ -680,16 +716,28 @@ pub async fn clear_by_status(pool: &SqlitePool, status: Vec<JobStatus>) -> Resul
 ///
 /// This function will return an error if it fails
 pub async fn requeue(pool: &SqlitePool, age_minutes: &i64) -> Result<()> {
-    let query = format!(
-        "UPDATE sqlt_loco_queue SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE status = $2 AND updated_at <= DATETIME('now', '-{age_minutes} minute')"
-    );
+    let stale = format!("status = $1 AND updated_at <= DATETIME('now', '-{age_minutes} minute')");
 
     debug!(age_minutes = age_minutes, "Requeueing stalled jobs");
-    sqlx::query(AssertSqlSafe(query))
-        .bind(JobStatus::Queued.to_string())
-        .bind(JobStatus::Processing.to_string())
-        .execute(pool)
-        .await?;
+    sqlx::query(AssertSqlSafe(format!(
+        "UPDATE sqlt_loco_queue SET status = $2, updated_at = CURRENT_TIMESTAMP WHERE {stale} AND \
+         unique_key IS NULL"
+    )))
+    .bind(JobStatus::Processing.to_string())
+    .bind(JobStatus::Queued.to_string())
+    .execute(pool)
+    .await?;
+
+    // One at a time, so of several stale twins only the first is requeued.
+    let unique: Vec<String> = sqlx::query_scalar(AssertSqlSafe(format!(
+        "SELECT id FROM sqlt_loco_queue WHERE {stale} AND unique_key IS NOT NULL ORDER BY id"
+    )))
+    .bind(JobStatus::Processing.to_string())
+    .fetch_all(pool)
+    .await?;
+    for id in unique {
+        requeue_unless_twin(pool, &id, JobStatus::Processing, JobStatus::Cancelled, None).await?;
+    }
 
     Ok(())
 }
@@ -706,30 +754,45 @@ pub async fn requeue(pool: &SqlitePool, age_minutes: &i64) -> Result<()> {
 ///
 /// This function will return an error if it fails
 pub async fn retry_failed(pool: &SqlitePool, id: Option<&str>) -> Result<u64> {
-    let result = if let Some(id) = id {
+    // A failed job whose unique key already has a queued twin stays failed:
+    // the twin does the same work, and the unique index allows one.
+    let now = Some(Utc::now());
+    if let Some(id) = id {
         debug!(job_id = %id, "Retrying failed job");
-        sqlx::query(
-            "UPDATE sqlt_loco_queue SET status = $1, updated_at = CURRENT_TIMESTAMP, run_at = \
-             CURRENT_TIMESTAMP WHERE status = $2 AND id = $3",
-        )
-        .bind(JobStatus::Queued.to_string())
-        .bind(JobStatus::Failed.to_string())
-        .bind(id)
-        .execute(pool)
-        .await?
-    } else {
-        debug!("Retrying every failed job");
-        sqlx::query(
-            "UPDATE sqlt_loco_queue SET status = $1, updated_at = CURRENT_TIMESTAMP, run_at = \
-             CURRENT_TIMESTAMP WHERE status = $2",
-        )
-        .bind(JobStatus::Queued.to_string())
-        .bind(JobStatus::Failed.to_string())
-        .execute(pool)
-        .await?
-    };
+        let id: Option<String> =
+            sqlx::query_scalar("SELECT id FROM sqlt_loco_queue WHERE status = $1 AND id = $2")
+                .bind(JobStatus::Failed.to_string())
+                .bind(id)
+                .fetch_optional(pool)
+                .await?;
+        let Some(id) = id else { return Ok(0) };
+        let queued =
+            requeue_unless_twin(pool, &id, JobStatus::Failed, JobStatus::Failed, now).await?;
+        return Ok(u64::from(queued));
+    }
 
-    Ok(result.rows_affected())
+    debug!("Retrying every failed job");
+    let mut moved = sqlx::query(
+        "UPDATE sqlt_loco_queue SET status = $1, updated_at = CURRENT_TIMESTAMP, run_at = CURRENT_TIMESTAMP \
+         WHERE status = $2 AND unique_key IS NULL",
+    )
+    .bind(JobStatus::Queued.to_string())
+    .bind(JobStatus::Failed.to_string())
+    .execute(pool)
+    .await?
+    .rows_affected();
+    let unique: Vec<String> = sqlx::query_scalar(
+        "SELECT id FROM sqlt_loco_queue WHERE status = $1 AND unique_key IS NOT NULL ORDER BY id",
+    )
+    .bind(JobStatus::Failed.to_string())
+    .fetch_all(pool)
+    .await?;
+    for id in unique {
+        if requeue_unless_twin(pool, &id, JobStatus::Failed, JobStatus::Failed, now).await? {
+            moved += 1;
+        }
+    }
+    Ok(moved)
 }
 
 /// Deletes jobs from the `sqlt_loco_queue` table that are older than a specified number of days.
@@ -2125,6 +2188,132 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(second, third);
+    }
+
+    async fn status_of(pool: &SqlitePool, id: &str) -> String {
+        sqlx::query_scalar("SELECT status FROM sqlt_loco_queue WHERE id = $1")
+            .bind(id)
+            .fetch_one(pool)
+            .await
+            .unwrap()
+    }
+
+    /// A running unique job (`first`) plus a queued twin with the same key.
+    async fn running_job_with_queued_twin(pool: &SqlitePool) -> (String, String) {
+        let first = enqueue_unique(pool, "Sync", serde_json::json!(null), None, None, "k")
+            .await
+            .unwrap();
+        let running = dequeue(pool, &[]).await.unwrap().expect("job is due");
+        assert_eq!(running.id, first);
+        let twin = enqueue_unique(pool, "Sync", serde_json::json!(null), None, None, "k")
+            .await
+            .unwrap();
+        (first, twin)
+    }
+
+    async fn age_every_job(pool: &SqlitePool) {
+        sqlx::query("UPDATE sqlt_loco_queue SET updated_at = DATETIME('now', '-1 hour')")
+            .execute(pool)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn retrying_a_unique_job_with_a_queued_twin_cancels_it() {
+        let (_tree, pool) = fresh_queue().await;
+        let (first, twin) = running_job_with_queued_twin(&pool).await;
+
+        SqliteDriver::retry_job(&pool, &first, Utc::now())
+            .await
+            .expect("retry must not hit the unique index");
+
+        assert_eq!(status_of(&pool, &first).await, "cancelled");
+        assert_eq!(status_of(&pool, &twin).await, "queued");
+    }
+
+    #[tokio::test]
+    async fn retrying_a_unique_job_without_a_twin_requeues_it() {
+        let (_tree, pool) = fresh_queue().await;
+        let first = enqueue_unique(&pool, "Sync", serde_json::json!(null), None, None, "k")
+            .await
+            .unwrap();
+        dequeue(&pool, &[]).await.unwrap().expect("job is due");
+
+        SqliteDriver::retry_job(&pool, &first, Utc::now())
+            .await
+            .unwrap();
+
+        assert_eq!(status_of(&pool, &first).await, "queued");
+    }
+
+    #[tokio::test]
+    async fn reaping_a_stale_unique_job_with_a_queued_twin_cancels_only_it() {
+        let (_tree, pool) = fresh_queue().await;
+        let (first, twin) = running_job_with_queued_twin(&pool).await;
+        let plain = enqueue(
+            &pool,
+            "Plain",
+            serde_json::json!(null),
+            Utc::now(),
+            None,
+            None,
+            None,
+        )
+        .await
+        .unwrap();
+        sqlx::query("UPDATE sqlt_loco_queue SET status = $1 WHERE id = $2")
+            .bind(JobStatus::Processing.to_string())
+            .bind(&plain)
+            .execute(&pool)
+            .await
+            .unwrap();
+        age_every_job(&pool).await;
+
+        requeue(&pool, &1)
+            .await
+            .expect("one twin must not block the reaper");
+
+        assert_eq!(status_of(&pool, &first).await, "cancelled");
+        assert_eq!(status_of(&pool, &twin).await, "queued");
+        assert_eq!(status_of(&pool, &plain).await, "queued");
+    }
+
+    #[tokio::test]
+    async fn reaping_stale_unique_twins_requeues_one() {
+        let (_tree, pool) = fresh_queue().await;
+        let (first, twin) = running_job_with_queued_twin(&pool).await;
+        dequeue(&pool, &[]).await.unwrap().expect("twin is due");
+        age_every_job(&pool).await;
+
+        requeue(&pool, &1).await.unwrap();
+
+        let mut statuses = vec![
+            status_of(&pool, &first).await,
+            status_of(&pool, &twin).await,
+        ];
+        statuses.sort();
+        assert_eq!(statuses, vec!["cancelled", "queued"]);
+    }
+
+    #[tokio::test]
+    async fn retry_failed_skips_a_unique_job_whose_twin_is_queued() {
+        let (_tree, pool) = fresh_queue().await;
+        let (first, twin) = running_job_with_queued_twin(&pool).await;
+        fail_job(&pool, &first, &crate::Error::string("boom"))
+            .await
+            .unwrap();
+
+        assert_eq!(retry_failed(&pool, None).await.unwrap(), 0);
+        assert_eq!(retry_failed(&pool, Some(&first)).await.unwrap(), 0);
+        assert_eq!(status_of(&pool, &first).await, "failed");
+
+        sqlx::query("DELETE FROM sqlt_loco_queue WHERE id = $1")
+            .bind(&twin)
+            .execute(&pool)
+            .await
+            .unwrap();
+        assert_eq!(retry_failed(&pool, Some(&first)).await.unwrap(), 1);
+        assert_eq!(status_of(&pool, &first).await, "queued");
     }
 
     #[tokio::test]

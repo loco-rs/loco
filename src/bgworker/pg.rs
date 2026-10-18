@@ -58,13 +58,13 @@ impl Driver for PgDriver {
     }
 
     async fn retry_job(pool: &Self::Pool, id: &JobId, run_at: DateTime<Utc>) -> crate::Result<()> {
-        sqlx::query(
-            "UPDATE pg_loco_queue SET status = $1, updated_at = NOW(), run_at = $2 WHERE id = $3",
+        requeue_unless_twin(
+            pool,
+            id,
+            JobStatus::Processing,
+            JobStatus::Cancelled,
+            Some(run_at),
         )
-        .bind(JobStatus::Queued.to_string())
-        .bind(run_at)
-        .bind(id)
-        .execute(pool)
         .await?;
         Ok(())
     }
@@ -321,6 +321,43 @@ pub async fn initialize_database(pool: &PgPool) -> Result<()> {
 /// Predicate of the partial unique index behind `enqueue_unique`. The
 /// `ON CONFLICT` target must repeat it verbatim.
 const UNIQUE_QUEUED: &str = "status = 'queued' AND unique_key IS NOT NULL";
+
+/// True when another job with this row's name and unique key is queued. The
+/// unique index allows only one, so this row cannot become queued too.
+const QUEUED_TWIN: &str = "unique_key IS NOT NULL AND EXISTS (SELECT 1 FROM pg_loco_queue AS twin \
+                           WHERE twin.name = pg_loco_queue.name AND twin.unique_key = pg_loco_queue.unique_key \
+                           AND twin.status = 'queued' AND twin.id <> pg_loco_queue.id)";
+
+/// Moves job `id` from `from` back to queued. If a twin with the same unique
+/// key is already queued, it moves to `on_twin` instead: the twin will do the
+/// work, and requeueing would violate the unique index behind
+/// `enqueue_unique`. `run_at: None` keeps the current `run_at`. Returns
+/// whether the job was queued.
+async fn requeue_unless_twin(
+    pool: &PgPool,
+    id: &str,
+    from: JobStatus,
+    on_twin: JobStatus,
+    run_at: Option<DateTime<Utc>>,
+) -> Result<bool> {
+    let status: Option<String> = sqlx::query_scalar(AssertSqlSafe(format!(
+        "UPDATE pg_loco_queue SET status = CASE WHEN {QUEUED_TWIN} THEN $1 ELSE $2 END, \
+         updated_at = NOW(), run_at = COALESCE($3, run_at) WHERE id = $4 AND status = $5 \
+         RETURNING status"
+    )))
+    .bind(on_twin.to_string())
+    .bind(JobStatus::Queued.to_string())
+    .bind(run_at)
+    .bind(id)
+    .bind(from.to_string())
+    .fetch_optional(pool)
+    .await?;
+    let queued = status.as_deref() == Some(JobStatus::Queued.to_string().as_str());
+    if status.is_some() && !queued {
+        debug!(job_id = %id, "A twin with the same unique key is queued; not requeueing");
+    }
+    Ok(queued)
+}
 
 /// Add a job unless a queued job with the same `name` and `key` exists, and
 /// return the ID of the queued job either way. See
@@ -689,18 +726,28 @@ pub async fn clear_jobs_older_than(
 ///
 /// This function will return an error if it fails
 pub async fn requeue(pool: &PgPool, age_minutes: &i64) -> Result<()> {
-    let interval = format!("{age_minutes} MINUTE");
-
-    let query = format!(
-        "UPDATE pg_loco_queue SET status = $1, updated_at = NOW() WHERE status = $2 AND updated_at <= NOW() - INTERVAL '{interval}'"
-    );
+    let stale = format!("status = $1 AND updated_at <= NOW() - INTERVAL '{age_minutes} MINUTE'");
 
     debug!(age_minutes = age_minutes, "Requeueing stalled jobs");
-    sqlx::query(AssertSqlSafe(query))
-        .bind(JobStatus::Queued.to_string())
-        .bind(JobStatus::Processing.to_string())
-        .execute(pool)
-        .await?;
+    sqlx::query(AssertSqlSafe(format!(
+        "UPDATE pg_loco_queue SET status = $2, updated_at = NOW() WHERE {stale} AND \
+         unique_key IS NULL"
+    )))
+    .bind(JobStatus::Processing.to_string())
+    .bind(JobStatus::Queued.to_string())
+    .execute(pool)
+    .await?;
+
+    // One at a time, so of several stale twins only the first is requeued.
+    let unique: Vec<String> = sqlx::query_scalar(AssertSqlSafe(format!(
+        "SELECT id FROM pg_loco_queue WHERE {stale} AND unique_key IS NOT NULL ORDER BY id"
+    )))
+    .bind(JobStatus::Processing.to_string())
+    .fetch_all(pool)
+    .await?;
+    for id in unique {
+        requeue_unless_twin(pool, &id, JobStatus::Processing, JobStatus::Cancelled, None).await?;
+    }
 
     Ok(())
 }
@@ -717,30 +764,45 @@ pub async fn requeue(pool: &PgPool, age_minutes: &i64) -> Result<()> {
 ///
 /// This function will return an error if it fails
 pub async fn retry_failed(pool: &PgPool, id: Option<&str>) -> Result<u64> {
-    let result = if let Some(id) = id {
+    // A failed job whose unique key already has a queued twin stays failed:
+    // the twin does the same work, and the unique index allows one.
+    let now = Some(Utc::now());
+    if let Some(id) = id {
         debug!(job_id = %id, "Retrying failed job");
-        sqlx::query(
-            "UPDATE pg_loco_queue SET status = $1, updated_at = NOW(), run_at = NOW() WHERE \
-             status = $2 AND id::text = $3",
-        )
-        .bind(JobStatus::Queued.to_string())
-        .bind(JobStatus::Failed.to_string())
-        .bind(id)
-        .execute(pool)
-        .await?
-    } else {
-        debug!("Retrying every failed job");
-        sqlx::query(
-            "UPDATE pg_loco_queue SET status = $1, updated_at = NOW(), run_at = NOW() WHERE \
-             status = $2",
-        )
-        .bind(JobStatus::Queued.to_string())
-        .bind(JobStatus::Failed.to_string())
-        .execute(pool)
-        .await?
-    };
+        let id: Option<String> =
+            sqlx::query_scalar("SELECT id FROM pg_loco_queue WHERE status = $1 AND id::text = $2")
+                .bind(JobStatus::Failed.to_string())
+                .bind(id)
+                .fetch_optional(pool)
+                .await?;
+        let Some(id) = id else { return Ok(0) };
+        let queued =
+            requeue_unless_twin(pool, &id, JobStatus::Failed, JobStatus::Failed, now).await?;
+        return Ok(u64::from(queued));
+    }
 
-    Ok(result.rows_affected())
+    debug!("Retrying every failed job");
+    let mut moved = sqlx::query(
+        "UPDATE pg_loco_queue SET status = $1, updated_at = NOW(), run_at = NOW() \
+         WHERE status = $2 AND unique_key IS NULL",
+    )
+    .bind(JobStatus::Queued.to_string())
+    .bind(JobStatus::Failed.to_string())
+    .execute(pool)
+    .await?
+    .rows_affected();
+    let unique: Vec<String> = sqlx::query_scalar(
+        "SELECT id FROM pg_loco_queue WHERE status = $1 AND unique_key IS NOT NULL ORDER BY id",
+    )
+    .bind(JobStatus::Failed.to_string())
+    .fetch_all(pool)
+    .await?;
+    for id in unique {
+        if requeue_unless_twin(pool, &id, JobStatus::Failed, JobStatus::Failed, now).await? {
+            moved += 1;
+        }
+    }
+    Ok(moved)
 }
 
 /// Ping system
@@ -1864,6 +1926,44 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(second, third);
+    }
+
+    async fn status_of(pool: &PgPool, id: &str) -> String {
+        sqlx::query_scalar("SELECT status FROM pg_loco_queue WHERE id = $1")
+            .bind(id)
+            .fetch_one(pool)
+            .await
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn retry_and_reaper_cancel_a_unique_job_whose_twin_is_queued() {
+        let (pool, _container) = setup_pg_test().await;
+        let first = enqueue_unique(&pool, "Sync", serde_json::json!(null), None, None, "k")
+            .await
+            .unwrap();
+        dequeue(&pool, &[]).await.unwrap().expect("job is due");
+        let twin = enqueue_unique(&pool, "Sync", serde_json::json!(null), None, None, "k")
+            .await
+            .unwrap();
+        PgDriver::retry_job(&pool, &first, Utc::now())
+            .await
+            .expect("retry must not hit the unique index");
+        assert_eq!(status_of(&pool, &first).await, "cancelled");
+
+        dequeue(&pool, &[]).await.unwrap().expect("twin is due");
+        let third = enqueue_unique(&pool, "Sync", serde_json::json!(null), None, None, "k")
+            .await
+            .unwrap();
+        sqlx::query("UPDATE pg_loco_queue SET updated_at = NOW() - INTERVAL '1 hour'")
+            .execute(&pool)
+            .await
+            .unwrap();
+        requeue(&pool, &1)
+            .await
+            .expect("a twin must not block the reaper");
+        assert_eq!(status_of(&pool, &twin).await, "cancelled");
+        assert_eq!(status_of(&pool, &third).await, "queued");
     }
 
     #[tokio::test]

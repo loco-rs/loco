@@ -113,6 +113,11 @@ Redis returns an error. In `ForegroundBlocking` / `BackgroundAsync` modes it
 runs like `perform_later`. The lower-level form is
 `queue.enqueue_unique(class, queue, args, tags, priority, key)`.
 
+Retries keep the rule. When a unique job fails, or the reaper picks it up,
+while a twin with the same key is already queued, it is cancelled rather than
+requeued, because the twin does the same work. `retry_failed` leaves such a job
+`failed`.
+
 ## Retries: return `Err`, set the policy on the worker
 
 A loop with `tokio::time::sleep` and an attempt counter adds no dependency and
