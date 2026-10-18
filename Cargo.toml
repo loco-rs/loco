@@ -56,7 +56,14 @@ default = [
 # toolchain — matching Loco's zero-friction onboarding.
 auth = ["dep:jsonwebtoken", "jsonwebtoken/rust_crypto"]
 cli = ["dep:clap"]
-testing = ["dep:axum-test", "dep:scraper", "dep:tree-fs"]
+testing = ["testing-core", "testing-html"]
+# Request, mailer and DB test helpers, without the HTML selector assertions.
+# Generated apps use this: `scraper`'s dependency tree turns on extra features
+# of `derive_more` and `stable_deref_trait`, crates that sea-orm and url also
+# use, so with it `cargo test` recompiles ~60 crates `cargo build` already built.
+testing-core = ["dep:axum-test", "dep:tree-fs"]
+# `assert_css_*` HTML selector assertions (pulls in `scraper`).
+testing-html = ["testing-core", "dep:scraper"]
 with-db = [
     "dep:sea-orm",
     "dep:sea-orm-migration",

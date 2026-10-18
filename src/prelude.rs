@@ -84,7 +84,7 @@ pub use validator::Validate;
 pub mod model {
     pub use crate::model::query;
 }
-#[cfg(feature = "testing")]
+#[cfg(feature = "testing-core")]
 pub use crate::testing::prelude::*;
 
 #[cfg(test)]

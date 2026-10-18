@@ -77,7 +77,15 @@ required-features = []
 {%- endif %}
 
 [dev-dependencies]
-loco-rs = { workspace = true, features = ["testing"] }
+# `testing-core` leaves out the HTML selector assertions (`assert_css_*`);
+# switch to `testing` to get them, at the cost of a slower first `cargo test`.
+loco-rs = { workspace = true, features = ["testing-core"] }
 serial_test = { version = "3.1.1" }
 rstest = { version = "0.25" }
 insta = { version = "1.34", features = ["redactions", "yaml", "filters"] }
+
+# Dependencies build without debug info. Your own crates keep it, so
+# breakpoints and backtraces in app code work as before; this roughly halves
+# the size of target/.
+[profile.dev.package."*"]
+debug = false
