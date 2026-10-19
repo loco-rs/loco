@@ -84,6 +84,8 @@ subcommand.
   the HTML selector assertions (`testing-html`). `testing` is both.
   Generated apps use `testing-core`, which saves recompiling about 60 crates
   on the first `cargo test`.
+- **`app::serve_router`**, the body of the default `Hooks::serve`, for an
+  app that overrides `serve` and still wants the stock server.
 
 ### Build
 
@@ -110,6 +112,8 @@ subcommand.
 - byte-unit is gone; `body_limit` and the `number_to_human_size` filter parse
   and format sizes in Loco.
 - moka is gone from the graph.
+- The default `Hooks::serve` and `logger::init` compile once in Loco rather
+  than in every app crate; the app binary generates half the code it did.
 
 ### Fixed
 
