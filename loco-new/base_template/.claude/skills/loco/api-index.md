@@ -363,20 +363,12 @@ since they restate the trait's own API.
 - `fn` **remove**`(self: &Self, key: &str) -> Pin<Box<dyn Future + Send>>` — Removes a key-value pair from the cache
 ## `cache::drivers::inmem`
 
-- `enum` **Expiration**
-- `struct` **InMemExpiry**
 - `struct` **Inmem** — Represents the in-memory cache driver
 - `fn` **new**`(config: &InMemCacheConfig) -> Cache` — Creates a new instance of the in-memory cache driver, with a default Loco
 
-### `Expiration`
-
-- `variant` **AfterDuration**
-- `variant` **Never**
-- `fn` **as_duration**`(self: &Self) -> Option<Duration>`
-
 ### `Inmem`
 
-- `fn` **from**`(cache: Cache<String, (Expiration, String)>) -> Box<dyn CacheDriver>` — Constructs a new [`Inmem`] instance from a given cache
+- `fn` **new**`(max_capacity: u64) -> Self` — Constructs an empty cache that holds at most `max_capacity` entries
 ## `cache::drivers::null`
 
 - `struct` **Null** — Represents the in-memory cache driver

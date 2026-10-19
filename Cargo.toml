@@ -111,7 +111,7 @@ storage_aws_s3 = ["storage_opendal", "opendal/services-s3"]
 storage_azure = ["storage_opendal", "opendal/services-azblob"]
 storage_gcp = ["storage_opendal", "opendal/services-gcs"]
 # Cache feature
-cache_inmem = ["dep:moka"]
+cache_inmem = []
 cache_redis = ["dep:bb8-redis", "dep:bb8"]
 worker = ["dep:sqlx", "dep:ulid"]
 worker_redis = ["worker", "dep:redis"]
@@ -206,7 +206,6 @@ opendal = { version = "0.58.1", default-features = false, features = [
 http = "1"
 
 # cache
-moka = { version = "0.12.7", features = ["future"], optional = true }
 bb8-redis = { version = "0.26", optional = true }
 bb8 = { version = "0.9", optional = true }
 

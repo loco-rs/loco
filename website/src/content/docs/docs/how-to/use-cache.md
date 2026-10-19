@@ -17,7 +17,7 @@ Cache drivers are configured entirely in YAML — no code changes needed to swit
 # config/development.yaml — fast, disposable, no external dependency
 cache:
   kind: InMem
-  max_capacity: 33554432 # optional, bytes; default 32MiB (32 * 1024 * 1024)
+  max_capacity: 33554432 # optional, entries; default 32 * 1024 * 1024
 ```
 
 ```yaml
