@@ -2,8 +2,8 @@ use super::utils::{
     guess_file_by_time, APP_ROUTS, HOME_TSX_FIXTURE, MIGRATION_SRC_LIB, ROUTES_TSX_FIXTURE,
 };
 use insta::{assert_snapshot, with_settings};
+use loco_gen::RRgen;
 use loco_gen::{collect_messages, generate, AppInfo, Component};
-use rrgen::RRgen;
 use std::fs;
 
 /// Loco 1.0 ships a single scaffold flavor: DTO + controller + React-SPA

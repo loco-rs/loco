@@ -1,6 +1,6 @@
 use super::{AppInfo, GenerateResults, Result};
 use crate as r#gen;
-use rrgen::RRgen;
+use crate::RRgen;
 use serde_json::json;
 use std::path::Path;
 

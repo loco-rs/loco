@@ -1,6 +1,6 @@
 use insta::assert_snapshot;
+use loco_gen::RRgen;
 use loco_gen::{collect_messages, generate, AppInfo, Component, DeploymentKind};
-use rrgen::RRgen;
 use std::{fs, path::PathBuf};
 
 /// The generated Dockerfile pins its own Rust base image, and nothing tied

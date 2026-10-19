@@ -1,7 +1,7 @@
 use super::utils::{guess_file_by_time, MIGRATION_SRC_LIB};
 use insta::{assert_snapshot, with_settings};
+use loco_gen::RRgen;
 use loco_gen::{collect_messages, generate, AppInfo, Component};
-use rrgen::RRgen;
 use rstest::rstest;
 use std::fs;
 
