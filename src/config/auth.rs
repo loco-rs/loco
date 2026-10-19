@@ -14,11 +14,185 @@ use serde::{
 ///   jwt:
 ///     secret: <your secret>
 ///     expiration: 604800 # 7 days
+///   # Signed cookies and the cookie session (`auth_session` feature).
+///   session:
+///     secret: <a long random string>
+///   # Sign in with an OAuth2 provider (`auth_oauth` feature).
+///   oauth:
+///     providers:
+///       github:
+///         client_id: <client id>
+///         client_secret: <client secret>
 /// ```
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct Auth {
     /// JWT authentication config
     pub jwt: Option<JWT>,
+    /// Signed cookies and the cookie-backed session. Read by the
+    /// `auth_session` feature; absent means development defaults.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session: Option<SessionConfig>,
+    /// OAuth2 / OpenID Connect sign-in providers. Read by the `auth_oauth`
+    /// feature.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub oauth: Option<OAuthConfig>,
+}
+
+/// The secret every signed cookie is keyed off when `auth.session.secret` is
+/// not set. Fine on a laptop; `cargo loco doctor --production` reports it, and
+/// a production app refuses to sign or read cookies with it.
+pub const DEV_SESSION_SECRET: &str =
+    "loco-development-session-secret-do-not-use-in-production-0123456789";
+
+/// Signed cookies and the cookie session, Rails' `secret_key_base` plus its
+/// cookie store.
+///
+/// ```yaml
+/// auth:
+///   session:
+///     # Keys every signed cookie. Use 64+ random characters, e.g.
+///     # `openssl rand -base64 64`, and inject it from the environment.
+///     secret: <%= get_env(name="SESSION_SECRET") %>
+///     # All optional:
+///     cookie_name: loco_session
+///     max_age: 2592000      # seconds; 30 days
+///     secure: true          # default: true when `server.host` is https
+///     sign_in_path: /login  # where `CurrentUser` sends signed-out browsers
+/// ```
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub struct SessionConfig {
+    /// The key material for signed (and encrypted) cookies. Any length is
+    /// accepted (it is stretched with SHA-512); use at least 32 random
+    /// characters. Defaults to [`DEV_SESSION_SECRET`].
+    pub secret: Option<String>,
+    /// Name of the session cookie. Default `loco_session`.
+    pub cookie_name: Option<String>,
+    /// Session lifetime in seconds, enforced both by the cookie's `Max-Age`
+    /// and by an expiry signed into the value. Default 30 days.
+    pub max_age: Option<u64>,
+    /// Force the `Secure` cookie flag on or off. Default: on when
+    /// `server.host` starts with `https://`.
+    pub secure: Option<bool>,
+    /// Where `CurrentUser` redirects a signed-out browser (requests that
+    /// accept HTML), with `?return_to=<original path>`. When unset, it answers
+    /// `401 Unauthorized`.
+    pub sign_in_path: Option<String>,
+}
+
+/// OAuth2 / OpenID Connect sign-in, OmniAuth-style.
+///
+/// ```yaml
+/// auth:
+///   oauth:
+///     # Public URL of the app, used to build each provider's callback URL
+///     # (`{base_url}/auth/{provider}/callback`). Default: `server.host`
+///     # plus `server.port`.
+///     base_url: https://myapp.example.com
+///     after_sign_in_path: /          # used when the flow carried no return_to
+///     after_sign_out_path: /
+///     failure_path: /login           # optional; see `OAuthHandler::on_failure`
+///     providers:
+///       github:
+///         client_id: <%= get_env(name="GITHUB_CLIENT_ID") %>
+///         client_secret: <%= get_env(name="GITHUB_CLIENT_SECRET") %>
+///       google:
+///         client_id: ...
+///         client_secret: ...
+///       gitlab:
+///         strategy: generic
+///         client_id: ...
+///         client_secret: ...
+///         authorize_url: https://gitlab.com/oauth/authorize
+///         token_url: https://gitlab.com/oauth/token
+///         userinfo_url: https://gitlab.com/oauth/userinfo
+///         scopes: [openid, profile, email]
+/// ```
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub struct OAuthConfig {
+    /// Public base URL used for the `redirect_uri` sent to providers.
+    pub base_url: Option<String>,
+    /// Where to land after sign-in when the flow carried no `return_to` and
+    /// the handler named no destination. Default `/`.
+    pub after_sign_in_path: Option<String>,
+    /// Where the sign-out route redirects. Default `/`.
+    pub after_sign_out_path: Option<String>,
+    /// When set, the default failure handler redirects here with
+    /// `?error=<kind>&provider=<name>` (OmniAuth's `/auth/failure`) instead of
+    /// rendering a small error page.
+    pub failure_path: Option<String>,
+    /// Providers by name. The name is the URL segment: `github` is served at
+    /// `/auth/github`.
+    #[serde(default)]
+    pub providers: std::collections::BTreeMap<String, OAuthProviderConfig>,
+}
+
+/// Which provider preset a configured provider uses.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum OAuthStrategy {
+    /// github.com, or GitHub Enterprise with `base_url`/`api_url`.
+    #[serde(alias = "GitHub")]
+    Github,
+    /// Google (OpenID Connect).
+    Google,
+    /// Any OAuth2 / OIDC provider; `authorize_url`, `token_url` and
+    /// `userinfo_url` are required.
+    #[serde(alias = "oidc", alias = "oauth2")]
+    Generic,
+}
+
+/// How the client authenticates to the token endpoint.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OAuthTokenAuth {
+    /// `client_id`/`client_secret` in the form body (`client_secret_post`).
+    #[default]
+    Post,
+    /// HTTP Basic auth (`client_secret_basic`).
+    Basic,
+}
+
+/// One OAuth provider. Every URL is overridable, for GitHub Enterprise,
+/// self-hosted providers and tests against a fake server.
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub struct OAuthProviderConfig {
+    /// The preset. Defaults from the provider's name (`github`, `google`);
+    /// any other name needs `strategy: generic`.
+    pub strategy: Option<OAuthStrategy>,
+    /// OAuth client id.
+    pub client_id: String,
+    /// OAuth client secret.
+    pub client_secret: String,
+    /// Scopes to request. Defaults: GitHub `[read:user, user:email]`,
+    /// Google and generic `[openid, email, profile]`.
+    pub scopes: Option<Vec<String>>,
+    /// GitHub only: web base URL, e.g. `https://github.example.com` for GitHub
+    /// Enterprise. Default `https://github.com`.
+    pub base_url: Option<String>,
+    /// GitHub only: API base URL. Default `https://api.github.com`, or
+    /// `{base_url}/api/v3` when `base_url` is set.
+    pub api_url: Option<String>,
+    /// Authorization endpoint (the page the browser is sent to).
+    pub authorize_url: Option<String>,
+    /// Token endpoint (code exchange).
+    pub token_url: Option<String>,
+    /// Profile endpoint, called with the access token.
+    pub userinfo_url: Option<String>,
+    /// GitHub only: the emails endpoint used to find the primary, verified
+    /// address. Default `{api_url}/user/emails`.
+    pub emails_url: Option<String>,
+    /// Exact callback URL to register with the provider. Default
+    /// `{auth.oauth.base_url}{mount}/{provider}/callback`.
+    pub redirect_uri: Option<String>,
+    /// Extra query parameters for the authorization request, e.g.
+    /// `prompt: select_account` or `allow_signup: "false"`.
+    #[serde(default)]
+    pub authorize_params: std::collections::BTreeMap<String, String>,
+    /// Send a PKCE (S256) challenge. Default `true`; providers that do not
+    /// support PKCE ignore it.
+    pub pkce: Option<bool>,
+    /// Token endpoint client authentication. Default `post`.
+    pub token_auth: Option<OAuthTokenAuth>,
 }
 
 /// JWT configuration structure.

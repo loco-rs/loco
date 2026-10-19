@@ -58,6 +58,18 @@ mailer = ["dep:lettre", "dep:include_dir"]
 # HS256/384/512 JWTs on RustCrypto HMAC; pure Rust, no C toolchain.
 # It also carries argon2 password hashing.
 auth = ["dep:hmac", "dep:sha2", "dep:base64", "dep:argon2"]
+# Signed (tamper-evident) cookies and a cookie-backed session with
+# `CurrentUser`/`MaybeCurrentUser` extractors. Reuses the `auth` HMAC/SHA-2
+# crates through `cookie`'s `signed` feature; no new crates.
+auth_session = ["auth", "axum-extra/cookie-signed", "dep:cookie"]
+# Encrypted (AES-256-GCM) cookies on top of `auth_session`. Opt-in because it
+# is the one piece that adds a crate (`aes-gcm`, pure Rust) to the tree.
+auth_session_encrypted = ["auth_session", "axum-extra/cookie-private"]
+# "Sign in with GitHub / Google / any OAuth2 provider": mountable
+# `/auth/{provider}` routes, an `OAuthHandler` trait and a normalized
+# `Identity`. Brings an HTTP client (reqwest 0.12 on rustls + ring, so still no
+# C toolchain) for the token exchange and profile fetch.
+auth_oauth = ["auth_session", "dep:reqwest"]
 cli = ["dep:clap"]
 testing = ["testing-core", "testing-html"]
 # Request, mailer and DB test helpers, without the HTML selector assertions.
@@ -170,6 +182,16 @@ async-trait = { workspace = true }
 
 axum = { workspace = true }
 axum-extra = { version = "0.10", features = ["cookie"] }
+# `auth_session` only: named directly for `cookie::time::Duration` (Max-Age).
+# Already in the tree through axum-extra.
+cookie = { version = "0.18", optional = true }
+# `auth_oauth` only: the token exchange and profile fetch. 0.12 rather than
+# 0.13 because 0.12's `rustls-tls` uses the pure-Rust `ring` provider, while
+# 0.13's `rustls` defaults to aws-lc-rs, a C build.
+reqwest = { version = "0.12", default-features = false, features = [
+    "json",
+    "rustls-tls",
+], optional = true }
 regex = { workspace = true }
 # mailer
 tera = { workspace = true }
@@ -297,7 +319,7 @@ features = [
 ]
 
 [package.metadata.docs.rs]
-features = ["testing", "multi-tenancy"]
+features = ["testing", "multi-tenancy", "auth_oauth", "auth_session_encrypted"]
 
 [dev-dependencies]
 loco-rs = { path = ".", features = ["testing"] }
