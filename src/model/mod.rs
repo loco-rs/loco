@@ -32,7 +32,7 @@ pub enum ModelError {
 
     #[cfg(feature = "auth")]
     #[error("jwt error")]
-    Jwt(#[from] jsonwebtoken::errors::Error),
+    Jwt(#[from] crate::auth::jwt::JWTError),
 
     #[error(transparent)]
     DbErr(#[from] sea_orm::DbErr),

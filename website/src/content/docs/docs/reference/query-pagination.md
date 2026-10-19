@@ -218,7 +218,7 @@ pub enum ModelError {
     TenantMismatch,
     Validation(ModelValidationErrors),      // #[from]
     #[cfg(feature = "auth")]
-    Jwt(jsonwebtoken::errors::Error),        // #[from]
+    Jwt(auth::jwt::JWTError),                // #[from]
     DbErr(sea_orm::DbErr),                   // #[from]
     Any(Box<dyn std::error::Error + Send + Sync>), // #[from]
     Message(String),
