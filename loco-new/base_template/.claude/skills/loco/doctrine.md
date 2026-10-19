@@ -240,8 +240,8 @@ duplicate a rule inline in a handler that the model already enforces.
 - A multi-statement invariant needs a transaction: `db.begin()` … `txn.commit()`.
   A check-then-insert without one is a race, not a validation.
 - Never serialize an entity straight to the client. `format::json(user)` on a
-  `users::Model` leaks the password hash and API key. Render a view/DTO from
-  `src/views/`.
+  `users::Model` leaks the password hash and API key. Render a DTO from
+  `src/dtos/` or `src/views/`.
 - Use `loco_rs::prelude::*`. If you are importing `axum::` types directly in a
   controller, you are probably re-deriving something the prelude gives you.
 

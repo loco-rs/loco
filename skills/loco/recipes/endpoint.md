@@ -1,13 +1,34 @@
 # Recipe: controllers, routes, and responses
 
 ```sh
-cargo loco generate controller posts --api     # JSON API
-cargo loco generate controller posts           # HTML views
-cargo loco generate scaffold posts title:string! --api   # model + migration + controller + views + tests
+cargo loco generate controller posts list show        # JSON controller + request test
+cargo loco generate scaffold posts title:string!       # model + migration + DTO + CRUD controller
+                                                       # (+ React pages when the app has frontend/)
 ```
 
 The generator writes the file **and** registers it in `src/app.rs`. Rust has no
 autoloading — hand-wiring a route is how "the handler exists but 404s" happens.
+
+Generators are adaptive and take no kind flag: `--html`/`--htmx` are rejected
+and `--api` does nothing.
+
+## Server-side HTML pages (Tera)
+
+No generator emits views in 1.0. In an app created with `--assets serverside`,
+write the page by hand: put the template at `assets/views/<name>/<file>.html`
+(the `ViewEngineInitializer` loads `assets/views/`), then render it from a
+handler that takes the `ViewEngine` extractor — the generated `src/controllers/page.rs`
+is the working example:
+
+```rust
+#[debug_handler]
+async fn show(ViewEngine(v): ViewEngine<TeraView>) -> Result<Response> {
+    format::render().view(&v, "posts/show.html", data!({ "title": "Hello" }))
+}
+```
+
+Generate the route with `cargo loco generate controller <name> <action>` and
+swap the handler body, so the route is still registered in `src/app.rs`.
 
 ## Shape of a controller
 
@@ -72,7 +93,8 @@ Path parameters use Axum 0.8 brace syntax: `/{id}`, not `/:id`.
 ## Responses — never serialize an entity
 
 `format::json(user)` on a `users::Model` puts the password hash and API key on
-the wire. Render a view type from `src/views/`:
+the wire. Render a response type from `src/dtos/` (where `scaffold` puts them) or
+`src/views/` (where the starter keeps its auth responses):
 
 ```rust
 // src/views/post.rs

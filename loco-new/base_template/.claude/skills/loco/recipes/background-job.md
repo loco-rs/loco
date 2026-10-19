@@ -170,10 +170,21 @@ Run the worker process:
 ```sh
 cargo loco start --worker      # workers only
 cargo loco start --server-and-worker
+cargo loco start --all         # server + worker + the `scheduler:` jobs
 ```
 
-If jobs enqueue but never execute in production, the worker process is not
-running — that is the usual cause, not a code bug.
+Plain `cargo loco start` is the server only: in `BackgroundQueue` mode it
+enqueues jobs and nothing runs them. If jobs enqueue but never execute, the
+worker process is not running — that is the usual cause, not a code bug. Put
+the right command in the README and the Procfile/Dockerfile.
+
+A job that opens a transaction holds one pool connection until it commits,
+including while it waits on HTTP calls or on a lock (`pg_advisory_xact_lock`).
+Each concurrently running job can hold one, so keep `database.max_connections`
+above the number of jobs that can run at once plus what the web server needs,
+and do slow network I/O outside the transaction where you can. A pool that is
+too small shows up as `connection pool timed out` after `connect_timeout`
+(500 ms by default), on requests unrelated to the job.
 
 ## Testing
 
