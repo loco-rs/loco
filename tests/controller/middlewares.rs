@@ -387,6 +387,7 @@ async fn secure_headers(
 #[case(None, false, None)]
 #[case(Some(StatusCode::BAD_REQUEST), false, None)]
 #[case(None, true, None)]
+#[case(Some(StatusCode::GONE), true, None)]
 #[case(None, false, Some("text fallback response".to_string()))]
 #[tokio::test]
 async fn fallback(
@@ -437,15 +438,11 @@ async fn fallback(
         .await
         .expect("valid response");
 
-    if let Some(code) = code {
-        assert_eq!(res.status(), code);
-    } else if maybe_file.is_some() {
-        // the file fallback is served via `ServeFile`, which reports its own
-        // status (200 OK for a found file) regardless of the configured
-        // `code`.
-        assert_eq!(res.status(), StatusCode::OK);
-    } else {
-        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // A file fallback answers with the configured code too, not the 200
+    // that serving a found file would give.
+    assert_eq!(res.status(), code.unwrap_or(StatusCode::NOT_FOUND));
+    if maybe_file.is_some() {
+        assert_eq!(res.headers()["content-type"], "text/html");
     }
 
     let response_text = res.text().await.expect("response text");
