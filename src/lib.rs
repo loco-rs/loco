@@ -11,6 +11,7 @@ pub use self::errors::Error;
 
 mod banner;
 pub mod bgworker;
+mod byte_size;
 mod depcheck;
 pub mod initializers;
 pub mod prelude;
