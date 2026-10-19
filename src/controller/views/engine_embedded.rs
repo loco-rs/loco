@@ -135,6 +135,31 @@ impl TeraView {
 
         Ok(())
     }
+
+    /// Render one Tera 2 component by name, autoescaped like [`ViewRenderer::render`].
+    ///
+    /// `body` fills the component's `{{ body }}` slot, as the call-site
+    /// contents of `{% component %}...{% endcomponent %}` would.
+    ///
+    /// Mirrors the on-disk engine's method so enabling `embedded_assets` does
+    /// not remove an API the app already calls.
+    ///
+    /// # Errors
+    ///
+    /// When the component does not exist, or rendering it fails.
+    pub fn render_component<S: Serialize>(
+        &self,
+        component: &str,
+        data: S,
+        body: Option<&str>,
+    ) -> Result<String> {
+        let context = tera::Context::from_serialize(&data)?;
+        self.tera
+            .render_component(component, &context, body, true)
+            .map_err(|err| {
+                crate::Error::string(&format!("Error rendering component {component}: {err:?}"))
+            })
+    }
 }
 
 impl ViewRenderer for TeraView {

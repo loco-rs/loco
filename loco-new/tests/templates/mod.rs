@@ -9,12 +9,14 @@ use loco::{
 };
 use rand::{rngs::StdRng, SeedableRng};
 
+mod agent_skill;
 mod asset;
 mod auth;
 mod background;
 mod config;
 mod db;
 mod features;
+mod frontend;
 mod initializers;
 mod mailer;
 mod module_name;

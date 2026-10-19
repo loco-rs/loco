@@ -23,7 +23,7 @@ pub async fn index({% if auth %}_auth: auth::JWT, {% endif %}State(_ctx): State<
 
 {% for action in actions -%}
 #[debug_handler]
-pub async fn {{action}}({% if auth %}_auth: auth::JWT, {% endif %}State(_ctx): State<AppContext>) -> Result<Response> {
+pub async fn {{action.name}}({% if auth %}_auth: auth::JWT, {% endif %}State(_ctx): State<AppContext>) -> Result<Response> {
     format::empty()
 }
 
@@ -34,6 +34,6 @@ pub fn routes() -> Routes {
         .prefix("api/{{file_name | plural}}/")
         .add("/", get(index))
         {%- for action in actions %}
-        .add("{{action}}", get({{action}}))
+        .add("{{action.name}}", {{action.verb}}({{action.name}}))
         {%- endfor %}
 }

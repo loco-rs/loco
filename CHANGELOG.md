@@ -2,18 +2,265 @@
 
 ## Unreleased
 
+**Upgrading:** nothing to do if you use `loco-rs`'s default features. If your
+`Cargo.toml` sets `default-features = false`, add whichever of the new
+features below your app uses: `db-postgres` if it talks to Postgres (database
+or `queue.kind: Postgres`), `compression` if it enables the
+`compression` middleware, and `generators` if you run `cargo loco generate`.
+For example:
+
+```toml
+loco-rs = { version = "...", default-features = false, features = [
+    "cli", "with-db", "db-postgres", "compression", "generators",
+] }
+```
+
+Leaving one out fails loudly rather than silently: `queue.kind: Postgres`
+becomes an unknown config variant, an enabled `compression` middleware is a
+boot error naming the missing feature, and `generate` is an unrecognized
+subcommand.
+
+### Breaking
+
+- **Compression builds gzip only by default.** The `compression` middleware
+  used to speak brotli, deflate, gzip and zstd. Enable `compression-full` to
+  keep all four.
+- **sea-orm-migration without its CLI.** Loco, the app template and the
+  examples depend on it with `default-features = false`. An app that calls
+  `sea_orm_migration::cli` itself must enable its `cli` feature.
+- **Cron.** Loco parses cron itself. Runs land on the whole second, a `*`
+  inside a list (`*,5`) parses, and a bare `L` in day of week or a day field
+  of only commas is an error (croner accepted both, then never ran them).
+- **JWT types are Loco's own.** `JWTAlgorithm` no longer converts from
+  `jsonwebtoken::Algorithm`, errors are `auth::jwt::JWTError`, and
+  `ModelError::Jwt` wraps it. Tokens are byte-identical to the ones
+  jsonwebtoken issued; only HS256/384/512 were ever supported.
+- **`hash_password` and `verify_password` need `auth`.**
+  `hash::random_string` does not.
+- **`cargo_config` needs `with-db`.** It only served `cargo loco db
+  entities`.
+- **Storage.** The local and in-memory drivers run on `tokio::fs` and a map;
+  OpenDAL comes in only with `storage_opendal`, which `storage_aws_s3`,
+  `storage_azure` and `storage_gcp` turn on. `drivers::opendal_adapter` and
+  `Store` exist only with it. `StorageError` gains an `Io` variant.
+- **New default-on `mailer` feature.** It carries the mailer and lettre.
+  With `default-features = false`, list it if you send mail. Configuring a
+  mailer without it fails at boot with a message naming the feature.
+- **In-memory cache.** `Inmem::new(max_capacity)` replaces
+  `Inmem::from(moka::Cache)`; `InMemExpiry` and `Expiration` are gone.
+  `max_capacity` counts entries, as it always did; the docs said bytes.
+
 ### Added
 
-- **`Storage` facade exposes `presign_get` / `presign_put`** (and
-  `*_with_policy` siblings), routing through the selected strategy.
-- **`StoreDriver::presign_get` / `presign_put`** with default "not supported"
-  bodies; S3/Azure/GCS backends override via OpenDAL.
-- **`PresignedRequest::url()`** helper and **`PresignPutOptions`** (with
-  optional `content_type`) for signed upload metadata. Both structs are
-  `#[non_exhaustive]`.
-- **S3 presign integration test** (`presign_s3_roundtrip_get_and_put`):
-  `#[ignore]` by default; set `LOCO_TEST_S3_*` env vars and run with
-  `-- --ignored` plus `storage_aws_s3` feature.
+- **`db-postgres`, `compression` and `generators` features**, on by
+  default, plus `compression-full`, so apps built with
+  `default-features = false` can leave out dependencies they never use. The
+  mirror image of `db-sqlite` (#1828), and the "feature-flag heavy
+  middleware" item from #937.
+  - `db-postgres`: the Postgres SeaORM/sqlx drivers, the Postgres queue and
+    Postgres test helpers. A SQLite-only app skips `sqlx-postgres`.
+  - `compression`: the `compression` middleware, gzip only.
+    `compression-full` adds brotli, deflate and zstd, and with them a C build
+    of libzstd.
+  - `generators`: `cargo loco generate`. `loco-gen` pulls a second (Tera 1)
+    template engine through `rrgen` and was compiled into release builds,
+    where `generate` does not exist.
+
+  `loco new` lists `generators` and `compression` whenever it emits
+  `default-features = false`, and `db-postgres` for a Postgres queue.
+- **Unique jobs.** `Queue::enqueue_unique` and
+  `BackgroundWorker::perform_later_unique`: a queued job with the same worker
+  and key absorbs repeat enqueues. A partial unique index enforces it, so
+  concurrent callers share one job, and a new one can queue while the
+  previous one runs. SQL queues only; Redis returns an error.
+- **Retries with backoff.** `BackgroundWorker::max_retries` and
+  `retry_backoff` requeue a failed job with exponential backoff, capped at
+  one hour. The defaults keep failing on the first error.
+- **Heartbeats.** A running job refreshes `updated_at`, so the reaper only
+  requeues jobs whose worker died.
+- `initialize_database` adds the `attempts` and `unique_key` columns to an
+  existing queue table on Postgres and SQLite.
+- **`testing-core`**: the request, mailer and database test helpers without
+  the HTML selector assertions (`testing-html`). `testing` is both.
+  Generated apps use `testing-core`, which saves recompiling about 60 crates
+  on the first `cargo test`.
+- **`app::serve_router`**, the body of the default `Hooks::serve`, for an
+  app that overrides `serve` and still wants the stock server.
+
+### Build
+
+- **Generated apps compile only their own database driver.** `loco new`
+  lists loco-rs's default features without `db-postgres` for a SQLite app
+  and without `db-sqlite` for a Postgres app, and the template emits only
+  the matching sea-orm driver. Connecting to a `postgres://` URL without
+  `db-postgres` fails at boot with a message naming the feature.
+- Generated apps build dependencies without debug info, which halves
+  `target/` while keeping debug info for app crates.
+- Gone from generated apps: rstest, insta `redactions` and `yaml`, and
+  sea-orm-cli.
+- The generator templating that came from rrgen lives in loco-gen on Tera 2,
+  so apps no longer build two Tera stacks.
+- Gone from the graph: tokio-cron-scheduler, croner, and the chrono-tz and
+  num-derive they brought.
+- Gone from the graph: jsonwebtoken and the RSA, P-256/P-384 and ed25519
+  code it compiled.
+- argon2 compiles only with `auth`.
+- Gone from the graph: cargo-lock and its second toml stack. `loco doctor`
+  reads `Cargo.lock` line by line.
+- OpenDAL compiles only with the storage features that use it.
+- lettre compiles only with `mailer`.
+- byte-unit is gone; `body_limit` and the `number_to_human_size` filter parse
+  and format sizes in Loco.
+- moka is gone from the graph.
+- The default `Hooks::serve` and `logger::init` compile once in Loco rather
+  than in every app crate; the app binary generates half the code it did.
+
+### Fixed
+
+- **A new Postgres app with a Postgres queue pointed the queue at a database
+  that did not exist.** `queue.uri` in the generated development and test
+  config defaulted to `loco_development` / `loco_test`; it now uses the app
+  name, like `database.uri`.
+- **Generated Postgres apps get 5 connections in development and test.** A
+  one-connection pool stalled any code that held a transaction while another
+  query or a job needed a connection. SQLite keeps 1.
+- **The scheduler stops on SIGTERM.**
+- **Overwriting an in-memory cache key kept its old expiry.** A plain
+  `insert` over a key set with `insert_with_expiry` now keeps it for good.
+
+## 1.2.0 - 2026-09-22
+
+Ships a Loco skill so coding agents write idiomatic Loco without guessing,
+adds presigned storage URLs, row-level multi-tenancy, Tera components and
+Postgres-only builds, and fixes a long list of defects in the app `loco new`
+generates — including a server-side app that returned 404 at `/`.
+
+**Upgrading:** nothing to do for most apps. Two behaviour changes are listed
+below; neither needs an edit unless you were relying on the old behaviour.
+
+### Breaking
+
+- **`perform_later_with_priority` now returns an error when no queue provider
+  is configured.** It previously logged and handed back a fabricated job id,
+  so an app with a misconfigured queue was told every enqueue had succeeded.
+  It now returns `Error::QueueProviderMissing`. (#1821, @mccormickt)
+
+- **`ExprTrait` is no longer re-exported from the prelude.** It is
+  `impl<T> ExprTrait for T where T: Into<Expr>`, and primitives are
+  `Into<Expr>`, so it reached every value in every file that globs the
+  prelude: `n.max(1)` stopped compiling, and `n.eq(&3)` kept compiling while
+  returning an `Expr` instead of a `bool`. Import it explicitly if you need
+  it.
+
+### Added
+
+- **Presigned storage URLs.** `ctx.storage.presign_get(path, ttl)` and
+  `presign_put(path, ttl, PresignPutOptions)` hand a client a time-limited URL
+  that talks to S3, Azure Blob or GCS directly, so large uploads and downloads
+  skip the app. Drivers that cannot presign return an error; on
+  `ReplicatedStrategy` presigning is primary-only. (#1827, @robertazzopardi)
+
+- **Row-level multi-tenancy**, behind the opt-in `multi-tenancy` feature.
+  `TenantEntity` names an entity's tenant column, `.in_tenant(id)` scopes
+  selects and bulk updates/deletes, and `set_tenant` assigns the key on new
+  records and refuses to overwrite a different one. Scoping is explicit at the
+  call site; a query without `.in_tenant` is unscoped. (#1824, @shuvroroy)
+
+- **`TeraView::render_component`** renders a single Tera 2 component by name,
+  autoescaped like `render`. Plus a guide to converting Tera 1 templates to
+  Tera 2 with an AI assistant, covering the places it gets subtly wrong.
+  (#1822, @schungx)
+
+- **Postgres-only builds.** SQLite support is now its own `db-sqlite` feature,
+  on by default. Apps that set `default-features = false` and leave it out
+  skip `libsqlite3-sys` and its C toolchain entirely. (#1828, @robertazzopardi)
+
+- **A Loco skill for coding agents.** `skills/loco/` carries the framework's
+  doctrine, a generated API index covering `loco-rs` and Sea-ORM, and ten
+  task recipes. `loco new` writes it into every generated app under
+  `.claude/skills/loco/`, matched to that app's crate version, and it is
+  served at <https://loco.rs/skills/loco/>. `cargo xtask agent-skill --check`
+  keeps the derived outputs from drifting out of step with the source.
+
+- **Batch job enqueueing.** `perform_all_later(&ctx, args_list)` and
+  `perform_all_later_with_priority` enqueue many jobs in a single round trip,
+  atomically, on all three backends. Fanning out with a loop of
+  `perform_later` cost N round trips and could leave the queue half-populated
+  when one of them failed. (#1821, @mccormickt)
+
+- **`cargo loco task user:delete`** in generated apps, beside `user:create`.
+  Takes a pid, prints the user it matched, and confirms before deleting;
+  `force:true` skips the prompt for scripted use. (#1708, @floscodes)
+
+### Fixed
+
+- **A Redis worker could stop draining its queue while the process stayed
+  up.** `redis` 1.x changed its default connect timeout from none to one
+  second and its response timeout to 500ms, so on a small instance booting
+  against a managed Redis the worker failed to connect and exited; a dropped
+  connection mid-run also ended it. Workers now use explicit timeouts, retry
+  with backoff, and reconnect on a dead socket. (#1831, @mikosco4real)
+
+- **A server-side app returned 404 at `/`.** `assets/views/home/hello.html`
+  shipped with a test that rendered it and no route that served it, so the
+  first URL anyone opened was a 404. Generated apps now ship
+  `controllers/page.rs` and a request test that exercises the route rather
+  than the template.
+
+- **Nine defects in the generated SPA.** No sign-up page — the SaaS starter
+  ships JWT auth as its headline feature and told users to
+  `curl POST /api/auth/register`. A Vite dev proxy hardcoded to port 5150
+  while the backend reads `PORT` from config, so overriding the port sent
+  every `/api` call somewhere else. A dead-end `Home.tsx`. Booleans rendering
+  as blank cells in both list and detail views. List and detail disagreeing
+  on which column holds the title, producing links with no text. And
+  `vite build` never typechecking, because esbuild strips types without
+  checking them — it is now `tsc -b && vite build`.
+
+- **Scaffolded controller actions were all routed as `GET`.** `create` was
+  reachable by `GET`, `delete` by `GET`. Actions are now wired to the verb
+  their name implies, and the generated tests call them that way.
+
+- **TypeScript bindings were written for apps with no frontend.**
+  `#[ts(export)]` is a side effect of `cargo test`, not an annotation, so
+  running the suite in an `--assets none` app conjured a
+  `frontend/src/bindings/` tree out of nothing.
+
+- **The generated model test asserted nothing.** It booted the app, seeded,
+  and returned. It now queries the entity, which fails when the migration and
+  the entity disagree — a renamed column, a type that does not round-trip, a
+  migration that never ran.
+
+- **The generated Dockerfile pinned a Rust older than the crate's MSRV**, so
+  `cargo loco generate deployment docker && docker build` failed on a freshly
+  generated app.
+
+- **The prelude withheld Sea-ORM query traits every app needs.** It carried
+  `QueryFilter` but not `QueryOrder`, so `.filter()` compiled and
+  `.order_by_desc()` on the next line did not — reported as a missing method
+  rather than a missing trait. Loco had been working around this in its own
+  generated scaffold.
+
+- **The prelude's `Pager` re-export was not gated behind `with-db`**, so
+  every DB-less app failed to compile `loco-rs` itself.
+
+### Docs
+
+- "The Tour" rewritten against what the generator actually emits today.
+  (#1829, @Data5tream)
+- Indonesian README. (#1823)
+- A copy-paste agent prompt for upgrading 1.0 → 1.1.
+- The Japanese README could not reach the English or Spanish translations.
+
+### Internal
+
+- CI pinned its toolchain instead of floating on `stable`, which meant new
+  pedantic and nursery lints turned master red on a calendar rather than on a
+  change. `style` also gated seven other jobs, so a lint error in an
+  unrelated file reported build, test, msrv and examples as SKIPPED — two
+  contributors spent two weeks looking at a red X that was ours. A weekly
+  `lint:future` job now runs the same lints on `stable` and `beta` so the
+  next set arrives as a scheduled failure instead of on someone's PR.
 
 ## 1.1.0 - 2026-08-15
 

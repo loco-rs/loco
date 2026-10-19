@@ -105,6 +105,7 @@ export default defineConfig({
                 { slug: 'docs/how-to/seed-data' },
                 { slug: 'docs/how-to/load-data' },
                 { slug: 'docs/how-to/multi-database' },
+                { slug: 'docs/how-to/multi-tenancy' },
               ],
             },
             {

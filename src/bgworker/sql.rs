@@ -7,11 +7,12 @@
 /// (`dequeue`/`complete_job`/`fail_job`) through the [`Driver`] trait.
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
+use chrono::{DateTime, Utc};
 use tokio::{task::JoinHandle, time::sleep};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, trace};
 
-pub use super::{Job, JobData, JobHandler, JobId};
+pub use super::{Job, JobData, JobHandler, JobId, RetryPolicy};
 use crate::{config::ReaperConfig, Error, Result};
 
 /// Pings the job queue database by selecting a single row's `id` from the
@@ -124,10 +125,87 @@ pub trait Driver: Send + Sync + 'static {
         id: &JobId,
         error: &crate::Error,
     ) -> impl std::future::Future<Output = crate::Result<()>> + Send;
+
+    /// Counts one more failed attempt for a job and returns the new count.
+    fn record_attempt(
+        pool: &Self::Pool,
+        id: &JobId,
+    ) -> impl std::future::Future<Output = crate::Result<u32>> + Send;
+
+    /// Puts a failed job back in the queue to run again at `run_at`.
+    fn retry_job(
+        pool: &Self::Pool,
+        id: &JobId,
+        run_at: DateTime<Utc>,
+    ) -> impl std::future::Future<Output = crate::Result<()>> + Send;
+
+    /// Marks a running job as still alive, so the reaper leaves it alone.
+    fn heartbeat(
+        pool: &Self::Pool,
+        id: &JobId,
+    ) -> impl std::future::Future<Output = crate::Result<()>> + Send;
+}
+
+/// How often a running job reports it is alive when the reaper is on: four
+/// heartbeats per reaper age, so a job is only reaped after missing several.
+pub(super) fn heartbeat_every(reaper: Option<&ReaperConfig>) -> Option<Duration> {
+    let age_secs = u64::try_from(reaper?.age_minutes).unwrap_or(0) * 60;
+    Some(Duration::from_secs((age_secs / 4).max(1)))
+}
+
+/// Runs `job` to completion, calling [`Driver::heartbeat`] for `id` every
+/// `every` while it runs.
+pub(super) async fn run_with_heartbeat<D: Driver>(
+    pool: &D::Pool,
+    id: &JobId,
+    every: Duration,
+    job: impl std::future::Future<Output = Result<()>>,
+) -> Result<()> {
+    tokio::pin!(job);
+    let mut ticks = tokio::time::interval(every);
+    ticks.tick().await; // the first tick fires at once; dequeue just set updated_at
+    loop {
+        tokio::select! {
+            result = &mut job => return result,
+            _ = ticks.tick() => {
+                if let Err(err) = D::heartbeat(pool, id).await {
+                    error!(error = %err, job_id = %id, "Failed to record job heartbeat");
+                }
+            }
+        }
+    }
+}
+
+/// Records a failed run: requeues the job with a backoff while `policy` has
+/// retries left, and marks it failed otherwise.
+async fn handle_failure<D: Driver>(
+    pool: &D::Pool,
+    job: &Job,
+    policy: Option<&RetryPolicy>,
+    err: &Error,
+) -> Result<()> {
+    if let Some(policy) = policy {
+        let attempts = D::record_attempt(pool, &job.id).await?;
+        if attempts <= policy.max_retries {
+            let delay = chrono::Duration::from_std(policy.delay(attempts))
+                .unwrap_or_else(|_| chrono::Duration::hours(1));
+            debug!(
+                job_id = %job.id,
+                job_name = %job.name,
+                attempt = attempts,
+                max_retries = policy.max_retries,
+                error = %err,
+                "Job failed, retrying"
+            );
+            return D::retry_job(pool, &job.id, Utc::now() + delay).await;
+        }
+    }
+    D::fail_job(pool, &job.id, err).await
 }
 
 pub struct JobRegistry {
     handlers: Arc<HashMap<String, JobHandler>>,
+    retry_policies: Arc<HashMap<String, RetryPolicy>>,
 }
 
 impl JobRegistry {
@@ -136,7 +214,19 @@ impl JobRegistry {
     pub fn new() -> Self {
         Self {
             handlers: Arc::new(HashMap::new()),
+            retry_policies: Arc::new(HashMap::new()),
         }
+    }
+
+    /// Sets the retry policy for jobs of worker `name`.
+    ///
+    /// # Errors
+    /// Fails once workers are running
+    pub fn set_retry_policy(&mut self, name: String, policy: RetryPolicy) -> Result<()> {
+        Arc::get_mut(&mut self.retry_policies)
+            .ok_or_else(|| Error::string("cannot set retry policy"))?
+            .insert(name, policy);
+        Ok(())
     }
 
     /// Inserts a pre-erased job handler under `name` (see
@@ -169,8 +259,10 @@ impl JobRegistry {
         let mut jobs = Vec::new();
 
         let interval = opts.poll_interval_sec;
+        let heartbeat = heartbeat_every(opts.reaper.as_ref());
         for idx in 0..opts.num_workers {
             let handlers = self.handlers.clone();
+            let retry_policies = self.retry_policies.clone();
             let worker_token = token.clone(); // Clone token for this worker
             let worker_tags = tags.to_vec();
 
@@ -198,7 +290,14 @@ impl JobRegistry {
                     if let Some(job) = job_opt {
                         debug!(job_id = %job.id, job_name = %job.name, "Processing job");
                         if let Some(handler) = handlers.get(&job.name) {
-                            match handler(job.id.clone(), job.data.clone()).await {
+                            let run = handler(job.id.clone(), job.data.clone());
+                            let result = match heartbeat {
+                                Some(every) => {
+                                    run_with_heartbeat::<D>(&pool, &job.id, every, run).await
+                                }
+                                None => run.await,
+                            };
+                            match result {
                                 Ok(()) => match D::complete_job(&pool, &job.id, job.interval).await
                                 {
                                     Err(err) => {
@@ -213,7 +312,14 @@ impl JobRegistry {
                                         debug!(job_id = %job.id, "Job completed successfully");
                                     }
                                 },
-                                Err(err) => match D::fail_job(&pool, &job.id, &err).await {
+                                Err(err) => match handle_failure::<D>(
+                                    &pool,
+                                    &job,
+                                    retry_policies.get(&job.name),
+                                    &err,
+                                )
+                                .await
+                                {
                                     Err(fail_err) => {
                                         error!(
                                             error = %fail_err,

@@ -133,6 +133,7 @@ impl JobRegistry {
                             );
                             match connect_worker(&client, &worker_token).await {
                                 Some(fresh) => conn = fresh,
+                                // Only on shutdown: connect_worker never gives up.
                                 None => break,
                             }
                             None
@@ -213,23 +214,26 @@ const WORKER_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 /// it stops draining the queue.
 const WORKER_RESPONSE_TIMEOUT: Duration = Duration::from_secs(5);
 
-/// Attempts before a worker gives up connecting.
-const WORKER_CONNECT_ATTEMPTS: u32 = 5;
+/// The longest a worker waits between connection attempts.
+const WORKER_MAX_BACKOFF: Duration = Duration::from_secs(5);
 
-/// Connect a worker to Redis, retrying with backoff.
+/// Connect a worker to Redis, retrying with capped backoff until it connects or
+/// the worker is shut down.
 ///
-/// Returns `None` only when cancelled or after every attempt failed, which is the
-/// one case where the worker genuinely cannot proceed. A single failure must not
-/// end it: the worker is the only thing draining its queue, so a worker task that
-/// returns makes every queued job disappear silently while the process stays up
-/// and answers health checks.
+/// Returns `None` only when cancelled. There is no retry budget, because giving
+/// up is never the right outcome for a worker: it is the only thing draining its
+/// queue, so a worker task that returns makes every queued job disappear silently
+/// while the process stays up and answers health checks. A managed Redis failover
+/// routinely outlasts any fixed number of attempts.
 async fn connect_worker(client: &RedisPool, token: &CancellationToken) -> Option<Connection> {
     let config = AsyncConnectionConfig::new()
         .set_connection_timeout(Some(WORKER_CONNECT_TIMEOUT))
         .set_response_timeout(Some(WORKER_RESPONSE_TIMEOUT));
     let mut backoff = Duration::from_millis(250);
+    let mut attempt: u32 = 0;
 
-    for attempt in 1..=WORKER_CONNECT_ATTEMPTS {
+    loop {
+        attempt = attempt.saturating_add(1);
         if token.is_cancelled() {
             return None;
         }
@@ -247,16 +251,18 @@ async fn connect_worker(client: &RedisPool, token: &CancellationToken) -> Option
                 error!(
                     err = err.to_string(),
                     attempt,
-                    max = WORKER_CONNECT_ATTEMPTS,
-                    "failed to create worker connection"
+                    retry_in = ?backoff,
+                    "failed to create worker connection, retrying"
                 );
             }
         }
-        tokio::time::sleep(backoff).await;
-        backoff = (backoff * 2).min(Duration::from_secs(5));
+        // Shutdown must not wait out a backoff.
+        tokio::select! {
+            () = token.cancelled() => return None,
+            () = sleep(backoff) => {}
+        }
+        backoff = (backoff * 2).min(WORKER_MAX_BACKOFF);
     }
-    error!("giving up connecting the worker to redis");
-    None
 }
 
 async fn get_connection(client: &RedisPool) -> Result<Connection> {
@@ -1256,27 +1262,38 @@ mod tests {
         );
     }
 
-    /// An unreachable Redis exhausts the retry budget and reports it, rather than
-    /// ending the worker on the first failure.
+    /// An unreachable Redis is retried until the worker is shut down, and
+    /// shutdown ends the retrying promptly.
     ///
-    /// The distinction matters: the worker is the only thing draining its queue,
-    /// so a task that returns early makes every queued job disappear silently
-    /// while the process stays up and answers health checks.
+    /// The worker is the only thing draining its queue, so a task that returns
+    /// early makes every queued job disappear silently while the process stays
+    /// up and answers health checks. Nine seconds is past the point where a
+    /// five-attempt budget (250ms + 500ms + 1s + 2s + 4s of backoff) would have
+    /// returned, so this fails if a fixed budget comes back.
     #[tokio::test]
-    async fn connect_worker_retries_before_giving_up() {
+    async fn connect_worker_retries_until_cancelled() {
         let client = Client::open("redis://127.0.0.1:1/").expect("client opens");
         let token = CancellationToken::new();
 
-        let started = std::time::Instant::now();
-        assert!(connect_worker(&client, &token).await.is_none());
+        let task = tokio::spawn({
+            let token = token.clone();
+            async move { connect_worker(&client, &token).await.is_none() }
+        });
 
-        // 250ms + 500ms + 1s + 2s of backoff sits between five attempts; assert
-        // well under that so the test cannot flake on a slow machine, while
-        // still failing outright if the retry loop is removed.
+        tokio::time::sleep(Duration::from_secs(9)).await;
         assert!(
-            started.elapsed() >= Duration::from_millis(500),
-            "expected the connect to be retried with backoff, returned after {:?}",
-            started.elapsed()
+            !task.is_finished(),
+            "the worker stopped trying to reach redis without being shut down"
+        );
+
+        token.cancel();
+        let cancelled = tokio::time::timeout(Duration::from_secs(2), task)
+            .await
+            .expect("shutdown must interrupt the backoff instead of waiting it out")
+            .expect("connect task panicked");
+        assert!(
+            cancelled,
+            "a cancelled worker must not hand back a connection"
         );
     }
 

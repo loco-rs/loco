@@ -35,7 +35,11 @@ export function Show() {
 {%- for f in fields %}
 {%- if f.field_name != title_field_name %}
         <dt>{{ f.label }}</dt>
+{%- if f.input_kind == "checkbox" %}
+        <dd>{{ "{" }}{% if f.nullable %}data.{{ f.field_name }} == null ? "—" : {% endif %}data.{{ f.field_name }} ? "Yes" : "No"}</dd>
+{%- else %}
         <dd>{data.{{ f.field_name }}{% if f.nullable %} ?? "—"{% endif %}}</dd>
+{%- endif %}
 {%- endif %}
 {%- endfor %}
 {%- if with_tz %}

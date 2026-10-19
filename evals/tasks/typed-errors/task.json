@@ -1,0 +1,26 @@
+{
+  "title": "Correct status codes — typed errors, not stringly-typed 500s",
+  "principles": [
+    "P2",
+    "P5"
+  ],
+  "note": "Error::string(...) renders a 500. An endpoint that answers 500 for 'no such user' compiles, lints and tests clean unless the test asserts the code.",
+  "skill": [
+    "doctrine.md",
+    "recipes/endpoint.md",
+    "api-index.md",
+    "sea-orm-index.md"
+  ],
+  "produce": [
+    "src/controllers/verification.rs"
+  ],
+  "append": [],
+  "app_flags": [
+    "--db",
+    "sqlite",
+    "--bg",
+    "async",
+    "--assets",
+    "serverside"
+  ]
+}

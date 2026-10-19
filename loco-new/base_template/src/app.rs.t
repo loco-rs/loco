@@ -77,6 +77,9 @@ impl Hooks for App {
         {%- else %}
             .add_route(controllers::home::routes())
         {%- endif %}
+        {%- if settings.asset and settings.asset.kind == "server" %}
+            .add_route(controllers::page::routes())
+        {%- endif %}
     }
 
     {%- if settings.background %}

@@ -31,19 +31,18 @@ use std::process::exit;
 
 #[cfg(feature = "worker")]
 use crate::bgworker::JobStatus;
-#[cfg(debug_assertions)]
-use crate::controller;
 use crate::{
     app::{AppContext, Hooks},
     boot::{
         create_app, create_context, list_middlewares, run_scheduler, run_task, start, RunDbCommand,
         ServeParams, StartMode,
     },
-    config::Config,
     doctor,
     environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
     logger, task, Error,
 };
+#[cfg(all(debug_assertions, feature = "generators"))]
+use crate::{config::Config, controller};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -142,7 +141,7 @@ enum Commands {
     },
     /// code generation creates a set of files and code templates based on a
     /// predefined set of rules.
-    #[cfg(debug_assertions)]
+    #[cfg(all(debug_assertions, feature = "generators"))]
     #[clap(alias("g"))]
     Generate {
         /// What to generate
@@ -179,7 +178,7 @@ enum Commands {
     },
 }
 
-#[cfg(debug_assertions)]
+#[cfg(all(debug_assertions, feature = "generators"))]
 #[derive(Subcommand)]
 enum ComponentArg {
     #[cfg(feature = "with-db")]
@@ -403,7 +402,7 @@ After running the migration, follow these steps to complete the process:
 /// cryptic `unexpected argument` error) so existing tutorials, blog posts, and
 /// muscle memory keep working: `--api` is a no-op, `--html`/`--htmx` point at
 /// the React SPA that replaced server-rendered views.
-#[cfg(debug_assertions)]
+#[cfg(all(debug_assertions, feature = "generators"))]
 // `html` and `htmx` are the flag names users typed; they cannot be renamed apart.
 #[allow(clippy::similar_names)]
 fn warn_legacy_scaffold_kind(api: bool, html: bool, htmx: bool) -> crate::Result<()> {
@@ -424,7 +423,7 @@ fn warn_legacy_scaffold_kind(api: bool, html: bool, htmx: bool) -> crate::Result
     Ok(())
 }
 
-#[cfg(debug_assertions)]
+#[cfg(all(debug_assertions, feature = "generators"))]
 impl ComponentArg {
     fn into_gen_component(self, config: &Config) -> crate::Result<loco_gen::Component> {
         match self {
@@ -580,7 +579,7 @@ pub enum DeploymentKind {
 }
 
 impl DeploymentKind {
-    #[cfg(debug_assertions)]
+    #[cfg(all(debug_assertions, feature = "generators"))]
     fn to_generator_component(&self, config: &Config) -> loco_gen::Component {
         let kind = match self {
             Self::Docker => {
@@ -610,7 +609,7 @@ impl DeploymentKind {
     /// Lambda generator (bundles them into the zip via cargo-lambda `include`).
     /// `config/` is not listed here — every deployment needs it, so the
     /// templates add it unconditionally.
-    #[cfg(debug_assertions)]
+    #[cfg(all(debug_assertions, feature = "generators"))]
     fn runtime_asset_paths(config: &Config) -> Vec<PathBuf> {
         let mut paths = vec![];
         if let Some(static_assets) = &config.server.middlewares.static_assets {
@@ -864,7 +863,7 @@ async fn dispatch_common<H: Hooks>(
         } => {
             run_scheduler::<H>(&app_context, config_path.as_ref(), name, tag, list).await?;
         }
-        #[cfg(debug_assertions)]
+        #[cfg(all(debug_assertions, feature = "generators"))]
         Commands::Generate { component } => {
             handle_generate_command::<H>(component, &app_context.config)?;
         }
@@ -1078,7 +1077,7 @@ async fn handle_job_command(command: JobsCommands, app_context: &AppContext) -> 
     }
 }
 
-#[cfg(debug_assertions)]
+#[cfg(all(debug_assertions, feature = "generators"))]
 fn handle_generate_command<H: Hooks>(
     component: ComponentArg,
     config: &Config,
@@ -1157,7 +1156,7 @@ fn handle_generate_command<H: Hooks>(
 ///
 /// Failure is ignored — rustfmt may not be installed, and a formatting miss is
 /// no reason to fail a generation whose files are already on disk.
-#[cfg(debug_assertions)]
+#[cfg(all(debug_assertions, feature = "generators"))]
 fn format_generated_code() {
     let _ = std::process::Command::new("cargo")
         .arg("fmt")
@@ -1220,6 +1219,7 @@ mod tests {
             .contains("key:value"));
     }
 
+    #[cfg(feature = "generators")]
     #[test]
     fn legacy_api_flag_is_a_noop() {
         // `--api` is the headless default now — accepted, generation proceeds.
@@ -1227,6 +1227,7 @@ mod tests {
         assert!(warn_legacy_scaffold_kind(false, false, false).is_ok());
     }
 
+    #[cfg(feature = "generators")]
     #[test]
     fn legacy_html_htmx_flags_error_with_guidance() {
         let html = warn_legacy_scaffold_kind(false, true, false)

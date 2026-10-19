@@ -18,7 +18,7 @@ If you generated your app with `loco new` and picked a database-backed starter, 
 
 ## 1. Enable the `auth` feature
 
-`auth` is a **default** feature (`Cargo.toml`): it pulls in `jsonwebtoken` with its pure-Rust `rust_crypto` backend, so no C toolchain is required even in a minimal build. If you depend on `loco-rs` with `default-features = false`, add it back explicitly:
+`auth` is a **default** feature (`Cargo.toml`): it signs HS256/HS384/HS512 tokens with the pure-Rust RustCrypto `hmac` and `sha2` crates, so no C toolchain is required even in a minimal build. If you depend on `loco-rs` with `default-features = false`, add it back explicitly:
 
 ```toml
 loco-rs = { version = "...", default-features = false, features = ["auth", "with-db"] }
@@ -61,7 +61,7 @@ async fn login(State(ctx): State<AppContext>, /* ... */) -> Result<Response> {
 }
 ```
 
-`generate_token` takes the expiration (seconds), the `pid` that becomes `claims.pid`, and an optional `serde_json::Map` of custom claims that get flattened alongside `pid` in the token. It returns a `jsonwebtoken` result, not Loco's `Result`, so map the error explicitly as shown.
+`generate_token` takes the expiration (seconds), the `pid` that becomes `claims.pid`, and an optional `serde_json::Map` of custom claims that get flattened alongside `pid` in the token. It returns a `JWTResult` (errors are `auth::jwt::JWTError`), not Loco's `Result`, so map the error explicitly as shown.
 
 ## 4. Protect a route: claims only
 

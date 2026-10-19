@@ -24,7 +24,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// No generator test can catch this, which is why the check is here: they all
 /// set `LOCO_DEV_MODE_PATH`, which replaces this requirement with a path
 /// dependency on the working tree and makes the floor invisible.
-pub const LOCO_VERSION: &str = "1.1";
+pub const LOCO_VERSION: &str = "1.2";
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {

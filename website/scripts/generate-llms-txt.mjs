@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, mkdirSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, mkdirSync, writeFileSync, copyFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -107,6 +107,25 @@ function buildLlmsTxt(pages) {
     lines.push('');
   }
 
+  // Lead with the agent skill, not the docs index. A model reading this file is
+  // about to write Loco code, and the docs are organised for humans browsing by
+  // topic — the skill is organised for exactly this task, and its API index is
+  // the only thing here that reliably prevents invented symbols.
+  lines.push('## For coding agents — start here');
+  lines.push(
+    `- [Loco agent skill](${SITE}/skills/loco/SKILL.md): Router for everything below — AppContext, project layout, and which file to read for a given task.`,
+  );
+  lines.push(
+    `- [Doctrine](${SITE}/skills/loco/doctrine.md): What idiomatic Loco looks like, grounded in Rails, including where Rust forced a divergence. Read before writing Loco code.`,
+  );
+  lines.push(
+    `- [API index](${SITE}/skills/loco/api-index.md): Every public loco_rs symbol with signature, generated from rustdoc. Check a name here rather than guessing it.`,
+  );
+  lines.push(
+    `- [Recipes](${SITE}/skills/loco/SKILL.md): Task-shaped guides — models and migrations, endpoints, background jobs, tasks and scheduling, mailers, middleware, auth, testing.`,
+  );
+  lines.push('');
+
   for (const section of SECTION_ORDER) {
     const sectionPages = pages.filter((p) => p.section === section);
     if (sectionPages.length === 0) continue;
@@ -139,6 +158,40 @@ function buildLlmsFullTxt(pages) {
   );
 }
 
+/**
+ * Publishes the repo's agent skill at `/skills/loco/**` and `/AGENTS.md`.
+ *
+ * `loco new` writes the skill into every app it generates, but that does
+ * nothing for the apps that already exist — and those are most of them. Serving
+ * the same files from the site gives an agent working in an older app one
+ * fetchable place to read the doctrine, the API index, and the recipes.
+ *
+ * Copied at build time rather than committed, so `skills/loco/` in the repo
+ * stays the single source. `cargo xtask agent-skill` owns that directory.
+ */
+function publishAgentSkill() {
+  const src = path.resolve(__dirname, '../../skills/loco');
+  const dst = path.join(OUT_DIR, 'skills/loco');
+
+  const files = walkAll(src);
+  for (const file of files) {
+    const out = path.join(dst, path.relative(src, file));
+    mkdirSync(path.dirname(out), { recursive: true });
+    writeFileSync(out, readFileSync(file));
+  }
+
+  copyFileSync(path.resolve(__dirname, '../../AGENTS.md'), path.join(OUT_DIR, 'AGENTS.md'));
+  console.log(`skills/loco: ${files.length} files published, plus AGENTS.md`);
+}
+
+/** Every file under `dir`, recursively — unlike `walk`, not filtered to `.md`. */
+function walkAll(dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = path.join(dir, entry.name);
+    return entry.isDirectory() ? walkAll(full) : [full];
+  });
+}
+
 function main() {
   const pages = loadPages();
   mkdirSync(OUT_DIR, { recursive: true });
@@ -151,6 +204,8 @@ function main() {
 
   console.log(`llms.txt: ${llmsTxt.length} bytes, ${pages.length} pages linked`);
   console.log(`llms-full.txt: ${llmsFullTxt.length} bytes, ${pages.length} pages inlined`);
+
+  publishAgentSkill();
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

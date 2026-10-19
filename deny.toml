@@ -24,10 +24,8 @@ The Marvin attack: a timing sidechannel in `rsa`'s private-key operations.
 There is no fixed release — the advisory has been open since 2023 and the
 crate has no patched version.
 
-It reaches the tree twice, and neither path performs RSA *decryption*:
-`jsonwebtoken` (the `auth` feature) uses RSA only to verify RS256 signatures,
-which is a public-key operation, and `reqsign` (via opendal) uses it for
-request signing. The attack needs an oracle that decrypts attacker-chosen
+It reaches the tree only through `reqsign` (via opendal, the cloud storage
+features), which uses it for request signing, not RSA *decryption*. The attack needs an oracle that decrypts attacker-chosen
 ciphertext and leaks timing.
 
 Revisit when `rsa` ships a fix, or if Loco ever grows RSA decryption.

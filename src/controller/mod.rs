@@ -268,6 +268,11 @@ impl IntoResponse for Error {
                 StatusCode::CONFLICT,
                 ErrorDetail::new("conflict", "Resource already exists"),
             ),
+            #[cfg(feature = "multi-tenancy")]
+            Self::Model(ModelError::TenantMismatch) => (
+                StatusCode::BAD_REQUEST,
+                ErrorDetail::new("tenant_mismatch", "Model belongs to a different tenant"),
+            ),
             #[cfg(feature = "with-db")]
             Self::Model(ModelError::Validation(ref errors)) => validation_error_response(errors),
 
@@ -292,11 +297,8 @@ impl IntoResponse for Error {
             | Self::JSON(_)
             | Self::YAMLFile(_, _)
             | Self::YAML(_)
-            | Self::EmailSender(_)
-            | Self::Smtp(_)
             | Self::Worker(_)
             | Self::IO(_)
-            | Self::ParseAddress(_)
             | Self::InvalidHeaderValue(_)
             | Self::InvalidHeaderName(_)
             | Self::InvalidMethod(_)
@@ -304,6 +306,12 @@ impl IntoResponse for Error {
             | Self::Cache(_)
             | Self::VersionCheck(_)
             | Self::Any(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ErrorDetail::new("internal_server_error", "Internal Server Error"),
+            ),
+
+            #[cfg(feature = "mailer")]
+            Self::EmailSender(_) | Self::Smtp(_) | Self::ParseAddress(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ErrorDetail::new("internal_server_error", "Internal Server Error"),
             ),
@@ -341,7 +349,7 @@ impl IntoResponse for Error {
                 ErrorDetail::new("internal_server_error", "Internal Server Error"),
             ),
 
-            #[cfg(debug_assertions)]
+            #[cfg(all(debug_assertions, feature = "generators"))]
             Self::Generators(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ErrorDetail::new("internal_server_error", "Internal Server Error"),
@@ -395,6 +403,21 @@ mod tests {
             serde_json::json!({
                 "error": "conflict",
                 "description": "Resource already exists"
+            })
+        );
+    }
+
+    #[cfg(feature = "multi-tenancy")]
+    #[tokio::test]
+    async fn model_tenant_mismatch_maps_to_400() {
+        let (status, json) = response_json(Error::Model(ModelError::TenantMismatch)).await;
+
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(
+            json,
+            serde_json::json!({
+                "error": "tenant_mismatch",
+                "description": "Model belongs to a different tenant"
             })
         );
     }

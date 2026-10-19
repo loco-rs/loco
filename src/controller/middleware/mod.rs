@@ -71,6 +71,16 @@ pub trait MiddlewareLayer {
     fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>>;
 }
 
+/// A middleware config with every field at its serde default.
+///
+/// Decodes an empty YAML mapping, the same path the config file takes, so
+/// this reuses that decoding code rather than compiling a second copy for
+/// another format.
+pub(crate) fn defaults<T: serde::de::DeserializeOwned>() -> T {
+    serde_yaml::from_value(serde_yaml::Value::Mapping(serde_yaml::Mapping::new()))
+        .expect("every middleware config field has a serde default")
+}
+
 #[allow(clippy::unnecessary_lazy_evaluations)]
 #[must_use]
 pub fn default_middleware_stack(ctx: &AppContext) -> Vec<Box<dyn MiddlewareLayer>> {

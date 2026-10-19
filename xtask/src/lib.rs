@@ -1,7 +1,9 @@
 use std::process::exit;
+pub mod agent_skill;
 pub mod ci;
 pub mod docs_syntax;
 pub mod errors;
+pub mod eval;
 pub mod out;
 pub mod prompt;
 pub mod utils;

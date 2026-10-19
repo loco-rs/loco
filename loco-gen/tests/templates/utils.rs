@@ -90,3 +90,21 @@ pub fn guess_file_by_time(path: &Path, file_format: &str, max_attempts: u32) -> 
 
     None
 }
+
+/// A minimal `frontend/src/pages/Home.tsx` fixture carrying the
+/// `scaffold:nav` anchor the Api scaffold's `frontend_list.t` injects into.
+pub const HOME_TSX_FIXTURE: &str = r"import { Link } from 'react-router'
+
+export function Home() {
+  return (
+    <div>
+      <h1>Welcome to Loco</h1>
+      <nav>
+        <ul>
+          {/* scaffold:nav */}
+        </ul>
+      </nav>
+    </div>
+  )
+}
+";

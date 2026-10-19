@@ -13,20 +13,25 @@ use futures_util::FutureExt;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use serde_variant::to_variant_name;
-#[cfg(feature = "worker")]
+#[cfg(all(feature = "worker", feature = "db-postgres"))]
 pub mod pg;
 #[cfg(feature = "worker_redis")]
 pub mod redis;
-#[cfg(feature = "worker")]
+#[cfg(all(
+    feature = "worker",
+    any(feature = "db-postgres", feature = "db-sqlite")
+))]
 pub(crate) mod sql;
 #[cfg(all(feature = "worker", feature = "db-sqlite"))]
 pub mod sqlt;
 
+#[cfg(feature = "db-postgres")]
+use crate::config::PostgresQueueConfig;
 #[cfg(feature = "db-sqlite")]
 use crate::config::SqliteQueueConfig;
 use crate::{
     app::AppContext,
-    config::{self, Config, PostgresQueueConfig, QueueConfig, RedisQueueConfig, WorkerMode},
+    config::{self, Config, QueueConfig, RedisQueueConfig, WorkerMode},
     Error, Result,
 };
 
@@ -99,6 +104,28 @@ pub type JobHandler = Box<
         + Send
         + Sync,
 >;
+
+/// How a queue provider retries a worker's failed jobs. Built from
+/// [`BackgroundWorker::max_retries`] and [`BackgroundWorker::retry_backoff`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RetryPolicy {
+    /// Retries after the first failure; `0` makes the first failure final.
+    pub max_retries: u32,
+    /// Delay before the first retry. Each later retry waits twice as long as
+    /// the one before it, capped at [`RetryPolicy::MAX_DELAY`].
+    pub backoff: std::time::Duration,
+}
+
+impl RetryPolicy {
+    pub const MAX_DELAY: std::time::Duration = std::time::Duration::from_hours(1);
+
+    /// Delay before retry number `retry` (1-based).
+    #[must_use]
+    pub fn delay(&self, retry: u32) -> std::time::Duration {
+        let factor = 2u32.saturating_pow(retry.saturating_sub(1));
+        self.backoff.saturating_mul(factor).min(Self::MAX_DELAY)
+    }
+}
 
 /// Erases a [`BackgroundWorker`]'s argument type into a [`JobHandler`] that
 /// can be stored in a backend's job registry alongside handlers for other,
@@ -195,11 +222,47 @@ pub trait QueueProvider: Send + Sync {
         Ok(ids)
     }
 
+    /// Adds a job unless a queued job with the same `class` and `key` already
+    /// exists, in which case that job's ID is returned and nothing is added.
+    /// See [`Queue::enqueue_unique`] for the full contract.
+    ///
+    /// # Errors
+    /// The default implementation always errors: the provider does not
+    /// support unique jobs.
+    async fn enqueue_unique(
+        &self,
+        class: String,
+        _queue: Option<String>,
+        _args: JsonValue,
+        _tags: Option<Vec<String>>,
+        _priority: Option<i32>,
+        _key: String,
+    ) -> Result<Option<String>> {
+        Err(Error::string(&format!(
+            "{} does not support unique jobs (worker `{class}`)",
+            self.describe()
+        )))
+    }
+
     /// Registers a pre-erased job handler under `name`.
     ///
     /// # Errors
     /// This function will return an error if it fails to register.
     async fn register_handler(&self, name: String, handler: JobHandler) -> Result<()>;
+
+    /// Sets how failed jobs of worker `name` are retried. Called by
+    /// [`Queue::register`] only for workers with
+    /// [`BackgroundWorker::max_retries`] above zero.
+    ///
+    /// # Errors
+    /// The default implementation always errors, so a worker that asks for
+    /// retries fails at registration instead of silently never retrying.
+    async fn set_retry_policy(&self, name: String, _policy: RetryPolicy) -> Result<()> {
+        Err(Error::string(&format!(
+            "{} does not support automatic retries (worker `{name}`)",
+            self.describe()
+        )))
+    }
 
     /// Runs the worker loop for this provider.
     ///
@@ -292,7 +355,13 @@ pub trait QueueProvider: Send + Sync {
 ///
 /// # Errors
 /// This function will return an error if a worker task fails to join
-#[cfg(feature = "worker")]
+#[cfg(any(
+    all(
+        feature = "worker",
+        any(feature = "db-postgres", feature = "db-sqlite")
+    ),
+    feature = "worker_redis"
+))]
 pub(crate) async fn process_worker_handles(
     handles: Vec<tokio::task::JoinHandle<()>>,
 ) -> Result<()> {
@@ -340,7 +409,23 @@ impl QueueProvider for NoopQueue {
         Ok(None)
     }
 
+    async fn enqueue_unique(
+        &self,
+        _class: String,
+        _queue: Option<String>,
+        _args: JsonValue,
+        _tags: Option<Vec<String>>,
+        _priority: Option<i32>,
+        _key: String,
+    ) -> Result<Option<String>> {
+        Ok(None)
+    }
+
     async fn register_handler(&self, _name: String, _handler: JobHandler) -> Result<()> {
+        Ok(())
+    }
+
+    async fn set_retry_policy(&self, _name: String, _policy: RetryPolicy) -> Result<()> {
         Ok(())
     }
 
@@ -530,7 +615,52 @@ impl Queue {
         tracing::info!(worker = W::class_name(), "Registering background worker");
         let name = W::class_name();
         let handler = erase_worker(worker);
-        self.0.register_handler(name, handler).await
+        self.0.register_handler(name.clone(), handler).await?;
+        if W::max_retries() > 0 {
+            let policy = RetryPolicy {
+                max_retries: W::max_retries(),
+                backoff: W::retry_backoff(),
+            };
+            self.0.set_retry_policy(name, policy).await?;
+        }
+        Ok(())
+    }
+
+    /// Add a job unless one with the same `class` and `key` is already
+    /// queued; then return the queued job's ID and add nothing.
+    ///
+    /// Only jobs still waiting count. Once a worker picks the job up, the
+    /// next call with the same key adds a new job. A burst of events that
+    /// each ask for the same follow-up work (e.g. "re-sync account 42")
+    /// therefore collapses into one queued job, and an event that arrives
+    /// while that job runs still gets a run after it.
+    ///
+    /// Supported by the Postgres and `SQLite` providers.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the enqueue operation fails, or
+    /// if the provider does not support unique jobs.
+    pub async fn enqueue_unique<A: Serialize + Send + Sync>(
+        &self,
+        class: String,
+        queue: Option<String>,
+        args: A,
+        tags: Option<Vec<String>>,
+        priority: Option<i32>,
+        key: String,
+    ) -> Result<Option<String>> {
+        tracing::debug!(worker = class, queue = ?queue, tags = ?tags, key, "Enqueuing unique background job");
+        self.0
+            .enqueue_unique(
+                class,
+                queue,
+                serde_json::to_value(args)?,
+                tags,
+                priority,
+                key,
+            )
+            .await
     }
 
     /// Runs the worker loop for this [`Queue`].
@@ -740,6 +870,23 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
         Vec::new()
     }
 
+    /// How many times a queue provider re-runs a failed job before marking it
+    /// failed. `0` (the default) makes the first failure final. Only the
+    /// Postgres and `SQLite` providers retry; registering a worker with
+    /// retries on another provider is an error. Retries apply in
+    /// `BackgroundQueue` mode only.
+    #[must_use]
+    fn max_retries() -> u32 {
+        0
+    }
+
+    /// Delay before the first retry; each later retry waits twice as long,
+    /// up to an hour. See [`BackgroundWorker::max_retries`].
+    #[must_use]
+    fn retry_backoff() -> std::time::Duration {
+        std::time::Duration::from_secs(5)
+    }
+
     fn build(ctx: &AppContext) -> Self;
     #[must_use]
     fn class_name() -> String
@@ -760,6 +907,41 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
         Self: Sized,
     {
         Self::perform_later_with_priority(ctx, args, None).await
+    }
+
+    /// Enqueue the job unless one with the same `key` is already waiting, and
+    /// return the ID of whichever job is queued. See [`Queue::enqueue_unique`]
+    /// for which jobs count as duplicates.
+    ///
+    /// In `ForegroundBlocking` and `BackgroundAsync` modes nothing is queued,
+    /// so the job runs as with [`BackgroundWorker::perform_later`].
+    ///
+    /// # Errors
+    ///
+    /// Same as [`BackgroundWorker::perform_later_with_priority`], plus an
+    /// error when the queue provider does not support unique jobs.
+    async fn perform_later_unique(ctx: &AppContext, args: A, key: String) -> crate::Result<String>
+    where
+        Self: Sized,
+    {
+        if !matches!(ctx.config.workers.mode, WorkerMode::BackgroundQueue) {
+            return Self::perform_later(ctx, args).await;
+        }
+        let Some(p) = &ctx.queue_provider else {
+            return Err(Error::QueueProviderMissing);
+        };
+        let tags = Self::tags();
+        let tags_option = if tags.is_empty() { None } else { Some(tags) };
+        Ok(p.enqueue_unique(
+            Self::class_name(),
+            Self::queue(),
+            args,
+            tags_option,
+            None,
+            key,
+        )
+        .await?
+        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string()))
     }
 
     /// Enqueue (or run) the job with an explicit priority and return its ID.
@@ -921,6 +1103,7 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
 pub async fn converge(queue: &Queue, config: &QueueConfig) -> Result<()> {
     queue.setup().await?;
     match config {
+        #[cfg(feature = "db-postgres")]
         QueueConfig::Postgres(PostgresQueueConfig {
             dangerously_flush,
             uri: _,
@@ -932,8 +1115,13 @@ pub async fn converge(queue: &Queue, config: &QueueConfig) -> Result<()> {
             num_workers: _,
             min_connections: _,
             reaper: _,
-        })
-        | QueueConfig::Redis(RedisQueueConfig {
+        }) => {
+            if *dangerously_flush {
+                tracing::warn!("Flush mode enabled - clearing all jobs from queue");
+                queue.clear().await?;
+            }
+        }
+        QueueConfig::Redis(RedisQueueConfig {
             dangerously_flush,
             uri: _,
             queues: _,
@@ -989,7 +1177,7 @@ pub async fn create_queue_provider(config: &Config) -> Result<Option<Arc<Queue>>
                     tracing::debug!("Creating Redis queue provider");
                     Ok(Some(Arc::new(redis::create_provider(qcfg).await?)))
                 }
-                #[cfg(feature = "worker")]
+                #[cfg(all(feature = "worker", feature = "db-postgres"))]
                 config::QueueConfig::Postgres(qcfg) => {
                     tracing::debug!("Creating Postgres queue provider");
                     Ok(Some(Arc::new(pg::create_provider(qcfg).await?)))

@@ -12,7 +12,7 @@ license = "Apache-2.0"
 
 [package]
 name = "loco-rs"
-version = "1.1.0"
+version = "1.2.0"
 description = "The one-person framework for Rust"
 homepage = "https://loco.rs/"
 documentation = "https://docs.rs/loco-rs"
@@ -46,19 +46,33 @@ default = [
     "cache_inmem",
     "worker",
     "db-sqlite",
+    "db-postgres",
+    "compression",
+    "generators",
+    "mailer",
 ]
-# jsonwebtoken 10 no longer bundles a crypto backend, so `auth` selects the
-# pure-Rust `rust_crypto` one. This keeps `auth` self-contained (enabling it
-# alone still builds, even with default-features = false) and needs no C
-# toolchain — matching Loco's zero-friction onboarding.
-auth = ["dep:jsonwebtoken", "jsonwebtoken/rust_crypto"]
+# Email: the `Mailer` trait, SMTP delivery and the mailer queue worker. lettre
+# brings an SMTP parser and a rustls TLS stack; an app that sends no mail
+# (the no-database starter) leaves this off.
+mailer = ["dep:lettre", "dep:include_dir"]
+# HS256/384/512 JWTs on RustCrypto HMAC; pure Rust, no C toolchain.
+# It also carries argon2 password hashing.
+auth = ["dep:hmac", "dep:sha2", "dep:base64", "dep:argon2"]
 cli = ["dep:clap"]
-testing = ["dep:axum-test", "dep:scraper", "dep:tree-fs"]
+testing = ["testing-core", "testing-html"]
+# Request, mailer and DB test helpers, without the HTML selector assertions.
+# Generated apps use this: `scraper`'s dependency tree turns on extra features
+# of `derive_more` and `stable_deref_trait`, crates that sea-orm and url also
+# use, so with it `cargo test` recompiles ~60 crates `cargo build` already built.
+testing-core = ["dep:axum-test", "dep:tree-fs"]
+# `assert_css_*` HTML selector assertions (pulls in `scraper`).
+testing-html = ["testing-core", "dep:scraper"]
 with-db = [
+    "dep:toml",
     "dep:sea-orm",
     "dep:sea-orm-migration",
     "dep:sqlx",
-    "loco-gen/with-db",
+    "loco-gen?/with-db",
 ]
 # SQLite SeaORM/sqlx drivers and the SQLite queue worker. Off by default when
 # consumers use `default-features = false` (e.g. Postgres-only apps that skip
@@ -68,13 +82,36 @@ db-sqlite = [
     "sea-orm-migration?/sqlx-sqlite",
     "sqlx?/sqlite",
 ]
+# Postgres SeaORM/sqlx drivers and the Postgres queue worker. Leave it out with
+# `default-features = false` for SQLite-only apps, which then skip
+# `sqlx-postgres` and its crypto/unicode dependencies.
+db-postgres = [
+    "sea-orm?/sqlx-postgres",
+    "sea-orm-migration?/sqlx-postgres",
+    "sqlx?/postgres",
+]
+# `cargo loco generate` (debug builds only). Pulls `loco-gen` and, through
+# `rrgen`, a second (Tera 1) template engine; release builds never use it.
+generators = ["dep:loco-gen"]
+# The `compression` middleware. `compression` is gzip only, which every client
+# accepts, and is the default. `compression-full` adds brotli, deflate and zstd;
+# zstd is a C build and brotli a large one, together more compile time than the
+# rest of tower-http.
+compression = ["tower-http/compression-gzip"]
+compression-full = ["compression", "tower-http/compression-full"]
+# Explicit tenant scoping for Sea-ORM models and queries.
+multi-tenancy = ["with-db"]
 # Storage features
 all_storage = ["storage_aws_s3", "storage_azure", "storage_gcp"]
-storage_aws_s3 = ["opendal/services-s3"]
-storage_azure = ["opendal/services-azblob"]
-storage_gcp = ["opendal/services-gcs"]
+# The local and in-memory drivers are plain tokio; OpenDAL comes in only for
+# the cloud backends, or for wrapping another OpenDAL service yourself with
+# `drivers::opendal_adapter`.
+storage_opendal = ["dep:opendal"]
+storage_aws_s3 = ["storage_opendal", "opendal/services-s3"]
+storage_azure = ["storage_opendal", "opendal/services-azblob"]
+storage_gcp = ["storage_opendal", "opendal/services-gcs"]
 # Cache feature
-cache_inmem = ["dep:moka"]
+cache_inmem = []
 cache_redis = ["dep:bb8-redis", "dep:bb8"]
 worker = ["dep:sqlx", "dep:ulid"]
 worker_redis = ["worker", "dep:redis"]
@@ -89,20 +126,19 @@ redis_tls = ["redis/tokio-rustls-comp", "redis/tls-rustls-webpki-roots", "dep:ru
 embedded_assets = []
 
 [dependencies]
-loco-gen = { version = "1.1.0", path = "./loco-gen" }
+loco-gen = { version = "1.2.0", path = "./loco-gen", optional = true }
 backtrace_printer = { version = "1.3.0" }
 
 # cli
 clap = { version = "4.4.7", features = ["derive"], optional = true }
 colored = { workspace = true }
 sea-orm = { version = "2.0", features = [
-    "sqlx-postgres",        # `DATABASE_DRIVER` feature
     "runtime-tokio-rustls",
     "macros",
 ], optional = true }
 
-tokio = { version = "1.45", default-features = false }
-tokio-util = "0.7"
+tokio = { version = "1.45", default-features = false, features = ["fs", "signal", "time"] }
+tokio-util = { version = "0.7", features = ["io"] }
 # the rest
 
 serde = { workspace = true }
@@ -111,7 +147,8 @@ serde_json = { workspace = true }
 # continuation. Kept under the `serde_yaml` name so source paths are unchanged.
 serde_yaml = { package = "serde_yaml_ng", version = "0.10" }
 serde_variant = "0.1.2"
-toml = "0.8"
+# Reads `[package.metadata.db.entity]` for `cargo loco db entities`.
+toml = { version = "1", default-features = false, features = ["std", "parse", "display", "serde"], optional = true }
 
 async-trait = { workspace = true }
 
@@ -127,8 +164,8 @@ lettre = { version = "0.11.4", default-features = false, features = [
     "hostname",
     "smtp-transport",
     "tokio1-rustls-tls",
-] }
-include_dir = "0.7.3"
+], optional = true }
+include_dir = { version = "0.7.3", optional = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { version = "0.3.16", default-features = false, features = [
@@ -141,19 +178,19 @@ tracing-appender = { version = "0.2.3", default-features = false }
 duct = { workspace = true }
 
 tower-http = { workspace = true }
-byte-unit = "5.1"
 
-argon2 = { version = "0.5", features = ["std"] }
+argon2 = { version = "0.5", features = ["std"], optional = true }
 rand = { version = "0.9", features = ["std"] }
-jsonwebtoken = { version = "10.3.0", optional = true, default-features = false }
+hmac = { version = "0.12", optional = true }
+sha2 = { version = "0.10", optional = true }
+base64 = { version = "0.22", optional = true }
 validator = { version = "0.20.0", features = ["derive"] }
 futures-util = "0.3"
 tower = { workspace = true }
 bytes = "1.11"
 axum-client-ip = { version = "1.3", features = ["forwarded-header"] }
-semver = "1"
+semver = { version = "1", features = ["serde"] }
 url = "2"
-cargo-lock = { version = "11", default-features = false }
 
 axum-test = { version = "17.0.1", optional = true }
 tree-fs = { version = "0.3", optional = true }
@@ -164,19 +201,15 @@ uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
 
 # File Upload
 opendal = { version = "0.58.1", default-features = false, features = [
-    "services-memory",
-    "services-fs",
     "layers-retry",
-] }
+], optional = true }
 http = "1"
 
 # cache
-moka = { version = "0.12.7", features = ["future"], optional = true }
 bb8-redis = { version = "0.26", optional = true }
 bb8 = { version = "0.9", optional = true }
 
 # Scheduler
-tokio-cron-scheduler = { version = "0.15", features = ["signal"] }
 english-to-cron = { version = "0.1.2" }
 
 # worker: pg + sqlite backed queue workers.
@@ -188,7 +221,6 @@ english-to-cron = { version = "0.1.2" }
 # connection URL (`sslmode=require`, `sslrootcert=...`); see the how-to docs.
 sqlx = { version = "0.9", default-features = false, features = [
     "json",
-    "postgres",
     "chrono",
     "tls-rustls-ring-webpki",
 ], optional = true }
@@ -231,7 +263,6 @@ tower-http = { version = "0.6.8", features = [
     "cors",
     "fs",
     "set-header",
-    "compression-full",
 ] }
 heck = "0.5.0"
 duct = { version = "1.0.0" }
@@ -239,21 +270,23 @@ duct = { version = "1.0.0" }
 [dependencies.sea-orm-migration]
 optional = true
 version = "2.0"
+# Its default `cli` feature builds sea-orm-cli; Loco runs migrations itself.
+default-features = false
 features = [
     # Enable at least one `ASYNC_RUNTIME` and `DATABASE_DRIVER` feature if you want to run migration via CLI.
     # View the list of supported features at https://www.sea-ql.org/SeaORM/docs/install-and-config/database-and-async-runtime.
     # e.g.
     "runtime-tokio-rustls", # `ASYNC_RUNTIME` feature
-    "sqlx-postgres",        # `DATABASE_DRIVER` feature
+    # `DATABASE_DRIVER` features come from `db-postgres` / `db-sqlite`.
 ]
 
 [package.metadata.docs.rs]
-features = ["testing"]
+features = ["testing", "multi-tenancy"]
 
 [dev-dependencies]
 loco-rs = { path = ".", features = ["testing"] }
 rstest = "0.26.1"
-insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
+insta = { version = "1.34.0", features = ["filters"] }
 tree-fs = { version = "0.3" }
 reqwest = { version = "0.12.7", features = ["json"] }
 tower = { workspace = true, features = ["util"] }

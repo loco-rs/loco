@@ -10,8 +10,8 @@ injections:
 {% endif %}use ts_rs::TS;
 
 {% for e in enums %}#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, TS)]
-#[ts(export, export_to = "../frontend/src/bindings/")]
-#[serde(rename_all = "snake_case")]
+{% if frontend %}#[ts(export, export_to = "../frontend/src/bindings/")]
+{% endif %}#[serde(rename_all = "snake_case")]
 pub enum {{ e.enum_type }} {
 {% for v in e.variants %}    {{ v.variant }},
 {% endfor %}}
@@ -36,8 +36,8 @@ impl {{ e.enum_type }} {
 
 {% endfor -%}
 #[derive(serde::Serialize, serde::Deserialize, TS)]
-#[ts(export, export_to = "../frontend/src/bindings/")]
-pub struct {{ pascal_singular }}Dto {
+{% if frontend %}#[ts(export, export_to = "../frontend/src/bindings/")]
+{% endif %}pub struct {{ pascal_singular }}Dto {
     #[ts(type = "number")]
     pub id: i64,
 {% for f in fields %}{% if f.ts_override %}    #[ts(type = "{{ f.ts_override }}")]
@@ -60,15 +60,15 @@ impl From<crate::models::_entities::{{ snake_plural }}::Model> for {{ pascal_sin
 }
 
 #[derive(serde::Serialize, serde::Deserialize, TS)]
-#[ts(export, export_to = "../frontend/src/bindings/")]
-pub struct Create{{ pascal_singular }} {
+{% if frontend %}#[ts(export, export_to = "../frontend/src/bindings/")]
+{% endif %}pub struct Create{{ pascal_singular }} {
 {% for f in fields %}{% if f.ts_override %}    #[ts(type = "{{ f.ts_override }}")]
 {% endif %}    pub {{ f.field_name }}: {{ f.rust_type }},
 {% endfor %}}
 
 #[derive(serde::Serialize, serde::Deserialize, TS)]
-#[ts(export, export_to = "../frontend/src/bindings/")]
-pub struct Update{{ pascal_singular }} {
+{% if frontend %}#[ts(export, export_to = "../frontend/src/bindings/")]
+{% endif %}pub struct Update{{ pascal_singular }} {
 {% for f in fields %}{% if f.ts_override %}    #[ts(type = "{{ f.ts_override }}")]
 {% endif %}    pub {{ f.field_name }}: {{ f.rust_type }},
 {% endfor %}}

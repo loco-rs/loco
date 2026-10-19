@@ -4,8 +4,7 @@
 //! with specific support for accessing database entity configuration
 //! under the `[package.metadata.db.entity]` section.
 //!
-//! (Cargo.lock parsing lives in [`crate::depcheck`], backed by the `cargo-lock`
-//! crate.)
+//! (Cargo.lock parsing lives in [`crate::depcheck`].)
 
 use crate::errors::Error;
 use crate::Result as AppResult;

@@ -6,7 +6,6 @@
 
 use axum::{http::StatusCode, response::Html, Router as AXRouter};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde_json::json;
 use tower_http::services::ServeFile;
 
 use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
@@ -42,7 +41,7 @@ fn default_status_code() -> StatusCode {
 
 impl Default for Fallback {
     fn default() -> Self {
-        serde_json::from_value(json!({})).unwrap()
+        super::defaults()
     }
 }
 

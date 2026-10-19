@@ -2,6 +2,7 @@
 // TODO: should be more properly aligned with extracting out the db-related gen
 // code and then feature toggling it
 #![allow(dead_code)]
+mod rrgen;
 pub use rrgen::{GenResult, RRgen};
 use serde_json::{json, Value};
 mod controller;

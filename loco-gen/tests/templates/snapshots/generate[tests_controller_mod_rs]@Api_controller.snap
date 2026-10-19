@@ -21,7 +21,7 @@ async fn can_get_movies() {
 
 #[tokio::test]
 #[serial]
-async fn can_get_GET() {
+async fn can_call_GET() {
     request::<App, _, _>(|request, _ctx| async move {
         let res = request.get("/api/movies/GET").await;
         assert_eq!(res.status_code(), 200);
@@ -31,7 +31,7 @@ async fn can_get_GET() {
 
 #[tokio::test]
 #[serial]
-async fn can_get_POST() {
+async fn can_call_POST() {
     request::<App, _, _>(|request, _ctx| async move {
         let res = request.get("/api/movies/POST").await;
         assert_eq!(res.status_code(), 200);

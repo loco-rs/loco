@@ -41,6 +41,14 @@ const ROUTE_TABLES: [&str; 2] = [
     "examples/reference_spa/frontend/src/routes.tsx",
 ];
 
+/// The scaffold also injects a nav entry, so a generated resource is reachable
+/// from somewhere other than the address bar. Same rrgen 0.6 rule applies: lose
+/// the anchor and `loco g scaffold` fails outright.
+const HOME_PAGES: [&str; 2] = [
+    "loco-new/base_template/frontend/src/pages/Home.tsx",
+    "examples/reference_spa/frontend/src/pages/Home.tsx",
+];
+
 #[test]
 fn every_migrator_keeps_the_anchor_migrations_are_registered_at() {
     for migrator in MIGRATORS {
@@ -64,5 +72,17 @@ fn every_route_table_keeps_the_anchors_the_scaffold_injects_at() {
                  a page to it"
             );
         }
+    }
+}
+
+#[test]
+fn every_home_page_keeps_the_anchor_the_scaffold_links_from() {
+    for home in HOME_PAGES {
+        let content = read(home);
+        assert!(
+            content.contains("scaffold:nav"),
+            "{home} has no `scaffold:nav` comment, so `loco g scaffold` cannot link to \
+             the resource it just generated"
+        );
     }
 }

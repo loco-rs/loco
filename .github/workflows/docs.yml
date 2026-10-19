@@ -44,6 +44,27 @@ jobs:
         env:
           SNIPDOC_SKIP_EXEC_COMMANDS: true
 
+  # The `loco` agent skill has three derived artifacts: the rustdoc-generated
+  # API index, the copy `loco new` ships into every app, and the repo-root
+  # AGENTS.md. All three are committed, so all three can go stale — and a stale
+  # API index is worse than none, because it teaches agents symbols that no
+  # longer exist. This job fails the build when any of them drifts.
+  #
+  # Runs on its own because rustdoc JSON is nightly-only, and the nightly must
+  # be at or above the workspace MSRV or `loco-rs` will not build under it.
+  agent-skill:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@nightly
+      - name: Check the agent skill is in sync with the crate
+        run: cargo run -p xtask -- agent-skill --check
+
   # Builds the deployed site (Astro/Starlight in website/). The `check` job
   # above verifies the docs source (snipdoc, doc-example syntax); this job
   # verifies the artifact that actually ships to loco.rs — including the

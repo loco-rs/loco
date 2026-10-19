@@ -10,7 +10,9 @@ use ts_rs::TS;
 /// own `Pager`. Build it with [`Page::from_query`] rather than by hand — that
 /// is what keeps the two in step.
 #[derive(serde::Serialize, serde::Deserialize, TS)]
+{%- if settings.asset and settings.asset.kind == "client" %}
 #[ts(export, export_to = "../frontend/src/bindings/")]
+{%- endif %}
 pub struct Page<T: TS> {
     pub items: Vec<T>,
     #[ts(type = "number")]
@@ -41,7 +43,9 @@ impl<T: TS> Page<T> {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, TS)]
+{%- if settings.asset and settings.asset.kind == "client" %}
 #[ts(export, export_to = "../frontend/src/bindings/")]
+{%- endif %}
 pub struct ApiError {
     pub code: String,
     pub message: String,

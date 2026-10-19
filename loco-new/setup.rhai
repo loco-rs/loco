@@ -7,6 +7,11 @@
 gen.copy_template(".github/workflows/ci.yaml.t");     // Actions ci template
 gen.copy_files([".gitignore", ".rustfmt.toml", "README.md", "AGENTS.md"]);
 
+// The `loco` agent skill: doctrine, the generated API index, and task recipes.
+// Kept in sync with the repo's `skills/loco/` by `cargo xtask agent-skill` —
+// never edit the copy under `base_template/` directly.
+gen.copy_dir(".claude");
+
 gen.copy_template_dir(".cargo");
 
 // =====================
@@ -56,9 +61,12 @@ if db {
     gen.copy_template("migration/Cargo.toml.t");                  // Database migrations Cargo configuration
     gen.copy_template("migration/src/lib.rs.t");                  // Database migrations library
 
-    // Typed JSON API contract (Page<T>, ApiError) — DTOs derive the ts-rs
-    // bindings; present for every db app, consumed by the SPA frontend.
-    gen.copy_dir("src/dtos");
+    // Typed JSON API contract (Page<T>, ApiError). Present for every db app —
+    // the scaffolded API controller imports `Page` and `ApiError` whatever the
+    // frontend choice — but `common.rs` is a template because `#[ts(export)]`
+    // must only appear when there is a `frontend/` to export into.
+    gen.copy_file("src/dtos/mod.rs");
+    gen.copy_template("src/dtos/common.rs.t");
 
     // Entity modules for database models
     gen.copy_template("src/models/_entities/mod.rs.t");            // Root module for database entities
@@ -134,6 +142,12 @@ gen.copy_file("src/workers/downloader.rs");
 if settings.asset?.is_server_side ?? false {
     gen.copy_dir("assets");                        // Static assets directory
     gen.copy_dir("tests/views");                   // Server-side view rendering tests
+
+    // Something has to actually serve the shipped template. Without these the
+    // app has `assets/views/home/hello.html` and a test that renders it, but
+    // no route pointing at it, so `/` is a 404 in a server-side app.
+    gen.copy_file("src/controllers/page.rs");      // Root page controller
+    gen.copy_template("tests/requests/page.rs.t"); // Request test for the root page
 }
 
 // =====================

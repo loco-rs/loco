@@ -1,7 +1,7 @@
 use std::path::Path;
 
+use crate::RRgen;
 use chrono::Utc;
-use rrgen::RRgen;
 use serde_json::json;
 
 use crate::{

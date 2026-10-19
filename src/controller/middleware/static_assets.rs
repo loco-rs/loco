@@ -14,7 +14,6 @@ use std::path::PathBuf;
 use axum::http::header::{HeaderValue, CACHE_CONTROL};
 use axum::Router as AXRouter;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use tower_http::services::{ServeDir, ServeFile};
 use tower_http::set_header::SetResponseHeaderLayer;
 
@@ -44,7 +43,7 @@ pub struct StaticAssets {
 
 impl Default for StaticAssets {
     fn default() -> Self {
-        serde_json::from_value(json!({})).unwrap()
+        super::defaults()
     }
 }
 

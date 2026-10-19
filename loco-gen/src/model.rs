@@ -1,8 +1,8 @@
 use std::{collections::HashMap, env::current_dir, path::Path};
 
+use crate::RRgen;
 use chrono::Utc;
 use duct::cmd;
-use rrgen::RRgen;
 use serde_json::json;
 
 use crate::{

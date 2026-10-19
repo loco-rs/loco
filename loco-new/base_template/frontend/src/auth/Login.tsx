@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { ApiClientError, post } from "../api/client";
 import { setToken } from "./token";
 
@@ -72,9 +72,8 @@ export function Login() {
       </form>
       {error && <p role="alert">{error}</p>}
       <p>
-        Don&apos;t have an account? You must register via{" "}
-        <code>POST /api/auth/register</code> and verify your email before you
-        can log in.
+        Don&apos;t have an account? <Link to="/register">Sign up</Link>. You
+        will need to verify your email before you can log in.
       </p>
     </div>
   );
