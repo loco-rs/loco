@@ -265,8 +265,29 @@ async fn connect_worker(client: &RedisPool, token: &CancellationToken) -> Option
     }
 }
 
+/// How long a producer-side connection attempt may take (enqueue, ping, the
+/// `jobs` CLI).
+///
+/// The worker's connection got explicit timeouts; this one inherited `redis`
+/// 1.x's one-second connect and 500ms response defaults. Enqueue opens a fresh
+/// connection per job, so after an idle spell a managed Redis that takes a
+/// little over a second to accept TCP + AUTH fails the *request* that queued
+/// the job — typically after the caller already committed the row the job was
+/// about (a user, an invitation), so a retry then conflicts with it. Shorter
+/// than the worker's budget because a request is waiting on it.
+const CLIENT_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// How long a single producer-side command may take. See
+/// [`CLIENT_CONNECT_TIMEOUT`].
+const CLIENT_RESPONSE_TIMEOUT: Duration = Duration::from_secs(5);
+
 async fn get_connection(client: &RedisPool) -> Result<Connection> {
-    let conn = client.get_multiplexed_async_connection().await?;
+    let config = AsyncConnectionConfig::new()
+        .set_connection_timeout(Some(CLIENT_CONNECT_TIMEOUT))
+        .set_response_timeout(Some(CLIENT_RESPONSE_TIMEOUT));
+    let conn = client
+        .get_multiplexed_async_connection_with_config(&config)
+        .await?;
     Ok(conn)
 }
 
