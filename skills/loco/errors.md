@@ -196,6 +196,33 @@ the registration by hand — it is to check why the generator did not run.
 The same failure shape applies to workers (never registered in `connect_workers`,
 so `perform_later` goes nowhere) and tasks (absent from `cargo loco task --list`).
 
+## 10. Raw SQL: "expected `&_`, found `Statement`" (E0308), then "`Statement: StatementBuilder` is not satisfied" (E0277)
+
+```
+error[E0308]: mismatched types
+    expected `&_`, found `Statement`
+error[E0277]: the trait bound `Statement: StatementBuilder` is not satisfied
+```
+
+In Sea-ORM 2, `ConnectionTrait::execute`, `query_all` and `query_one` take
+`&impl StatementBuilder`: a query builder (`Query::select()`, an entity
+`Select`), not a raw `Statement`. Adding `&` fixes the first error and produces
+the second. Raw SQL has its own methods, which take the `Statement` by value:
+
+```rust no-syntax-check="call fragments side by side; db is any ConnectionTrait"
+let stmt = Statement::from_sql_and_values(
+    db.get_database_backend(),
+    "UPDATE jobs SET status = $1 WHERE id = $2",
+    [status.into(), id.into()],
+);
+db.execute_raw(stmt).await?;                 // not execute(stmt)
+let rows = db.query_all_raw(stmt).await?;    // not query_all(stmt)
+let row = db.query_one_raw(stmt).await?;     // not query_one(stmt)
+```
+
+`sea-orm-index.md` lists all of them under `ConnectionTrait`; read it before
+guessing a second time.
+
 ---
 
 ## Failures that are not your code

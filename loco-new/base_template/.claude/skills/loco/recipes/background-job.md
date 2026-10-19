@@ -90,12 +90,65 @@ fn queue() -> Option<String> { Some("critical".to_string()) }
 fn tags() -> Vec<String> { vec!["email".to_string()] }
 ```
 
-## Do not hand-roll retries
+## Unique jobs
+
+To collapse repeat enqueues of the same work (a webhook storm, a "recompute X"
+trigger), enqueue with a key:
+
+```rust no-syntax-check="a call statement, not an item"
+// perform_later_unique(ctx: &AppContext, args: A, key: String) -> Result<String>
+OnboardingWorker::perform_later_unique(
+    &ctx,
+    OnboardingWorkerArgs { user_id: user.id },
+    format!("onboarding:{}", user.id),
+)
+.await?;
+```
+
+While a job of the same worker with the same key is still **queued**, a repeat
+call adds nothing and returns that job's id. Once it starts running, a new one
+can queue, so work that arrives mid-run is not lost. A unique index enforces
+this, so concurrent callers share one job. Postgres and SQLite queues only:
+Redis returns an error. In `ForegroundBlocking` / `BackgroundAsync` modes it
+runs like `perform_later`. The lower-level form is
+`queue.enqueue_unique(class, queue, args, tags, priority, key)`.
+
+Retries keep the rule. When a unique job fails, or the reaper picks it up,
+while a twin with the same key is already queued, it is cancelled rather than
+requeued, because the twin does the same work. `retry_failed` leaves such a job
+`failed`.
+
+## Retries: return `Err`, set the policy on the worker
 
 A loop with `tokio::time::sleep` and an attempt counter adds no dependency and
 is still wrong — it blocks a worker slot, loses state on restart, and silently
 swallows the failure when the counter runs out. **Return `Err` and let the queue
-retry.** Retry behaviour is queue configuration, not worker code.
+retry.** The retry policy is two optional trait methods on the worker:
+
+```rust no-syntax-check="trait methods shown outside their impl block"
+fn max_retries() -> u32 { 5 }              // default 0: the first failure is final
+fn retry_backoff() -> std::time::Duration { // default 5s; doubles per retry, capped at 1h
+    std::time::Duration::from_secs(10)
+}
+```
+
+Postgres and SQLite queues only, in `BackgroundQueue` mode. Registering a worker
+with `max_retries() > 0` on Redis is an error.
+
+## Long jobs and the reaper
+
+With a `reaper` on the queue config, jobs stuck in `processing` longer than
+`age_minutes` are requeued, on the assumption their worker died. A running job
+heartbeats automatically (four times per `age_minutes`), so a long job that is
+still alive is not reaped. There is no heartbeat code to write; set the reaper:
+
+```yaml
+queue:
+  kind: Postgres
+  reaper:
+    age_minutes: 10
+    interval_seconds: 60
+```
 
 ## Execution mode
 

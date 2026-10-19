@@ -117,6 +117,7 @@ since they restate the trait's own API.
 - `enum` **JobStatus**
 - `struct` **Queue** — A handle to a background job queue
 - `trait` **QueueProvider** — Object-safe interface implemented by every queue backend (Postgres,
+- `struct` **RetryPolicy**` { max_retries: u32, backoff: Duration }` — How a queue provider retries a worker's failed jobs. Built from
 - `struct` **RunOpts**` { num_workers: u32, poll_interval_sec: u32, reaper: Option<ReaperConfig> }`
 - `fn` **converge**`(queue: &Queue, config: &QueueConfig) -> Result<()>` — Initialize the system according to configuration
 - `fn` **create_queue_provider**`(config: &Config) -> Result<Option<Arc<Queue>>>` — Create a provider from the `queue` config when `workers.mode` is
@@ -125,12 +126,15 @@ since they restate the trait's own API.
 
 - `fn` **build**`(ctx: &AppContext) -> Self`
 - `fn` **class_name**`() -> String where Self: Sized`
+- `fn` **max_retries**`() -> u32` — How many times a queue provider re-runs a failed job before marking it
 - `fn` **perform**`(self: &Self, args: A) -> Pin<Box<dyn Future + Send>>`
 - `fn` **perform_all_later**`(ctx: &AppContext, args_list: Vec<A>) -> Pin<Box<dyn Future + Send>> where Self: Sized` — Enqueue (or run) multiple jobs at once at the default priority and
 - `fn` **perform_all_later_with_priority**`(ctx: &AppContext, jobs: Vec<(A, Option<i32>)>) -> Pin<Box<dyn Future + Send>> where Self: Sized` — Enqueue (or run) multiple jobs at once, each with its own priority,
 - `fn` **perform_later**`(ctx: &AppContext, args: A) -> Pin<Box<dyn Future + Send>> where Self: Sized` — Enqueue (or run) the job at the default priority and return its ID
+- `fn` **perform_later_unique**`(ctx: &AppContext, args: A, key: String) -> Pin<Box<dyn Future + Send>> where Self: Sized` — Enqueue the job unless one with the same `key` is already waiting, and
 - `fn` **perform_later_with_priority**`(ctx: &AppContext, args: A, priority: Option<i32>) -> Pin<Box<dyn Future + Send>> where Self: Sized` — Enqueue (or run) the job with an explicit priority and return its ID
 - `fn` **queue**`() -> Option<String>` — If you have a specific queue
+- `fn` **retry_backoff**`() -> Duration` — Delay before the first retry; each later retry waits twice as long,
 - `fn` **tags**`() -> Vec<String>` — Specifies tags associated with this worker. Workers might only process jobs
 
 ### `Driver`
@@ -138,7 +142,10 @@ since they restate the trait's own API.
 - `fn` **complete_job**`(pool: &Self::Pool, id: &JobId, interval: Option<i64>) -> impl Trait`
 - `fn` **dequeue**`(pool: &Self::Pool, tags: &[String]) -> impl Trait`
 - `fn` **fail_job**`(pool: &Self::Pool, id: &JobId, error: &Error) -> impl Trait`
+- `fn` **heartbeat**`(pool: &Self::Pool, id: &JobId) -> impl Trait` — Marks a running job as still alive, so the reaper leaves it alone
 - `fn` **idle_count**`(pool: &Self::Pool) -> usize`
+- `fn` **record_attempt**`(pool: &Self::Pool, id: &JobId) -> impl Trait` — Counts one more failed attempt for a job and returns the new count
+- `fn` **retry_job**`(pool: &Self::Pool, id: &JobId, run_at: DateTime<Utc>) -> impl Trait` — Puts a failed job back in the queue to run again at `run_at`
 
 ### `JobRegistry`
 
@@ -146,6 +153,7 @@ since they restate the trait's own API.
 - `fn` **insert_handler**`(self: &mut Self, name: String, handler: JobHandler) -> Result<()>` — Inserts a pre-erased job handler under `name` (see
 - `fn` **new**`() -> Self` — Creates a new `JobRegistry`
 - `fn` **run**`(self: &Self, pool: &D::Pool, opts: &RunOpts, token: &CancellationToken, tags: &[String]) -> Vec<JoinHandle<()>>` — Runs the job handlers with the provided number of workers
+- `fn` **set_retry_policy**`(self: &mut Self, name: String, policy: RetryPolicy) -> Result<()>` — Sets the retry policy for jobs of worker `name`
 
 ### `JobStatus`
 
@@ -166,6 +174,7 @@ since they restate the trait's own API.
 - `fn` **empty**`() -> Self` — A [`Queue`] with no configured provider. Replaces the old
 - `fn` **enqueue**`(self: &Self, class: String, queue: Option<String>, args: A, tags: Option<Vec<String>>, priority: Option<i32>) -> Result<Option<String>>` — Add a job to the queue
 - `fn` **enqueue_batch**`(self: &Self, class: String, queue: Option<String>, jobs: Vec<(A, Option<i32>)>, tags: Option<Vec<String>>) -> Result<Vec<JobId>>` — Add multiple jobs to the queue in a single batch operation, returning
+- `fn` **enqueue_unique**`(self: &Self, class: String, queue: Option<String>, args: A, tags: Option<Vec<String>>, priority: Option<i32>, key: String) -> Result<Option<String>>` — Add a job unless one with the same `class` and `key` is already
 - `fn` **from_provider**`(provider: Arc<dyn QueueProvider>) -> Self` — Wraps a third-party (or built-in) [`QueueProvider`] as a [`Queue`]
 - `fn` **import**`(self: &Self, path: &Path) -> Result<()>` — Imports jobs from a YAML file into the configured queue provider
 - `fn` **ping**`(self: &Self) -> Result<()>` — Returns a ping of this [`Queue`]
@@ -185,14 +194,21 @@ since they restate the trait's own API.
 - `fn` **describe**`(self: &Self) -> String` — A short, human-readable description of this provider
 - `fn` **enqueue**`(self: &Self, class: String, queue: Option<String>, args: JsonValue, tags: Option<Vec<String>>, priority: Option<i32>) -> Pin<Box<dyn Future + Send>>` — Add a job to the queue. See [`Queue::enqueue`] for the full contract
 - `fn` **enqueue_batch**`(self: &Self, class: String, queue: Option<String>, jobs: Vec<(JsonValue, Option<i32>)>, tags: Option<Vec<String>>) -> Pin<Box<dyn Future + Send>>` — Add multiple jobs to the queue in one batch. See [`Queue::enqueue_batch`]
+- `fn` **enqueue_unique**`(self: &Self, class: String, _queue: Option<String>, _args: JsonValue, _tags: Option<Vec<String>>, _priority: Option<i32>, _key: String) -> Pin<Box<dyn Future + Send>>` — Adds a job unless a queued job with the same `class` and `key` already
 - `fn` **get_jobs**`(self: &Self, status: Option<&Vec<JobStatus>>, age_days: Option<i64>) -> Pin<Box<dyn Future + Send>>` — Retrieves jobs from this provider, optionally filtered
 - `fn` **ping**`(self: &Self) -> Pin<Box<dyn Future + Send>>` — Pings this provider
 - `fn` **register_handler**`(self: &Self, name: String, handler: JobHandler) -> Pin<Box<dyn Future + Send>>` — Registers a pre-erased job handler under `name`
 - `fn` **requeue**`(self: &Self, age_minutes: &i64) -> Pin<Box<dyn Future + Send>>` — Requeues jobs stuck in processing for longer than `age_minutes`
 - `fn` **retry_failed**`(self: &Self, id: Option<&str>) -> Pin<Box<dyn Future + Send>>` — Moves failed jobs back to [`JobStatus::Queued`], returning how many
 - `fn` **run**`(self: &Self, tags: Vec<String>) -> Pin<Box<dyn Future + Send>>` — Runs the worker loop for this provider
+- `fn` **set_retry_policy**`(self: &Self, name: String, _policy: RetryPolicy) -> Pin<Box<dyn Future + Send>>` — Sets how failed jobs of worker `name` are retried. Called by
 - `fn` **setup**`(self: &Self) -> Pin<Box<dyn Future + Send>>` — Runs the setup of this provider
 - `fn` **shutdown**`(self: &Self) -> Result<()>` — Signals this provider's worker loop to stop
+
+### `RetryPolicy`
+
+- `const` **MAX_DELAY**
+- `fn` **delay**`(self: &Self, retry: u32) -> Duration` — Delay before retry number `retry` (1-based)
 ## `bgworker::pg`
 
 - `struct` **PgDriver** — [`Driver`] implementation delegating to the Postgres-specific
@@ -204,6 +220,7 @@ since they restate the trait's own API.
 - `fn` **create_provider**`(qcfg: &PostgresQueueConfig) -> Result<Queue>` — Create this provider
 - `fn` **enqueue**`(pool: &PgPool, name: &str, data: JobData, run_at: DateTime<Utc>, interval: Option<Duration>, tags: Option<Vec<String>>, priority: Option<i32>) -> Result<JobId>` — Add a job
 - `fn` **enqueue_batch**`(pool: &PgPool, name: &str, jobs: Vec<(JobData, Option<i32>)>, run_at: DateTime<Utc>, tags: Option<Vec<String>>) -> Result<Vec<JobId>>` — Enqueue multiple jobs in a single atomic batch
+- `fn` **enqueue_unique**`(pool: &PgPool, name: &str, data: JobData, tags: Option<Vec<String>>, priority: Option<i32>, key: &str) -> Result<JobId>` — Add a job unless a queued job with the same `name` and `key` exists, and
 - `fn` **get_jobs**`(pool: &PgPool, status: Option<&Vec<JobStatus>>, age_days: Option<i64>) -> Result<Vec<Job>>` — Retrieves a list of jobs from the `pg_loco_queue` table in the database
 - `fn` **initialize_database**`(pool: &PgPool) -> Result<()>` — Initialize job tables
 - `fn` **ping**`(pool: &PgPool) -> Result<()>` — Ping system
@@ -246,6 +263,7 @@ since they restate the trait's own API.
 - `fn` **create_provider**`(qcfg: &SqliteQueueConfig) -> Result<Queue>` — Create this provider
 - `fn` **enqueue**`(pool: &SqlitePool, name: &str, data: JobData, run_at: DateTime<Utc>, interval: Option<Duration>, tags: Option<Vec<String>>, priority: Option<i32>) -> Result<JobId>` — Add a job
 - `fn` **enqueue_batch**`(pool: &SqlitePool, name: &str, jobs: Vec<(JobData, Option<i32>)>, tags: Option<Vec<String>>) -> Result<Vec<JobId>>` — Enqueue multiple jobs in a single atomic batch
+- `fn` **enqueue_unique**`(pool: &SqlitePool, name: &str, data: JobData, tags: Option<Vec<String>>, priority: Option<i32>, key: &str) -> Result<JobId>` — Add a job unless a queued job with the same `name` and `key` exists, and
 - `fn` **get_jobs**`(pool: &SqlitePool, status: Option<&Vec<JobStatus>>, age_days: Option<i64>) -> Result<Vec<Job>>` — Retrieves a list of jobs from the `sqlt_loco_queue` table in the database
 - `fn` **initialize_database**`(pool: &SqlitePool) -> Result<()>` — Initialize job tables
 - `fn` **ping**`(pool: &SqlitePool) -> Result<()>` — Ping system
