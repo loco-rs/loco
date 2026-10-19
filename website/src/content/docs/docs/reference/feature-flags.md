@@ -38,9 +38,10 @@ A plain `loco-rs = "..."` dependency (no `default-features = false`) pulls in JW
 | `worker_redis` | off | `worker`, `dep:redis` | Adds the Redis-backed queue backend on top of `worker` (implies it). Enable this if your app's `queue.kind` is `Redis`. |
 | `redis_tls` | off | `redis/tokio-rustls-comp`, `redis/tls-rustls-webpki-roots`, `dep:rustls` | Redis over TLS (`rediss://` URLs) for managed providers such as ElastiCache, Upstash, or Azure Cache. Arms both the worker and the cache Redis paths at once — they share the same `redis` crate — with webpki-bundled roots, so it stays portable to slim/distroless images. Enable it alongside `worker_redis`/`cache_redis` and point the config at a `rediss://` URL; no code changes are needed. |
 | `all_storage` | off | `storage_aws_s3` + `storage_azure` + `storage_gcp` | Umbrella flag — turns on every cloud storage backend at once. |
-| `storage_aws_s3` | off | `opendal/services-s3` | AWS S3 storage backend. |
-| `storage_azure` | off | `opendal/services-azblob` | Azure Blob storage backend. |
-| `storage_gcp` | off | `opendal/services-gcs` | Google Cloud Storage backend. |
+| `storage_opendal` | off | `dep:opendal` | `drivers::opendal_adapter`, for wrapping any OpenDAL service. The cloud backends imply it; the local and in-memory drivers do not need it. |
+| `storage_aws_s3` | off | `storage_opendal`, `opendal/services-s3` | AWS S3 storage backend. |
+| `storage_azure` | off | `storage_opendal`, `opendal/services-azblob` | Azure Blob storage backend. |
+| `storage_gcp` | off | `storage_opendal`, `opendal/services-gcs` | Google Cloud Storage backend. |
 | `embedded_assets` | off | (empty — build-time flag) | Embeds the app's `assets/` directory into the compiled binary and swaps the view-engine's asset-loading path accordingly, instead of reading assets from disk at runtime. |
 
 Source: root `Cargo.toml:41-109`.

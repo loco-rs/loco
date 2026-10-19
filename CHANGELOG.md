@@ -39,6 +39,10 @@ subcommand.
   `hash::random_string` does not.
 - **`cargo_config` needs `with-db`.** It only served `cargo loco db
   entities`.
+- **Storage.** The local and in-memory drivers run on `tokio::fs` and a map;
+  OpenDAL comes in only with `storage_opendal`, which `storage_aws_s3`,
+  `storage_azure` and `storage_gcp` turn on. `drivers::opendal_adapter` and
+  `Store` exist only with it. `StorageError` gains an `Io` variant.
 
 ### Added
 
@@ -95,6 +99,7 @@ subcommand.
 - argon2 compiles only with `auth`.
 - Gone from the graph: cargo-lock and its second toml stack. `loco doctor`
   reads `Cargo.lock` line by line.
+- OpenDAL compiles only with the storage features that use it.
 
 ### Fixed
 

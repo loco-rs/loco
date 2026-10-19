@@ -2,6 +2,7 @@ use std::{path::Path, time::Duration};
 
 use async_trait::async_trait;
 use bytes::Bytes;
+#[cfg(feature = "storage_opendal")]
 use opendal::Reader;
 
 #[cfg(feature = "storage_aws_s3")]
@@ -13,12 +14,34 @@ pub mod gcp;
 pub mod local;
 pub mod mem;
 pub mod null;
+#[cfg(feature = "storage_opendal")]
 pub mod opendal_adapter;
 
 #[cfg(all(test, feature = "storage_aws_s3"))]
 mod aws_presign_tests;
 
 use super::{stream::BytesStream, StorageError, StorageResult};
+
+/// The key `path` names, spelled the way object stores spell it: no leading
+/// `/`, no empty segments, and a trailing `/` kept to mark a directory. The
+/// root is the empty key.
+pub(crate) fn normalize(path: &Path) -> String {
+    let path = path.to_string_lossy();
+    let path = path.trim();
+    let mut key = path
+        .split('/')
+        .filter(|segment| !segment.is_empty())
+        .collect::<Vec<_>>()
+        .join("/");
+    if path.ends_with('/') && !key.is_empty() {
+        key.push('/');
+    }
+    key
+}
+
+pub(crate) fn not_found(key: &str) -> std::io::Error {
+    std::io::Error::new(std::io::ErrorKind::NotFound, format!("{key}: not found"))
+}
 
 #[derive(Debug)]
 pub struct UploadResponse {
@@ -132,13 +155,15 @@ pub struct GetResponse {
 }
 
 enum GetResponseInner {
-    /// An opendal reader — the built-in opendal-backed drivers use this path.
+    /// An opendal reader — the opendal-backed cloud drivers use this path.
+    #[cfg(feature = "storage_opendal")]
     Reader(Reader),
     /// A fully-materialized buffer — custom drivers built from bytes use this.
     Bytes(Bytes),
 }
 
 impl GetResponse {
+    #[cfg(feature = "storage_opendal")]
     pub(crate) fn new(stream: Reader) -> Self {
         Self {
             inner: GetResponseInner::Reader(stream),
@@ -164,6 +189,7 @@ impl GetResponse {
     /// Returns a `StorageError` with the reason for the failure.
     pub async fn bytes(&self) -> StorageResult<Bytes> {
         match &self.inner {
+            #[cfg(feature = "storage_opendal")]
             GetResponseInner::Reader(reader) => Ok(reader.read(..).await?.to_bytes()),
             GetResponseInner::Bytes(bytes) => Ok(bytes.clone()),
         }
@@ -179,6 +205,7 @@ impl GetResponse {
     /// Returns a `StorageError` if the stream cannot be created.
     pub async fn into_stream(self) -> StorageResult<BytesStream> {
         match self.inner {
+            #[cfg(feature = "storage_opendal")]
             GetResponseInner::Reader(reader) => BytesStream::from_reader(reader).await,
             GetResponseInner::Bytes(bytes) => Ok(BytesStream::from_body_stream(
                 futures_util::stream::once(async move { Ok::<_, std::io::Error>(bytes) }),
