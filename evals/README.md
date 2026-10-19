@@ -116,7 +116,7 @@ Cases both arms pass at 5.00 cost money and measure nothing.
    signature and share one `CARGO_TARGET_DIR`; without that, every task pays a
    ~70s cold build and the loop is unusable.
 2. **Two arms.** `with-skill` is the app exactly as `loco new` ships it.
-   `bare` has `.claude/` and `AGENTS.md` removed — the control, and the state
+   `bare` has `.agents/` and `AGENTS.md` removed — the control, and the state
    every pre-existing Loco app is in.
 3. **Gates.** `cargo build`, `clippy -D warnings`, `cargo test`. These are
    admission control, not score: a submission that fails them never reaches the

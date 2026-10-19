@@ -146,7 +146,7 @@ The files referenced above are published at <https://loco.rs/skills/loco/> — f
 <https://loco.rs/skills/loco/doctrine.md> and <https://loco.rs/skills/loco/api-index.md>.
 
 They also live in `skills/loco/` in the [loco repository](https://github.com/loco-rs/loco), and `loco new` writes
-them into every generated app under `.claude/skills/loco/`, matched to that
+them into every generated app under `.agents/skills/loco/`, matched to that
 app's `loco-rs` version. If you are working inside a Loco app, prefer that
 local copy — it cannot be out of step with the crate the app compiles
 against.

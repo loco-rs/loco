@@ -6,15 +6,15 @@ it." Where Loco diverges, it is because Rust forced it.
 
 ## Read this first
 
-A complete Loco skill ships with this app at **`.claude/skills/loco/`**, matched
+A complete Loco skill ships with this app at **`.agents/skills/loco/`**, matched
 to the exact `loco-rs` version in `Cargo.toml`:
 
 | File | What it gives you |
 |---|---|
-| `.claude/skills/loco/SKILL.md` | start here — the router, `AppContext`, project layout, CLI |
-| `.claude/skills/loco/doctrine.md` | what good Loco code looks like; read before writing any |
-| `.claude/skills/loco/api-index.md` | every public `loco_rs` symbol, generated from rustdoc — **check here before guessing an API name** |
-| `.claude/skills/loco/recipes/` | how to add a model, endpoint, worker, task, mailer, middleware, auth, tests |
+| `.agents/skills/loco/SKILL.md` | start here — the router, `AppContext`, project layout, CLI |
+| `.agents/skills/loco/doctrine.md` | what good Loco code looks like; read before writing any |
+| `.agents/skills/loco/api-index.md` | every public `loco_rs` symbol, generated from rustdoc — **check here before guessing an API name** |
+| `.agents/skills/loco/recipes/` | how to add a model, endpoint, worker, task, mailer, middleware, auth, tests |
 
 If your tool supports Agent Skills, it will load `SKILL.md` automatically. If
 not, read it directly — it is a normal markdown file.

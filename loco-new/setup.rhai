@@ -10,7 +10,7 @@ gen.copy_files([".gitignore", ".rustfmt.toml", "README.md", "AGENTS.md"]);
 // The `loco` agent skill: doctrine, the generated API index, and task recipes.
 // Kept in sync with the repo's `skills/loco/` by `cargo xtask agent-skill` —
 // never edit the copy under `base_template/` directly.
-gen.copy_dir(".claude");
+gen.copy_dir(".agents");
 
 gen.copy_template_dir(".cargo");
 

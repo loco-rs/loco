@@ -1,6 +1,6 @@
 //! Coverage for the agent material every generated app ships.
 //!
-//! `setup.rhai` copies `.claude/` and `AGENTS.md` unconditionally, and nothing
+//! `setup.rhai` copies `.agents/` and `AGENTS.md` unconditionally, and nothing
 //! asserted it. Drop that one line and every new app silently loses the skill
 //! that makes a coding agent fluent in Loco — no test fails, no gate goes red,
 //! and the loss is invisible until someone notices an agent guessing again.
@@ -14,7 +14,7 @@ use rstest::rstest;
 use super::*;
 use crate::assertion;
 
-/// Every file under `base_template/.claude/skills/loco/`. Listed rather than
+/// Every file under `base_template/.agents/skills/loco/`. Listed rather than
 /// globbed: a new file has to be added here deliberately, and a deleted one has
 /// to fail.
 const SKILL_FILES: [&str; 17] = [
@@ -54,7 +54,7 @@ fn every_app_ships_the_whole_loco_skill(
     let generator = run_generator(asset);
 
     for file in SKILL_FILES {
-        let path = generator.path(&format!(".claude/skills/loco/{file}"));
+        let path = generator.path(&format!(".agents/skills/loco/{file}"));
         assert!(
             path.exists(),
             "{file} is missing from a generated app — an agent working in it \
@@ -80,5 +80,5 @@ fn every_app_ships_agents_md(
 
     // The entry point has to point at the skill, or the skill is only found by
     // an agent that already went looking for it.
-    assertion::string::assert_contains(&content, ".claude/skills/loco");
+    assertion::string::assert_contains(&content, ".agents/skills/loco");
 }
