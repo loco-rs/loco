@@ -253,3 +253,41 @@ fn test_tests_mod_rs(
 
     assertion::string::assert_line_regex(&content, "(?m)^mod workers;$");
 }
+
+/// The Postgres queue shares `DATABASE_URL` with the database, so its default
+/// must name the same database: `<app>_development` / `<app>_test`, not a
+/// hardcoded `loco_development` that a fresh app never creates.
+#[rstest]
+fn postgres_queue_uri_defaults_to_the_apps_database(
+    #[values(("config/development.yaml", "development"), ("config/test.yaml", "test"))]
+    (config_file, env): (&str, &str),
+    #[values(DBOption::Postgres, DBOption::Sqlite, DBOption::None)] db: DBOption,
+) {
+    let settings = settings::Settings::from_wizard(
+        "test-app",
+        &wizard::Selections {
+            db: db.clone(),
+            background: BackgroundOption::QueuePostgres,
+            asset: AssetsOption::None,
+        },
+        OS::Linux,
+    );
+    let generator = TestGenerator::generate(settings);
+    let content = assertion::yaml::load(generator.path(config_file));
+
+    let queue_uri = assertion::yaml::get_value_at_path(&content, &["queue", "uri"])
+        .and_then(serde_yaml::Value::as_str)
+        .expect("queue.uri");
+    let expected = format!("postgres://loco:loco@localhost:5432/test-app_{env}");
+    assert!(
+        queue_uri.contains(&format!("default=\"{expected}\"")),
+        "queue.uri default should be {expected}: {queue_uri}"
+    );
+
+    if db == DBOption::Postgres {
+        let db_uri = assertion::yaml::get_value_at_path(&content, &["database", "uri"])
+            .and_then(serde_yaml::Value::as_str)
+            .expect("database.uri");
+        assert_eq!(queue_uri, db_uri);
+    }
+}
