@@ -65,7 +65,7 @@ Table order = coding/config order (`default_middleware_stack`, `mod.rs:80-169`).
 
 | Name | Type | Default |
 |---|---|---|
-| `body_limit` | `DefaultBodyLimitKind` (`"<size>"` e.g. `"5mb"`, or `"disable"`) | `2mb` (2,000,000 bytes) — `limit_payload.rs:43-45` |
+| `body_limit` | `DefaultBodyLimitKind` (`"<size>"` e.g. `"5mb"` or `"1.5 GiB"`, case-insensitive, `KB` = 1000 and `KiB` = 1024 bytes, a bare number is bytes; or `"disable"`) | `2mb` (2,000,000 bytes) — `limit_payload.rs:43-45` |
 
 ### 2. `cors`
 

@@ -39,7 +39,7 @@ async fn panic(#[case] enable: bool) {
     if enable {
         let res = res.expect("valid response");
         assert_debug_snapshot!(
-            format!("panic"),
+            "panic".to_string(),
             (res.status().to_string(), res.text().await)
         );
     } else {

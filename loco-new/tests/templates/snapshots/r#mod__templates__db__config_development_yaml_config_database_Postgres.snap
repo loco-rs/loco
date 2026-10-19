@@ -8,7 +8,7 @@ Mapping {
     "connect_timeout": String("<%= get_env(name=\"DB_CONNECT_TIMEOUT\", default=\"500\") %>"),
     "idle_timeout": String("<%= get_env(name=\"DB_IDLE_TIMEOUT\", default=\"500\") %>"),
     "min_connections": String("<%= get_env(name=\"DB_MIN_CONNECTIONS\", default=\"1\") %>"),
-    "max_connections": String("<%= get_env(name=\"DB_MAX_CONNECTIONS\", default=\"1\") %>"),
+    "max_connections": String("<%= get_env(name=\"DB_MAX_CONNECTIONS\", default=\"5\") %>"),
     "auto_migrate": Bool(true),
     "dangerously_truncate": Bool(false),
     "dangerously_recreate": Bool(false),

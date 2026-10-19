@@ -35,8 +35,12 @@ pub enum StorageError {
     #[error("store not found by the given key: {0}")]
     StoreNotFound(String),
 
+    #[cfg(feature = "storage_opendal")]
     #[error(transparent)]
     Store(#[from] Box<opendal::Error>),
+
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
 
     #[error("Unable to read data from file {}", path.display().to_string())]
     UnableToReadBytes { path: PathBuf },
@@ -50,6 +54,7 @@ pub enum StorageError {
 
 pub type StorageResult<T> = std::result::Result<T, StorageError>;
 
+#[cfg(feature = "storage_opendal")]
 impl From<opendal::Error> for StorageError {
     fn from(val: opendal::Error) -> Self {
         Self::Store(Box::new(val))

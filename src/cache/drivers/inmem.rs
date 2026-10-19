@@ -1,10 +1,15 @@
 //! # In-Memory Cache Driver
 //!
-//! This module implements a cache driver using an in-memory cache.
-use std::time::{Duration, Instant};
+//! This module implements a cache driver that keeps entries in a map inside
+//! the process. Entries can expire, and once the cache holds `max_capacity`
+//! entries it evicts the least recently used one to make room.
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::{Mutex, PoisonError},
+    time::{Duration, Instant},
+};
 
 use async_trait::async_trait;
-use moka::{future::Cache, Expiry};
 
 use super::CacheDriver;
 use crate::cache::CacheResult;
@@ -15,31 +20,97 @@ use crate::config::InMemCacheConfig;
 ///
 /// # Returns
 ///
-/// A [`Cache`] instance.
+/// A [`crate::cache::Cache`] instance.
 #[must_use]
 pub fn new(config: &InMemCacheConfig) -> crate::cache::Cache {
-    let cache: Cache<String, (Expiration, String)> = Cache::builder()
-        .max_capacity(config.max_capacity)
-        .expire_after(InMemExpiry)
-        .build();
-    crate::cache::Cache::new(Inmem::from(cache))
+    crate::cache::Cache::new(Box::new(Inmem::new(config.max_capacity)))
 }
 
 /// Represents the in-memory cache driver.
 #[derive(Debug)]
 pub struct Inmem {
-    cache: Cache<String, (Expiration, String)>,
+    store: Mutex<Store>,
+    max_capacity: u64,
+}
+
+#[derive(Debug, Default)]
+struct Store {
+    entries: HashMap<String, Entry>,
+    /// Keys by when they were last used, oldest first.
+    by_use: BTreeMap<u64, String>,
+    clock: u64,
+}
+
+#[derive(Debug)]
+struct Entry {
+    value: String,
+    expires_at: Option<Instant>,
+    used: u64,
 }
 
 impl Inmem {
-    /// Constructs a new [`Inmem`] instance from a given cache.
-    ///
-    /// # Returns
-    ///
-    /// A boxed [`CacheDriver`] instance.
+    /// Constructs an empty cache that holds at most `max_capacity` entries.
     #[must_use]
-    pub fn from(cache: Cache<String, (Expiration, String)>) -> Box<dyn CacheDriver> {
-        Box::new(Self { cache })
+    pub fn new(max_capacity: u64) -> Self {
+        Self {
+            store: Mutex::default(),
+            max_capacity,
+        }
+    }
+
+    fn with_store<T>(&self, f: impl FnOnce(&mut Store) -> T) -> T {
+        f(&mut self.store.lock().unwrap_or_else(PoisonError::into_inner))
+    }
+}
+
+impl Store {
+    /// The live value for `key`, marked as just used. An expired entry is
+    /// removed.
+    fn get(&mut self, key: &str) -> Option<&String> {
+        let expired = self
+            .entries
+            .get(key)?
+            .expires_at
+            .is_some_and(|at| at <= Instant::now());
+        if expired {
+            self.remove(key);
+            return None;
+        }
+        self.clock += 1;
+        let entry = self.entries.get_mut(key)?;
+        let key = self.by_use.remove(&entry.used)?;
+        entry.used = self.clock;
+        self.by_use.insert(self.clock, key);
+        Some(&entry.value)
+    }
+
+    fn insert(&mut self, key: &str, value: &str, ttl: Option<Duration>, max_capacity: u64) {
+        self.remove(key);
+        if max_capacity == 0 {
+            return;
+        }
+        while self.entries.len() as u64 >= max_capacity {
+            let Some((_, oldest)) = self.by_use.pop_first() else {
+                break;
+            };
+            self.entries.remove(&oldest);
+        }
+        self.clock += 1;
+        self.by_use.insert(self.clock, key.to_string());
+        self.entries.insert(
+            key.to_string(),
+            Entry {
+                value: value.to_string(),
+                expires_at: ttl.and_then(|ttl| Instant::now().checked_add(ttl)),
+                used: self.clock,
+            },
+        );
+    }
+
+    fn remove(&mut self, key: &str) {
+        if let Some(entry) = self.entries.remove(key) {
+            self.by_use.remove(&entry.used);
+        }
     }
 }
 
@@ -60,7 +131,7 @@ impl CacheDriver for Inmem {
     ///
     /// Returns a `CacheError` if there is an error during the operation.
     async fn contains_key(&self, key: &str) -> CacheResult<bool> {
-        Ok(self.cache.contains_key(key))
+        Ok(self.with_store(|store| store.get(key).is_some()))
     }
 
     /// Retrieves a value from the cache based on the provided key.
@@ -69,11 +140,7 @@ impl CacheDriver for Inmem {
     ///
     /// Returns a `CacheError` if there is an error during the operation.
     async fn get(&self, key: &str) -> CacheResult<Option<String>> {
-        let result = self.cache.get(key).await;
-        match result {
-            None => Ok(None),
-            Some(v) => Ok(Some(v.1)),
-        }
+        Ok(self.with_store(|store| store.get(key).cloned()))
     }
 
     /// Inserts a key-value pair into the cache.
@@ -82,9 +149,7 @@ impl CacheDriver for Inmem {
     ///
     /// Returns a `CacheError` if there is an error during the operation.
     async fn insert(&self, key: &str, value: &str) -> CacheResult<()> {
-        self.cache
-            .insert(key.to_string(), (Expiration::Never, value.to_string()))
-            .await;
+        self.with_store(|store| store.insert(key, value, None, self.max_capacity));
         Ok(())
     }
 
@@ -101,12 +166,7 @@ impl CacheDriver for Inmem {
         value: &str,
         duration: Duration,
     ) -> CacheResult<()> {
-        self.cache
-            .insert(
-                key.to_string(),
-                (Expiration::AfterDuration(duration), value.to_string()),
-            )
-            .await;
+        self.with_store(|store| store.insert(key, value, Some(duration), self.max_capacity));
         Ok(())
     }
 
@@ -116,7 +176,7 @@ impl CacheDriver for Inmem {
     ///
     /// Returns a `CacheError` if there is an error during the operation.
     async fn remove(&self, key: &str) -> CacheResult<()> {
-        self.cache.remove(key).await;
+        self.with_store(|store| store.remove(key));
         Ok(())
     }
 
@@ -126,37 +186,8 @@ impl CacheDriver for Inmem {
     ///
     /// Returns a `CacheError` if there is an error during the operation.
     async fn clear(&self) -> CacheResult<()> {
-        self.cache.invalidate_all();
+        self.with_store(|store| *store = Store::default());
         Ok(())
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Expiration {
-    Never,
-    AfterDuration(Duration),
-}
-
-impl Expiration {
-    #[must_use]
-    pub fn as_duration(&self) -> Option<Duration> {
-        match self {
-            Self::Never => None,
-            Self::AfterDuration(d) => Some(*d),
-        }
-    }
-}
-
-pub struct InMemExpiry;
-
-impl Expiry<String, (Expiration, String)> for InMemExpiry {
-    fn expire_after_create(
-        &self,
-        _key: &String,
-        value: &(Expiration, String),
-        _current_time: Instant,
-    ) -> Option<Duration> {
-        value.0.as_duration()
     }
 }
 
@@ -225,5 +256,45 @@ mod tests {
         for key in &keys {
             assert!(!mem.contains_key(key).await.unwrap());
         }
+    }
+
+    #[tokio::test]
+    async fn entries_expire() {
+        let mem = Inmem::new(10);
+        mem.insert_with_expiry("short", "a", Duration::from_millis(20))
+            .await
+            .unwrap();
+        mem.insert_with_expiry("long", "b", Duration::from_secs(60))
+            .await
+            .unwrap();
+        assert_eq!(mem.get("short").await.unwrap().as_deref(), Some("a"));
+        tokio::time::sleep(Duration::from_millis(40)).await;
+        assert_eq!(mem.get("short").await.unwrap(), None);
+        assert!(!mem.contains_key("short").await.unwrap());
+        assert_eq!(mem.get("long").await.unwrap().as_deref(), Some("b"));
+        // A plain insert over an expiring entry keeps it for good.
+        mem.insert("long", "c").await.unwrap();
+        assert!(mem.with_store(|store| store.entries["long"].expires_at.is_none()));
+    }
+
+    #[tokio::test]
+    async fn evicts_the_least_recently_used_entry_when_full() {
+        let mem = Inmem::new(2);
+        mem.insert("a", "1").await.unwrap();
+        mem.insert("b", "2").await.unwrap();
+        // Reading `a` makes `b` the oldest.
+        mem.get("a").await.unwrap();
+        mem.insert("c", "3").await.unwrap();
+        assert!(mem.contains_key("a").await.unwrap());
+        assert!(!mem.contains_key("b").await.unwrap());
+        assert!(mem.contains_key("c").await.unwrap());
+        // Overwriting a key does not evict another one.
+        mem.insert("c", "4").await.unwrap();
+        assert!(mem.contains_key("a").await.unwrap());
+        assert_eq!(mem.get("c").await.unwrap().as_deref(), Some("4"));
+
+        let none = Inmem::new(0);
+        none.insert("a", "1").await.unwrap();
+        assert!(!none.contains_key("a").await.unwrap());
     }
 }

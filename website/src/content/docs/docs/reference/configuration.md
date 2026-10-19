@@ -318,7 +318,7 @@ queue:
 ```yaml
 cache:
   kind: InMem              # requires the `cache_inmem` feature
-  max_capacity: 33554432   # optional, default 33554432 bytes (32 MiB)
+  max_capacity: 33554432   # optional, default 33554432 entries
 
 # --- or ---
 cache:
@@ -336,7 +336,7 @@ cache:
 |---|---|---|---|
 | `cache.kind` | tag: `InMem` \| `Redis` \| `"Null"` | required if `cache` present | `cache.rs:6-16`. `Null` must be written quoted: unquoted, YAML resolves it to null and the tagged enum fails to deserialize |
 | **InMem** (`InMemCacheConfig`, `cache.rs:18-22`) — feature-gated on `cache_inmem` | | | |
-| `cache.max_capacity` | `u64` | optional, default `33554432` (`32 * 1024 * 1024`, `cache_in_mem_max_capacity()`) | `cache.rs:20-21,24-26` |
+| `cache.max_capacity` | `u64` | optional, default `33554432` (`32 * 1024 * 1024`, `cache_in_mem_max_capacity()`). Counts entries; when full, the least recently used entry is evicted | `cache.rs:20-21,24-26` |
 | **Redis** (`RedisCacheConfig`, `cache.rs:28-33`) — feature-gated on `cache_redis` | | | |
 | `cache.uri` | `String` | required | `cache.rs:30` |
 | `cache.max_size` | `u32` | required — max pool connections | `cache.rs:32` |

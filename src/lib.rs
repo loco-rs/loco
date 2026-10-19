@@ -11,6 +11,7 @@ pub use self::errors::Error;
 
 mod banner;
 pub mod bgworker;
+mod byte_size;
 mod depcheck;
 pub mod initializers;
 pub mod prelude;
@@ -39,18 +40,20 @@ pub mod environment;
 pub mod errors;
 pub mod hash;
 pub mod logger;
+#[cfg(feature = "mailer")]
 pub mod mailer;
 pub mod scheduler;
 pub mod task;
-#[cfg(feature = "testing")]
+#[cfg(feature = "testing-core")]
 pub mod testing;
-#[cfg(feature = "testing")]
+#[cfg(feature = "testing-core")]
 pub use axum_test::TestServer;
 pub mod storage;
-#[cfg(feature = "testing")]
+#[cfg(feature = "testing-core")]
 pub mod tests_cfg;
 pub mod validation;
 pub use validator;
+#[cfg(feature = "with-db")]
 pub mod cargo_config;
 
 /// Application results options list

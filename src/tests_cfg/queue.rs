@@ -11,7 +11,7 @@ fn queue_jobs_fixture_path() -> PathBuf {
         .join("jobs.yaml")
 }
 
-#[cfg(feature = "worker")]
+#[cfg(all(feature = "worker", feature = "db-postgres"))]
 /// # Panics
 ///
 /// This function will panic if it fails to prepare or insert the seed data, causing the tests to fail quickly

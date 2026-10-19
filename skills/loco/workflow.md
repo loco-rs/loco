@@ -40,7 +40,7 @@ a combination of these, and each maps to exactly one generator:
 | The user says | You need | Generator |
 |---|---|---|
 | "posts have a title and a body" | a model + migration | `generate model` |
-| "…and I want the usual CRUD endpoints for them" | model + migration + controller + views + tests | `generate scaffold` |
+| "…and I want the usual CRUD endpoints for them" | model + migration + DTO + controller (+ React pages if `frontend/`) | `generate scaffold` |
 | "add an endpoint that does X" | a controller | `generate controller` |
 | "add a column to posts" | a migration | `generate migration` |
 | "send them an email when X" | a mailer | `generate mailer` |
@@ -66,9 +66,9 @@ logic inside a scheduler entry is not possible.
 
 ```sh
 cargo loco generate model <name> <field:type>...
-cargo loco generate scaffold <name> <field:type>... --api|--html|--htmx
+cargo loco generate scaffold <name> <field:type>... [--no-auth] [--without-tz]
 cargo loco generate migration <Name> [field:type]...
-cargo loco generate controller <name> [actions]... [--api|--html|--htmx]
+cargo loco generate controller <name> [actions]... [--auth]
 cargo loco generate task <name>
 cargo loco generate worker <name>
 cargo loco generate mailer <name>
@@ -80,9 +80,16 @@ cargo loco generate deployment docker|nginx|lambda
 Model names are **plural** (`posts`, `comments`) — the generator derives the
 singular struct name from the plural table name, the way Rails does.
 
-`scaffold` is `model` + `controller` + views + tests in one shot. Use it when
-the user wants CRUD; use `model` + `controller` separately when the endpoints
-are not CRUD-shaped.
+`scaffold` is `model` + migration + a typed DTO (`src/dtos/`) + a CRUD
+controller in one shot. Use it when the user wants CRUD; use `model` +
+`controller` separately when the endpoints are not CRUD-shaped.
+
+There is no kind flag: generators are adaptive in 1.0. `scaffold` also emits
+React pages when the app has a `frontend/` and only the backend otherwise;
+`controller` always emits a JSON controller plus a request test. `--html` and
+`--htmx` are rejected (no generator emits Tera views any more), and `--api` is
+a silent no-op — leave it off. Scaffolded handlers require a JWT unless you
+pass `--no-auth`; generated controllers are public unless you pass `--auth`.
 
 ### The column DSL
 

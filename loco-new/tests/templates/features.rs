@@ -57,3 +57,28 @@ fn test_cargo_toml_without_features() {
     let content = assertion::toml::load(generator.path("Cargo.toml"));
     assertion::toml::assert_path_is_empty(&content, &["dependencies", "loco-rs", "features"]);
 }
+
+/// Generated apps test with `testing-core`. The full `testing` feature pulls in
+/// `scraper`, and the first `cargo test` then recompiles sea-orm, sqlx and url
+/// with different features than `cargo build` used.
+#[test]
+fn test_dev_dependency_uses_testing_core() {
+    let generator = run_generator(true, &[]);
+    let content = assertion::toml::load(generator.path("Cargo.toml"));
+    assertion::toml::assert_path_value_eq_array(
+        &content,
+        &["dev-dependencies", "loco-rs", "features"],
+        &[toml::Value::String("testing-core".to_string())],
+    );
+}
+
+#[test]
+fn test_dependencies_build_without_debug_info() {
+    let generator = run_generator(true, &[]);
+    let content = assertion::toml::load(generator.path("Cargo.toml"));
+    assertion::toml::eq_path_value_eq_bool(
+        &content,
+        &["profile", "dev", "package", "*", "debug"],
+        false,
+    );
+}

@@ -1,10 +1,13 @@
+#[cfg(feature = "auth")]
 use crate::{Error, Result};
+#[cfg(feature = "auth")]
 use argon2::{
     password_hash::{rand_core::OsRng, SaltString},
     Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier, Version,
 };
 use rand::{distr::Alphanumeric, rng, Rng};
 
+#[cfg(feature = "auth")]
 /// Hashes a plain text password and returns the hashed result.
 ///
 /// # Errors
@@ -44,6 +47,7 @@ pub fn hash_password(pass: &str) -> Result<String> {
 ///
 /// hash::verify_password("password", "hashed-password");
 /// ```
+#[cfg(feature = "auth")]
 #[must_use]
 pub fn verify_password(pass: &str, hashed_password: &str) -> bool {
     let arg2 = Argon2::new(
@@ -82,6 +86,7 @@ mod tests {
 
     use super::*;
 
+    #[cfg(feature = "auth")]
     #[test]
     fn can_hah_password() {
         let pass = "password-1234";

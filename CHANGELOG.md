@@ -1,5 +1,133 @@
 # Changelog
 
+## Unreleased
+
+**Upgrading:** nothing to do if you use `loco-rs`'s default features. If your
+`Cargo.toml` sets `default-features = false`, add whichever of the new
+features below your app uses: `db-postgres` if it talks to Postgres (database
+or `queue.kind: Postgres`), `compression` if it enables the
+`compression` middleware, and `generators` if you run `cargo loco generate`.
+For example:
+
+```toml
+loco-rs = { version = "...", default-features = false, features = [
+    "cli", "with-db", "db-postgres", "compression", "generators",
+] }
+```
+
+Leaving one out fails loudly rather than silently: `queue.kind: Postgres`
+becomes an unknown config variant, an enabled `compression` middleware is a
+boot error naming the missing feature, and `generate` is an unrecognized
+subcommand.
+
+### Breaking
+
+- **Compression builds gzip only by default.** The `compression` middleware
+  used to speak brotli, deflate, gzip and zstd. Enable `compression-full` to
+  keep all four.
+- **sea-orm-migration without its CLI.** Loco, the app template and the
+  examples depend on it with `default-features = false`. An app that calls
+  `sea_orm_migration::cli` itself must enable its `cli` feature.
+- **Cron.** Loco parses cron itself. Runs land on the whole second, a `*`
+  inside a list (`*,5`) parses, and a bare `L` in day of week or a day field
+  of only commas is an error (croner accepted both, then never ran them).
+- **JWT types are Loco's own.** `JWTAlgorithm` no longer converts from
+  `jsonwebtoken::Algorithm`, errors are `auth::jwt::JWTError`, and
+  `ModelError::Jwt` wraps it. Tokens are byte-identical to the ones
+  jsonwebtoken issued; only HS256/384/512 were ever supported.
+- **`hash_password` and `verify_password` need `auth`.**
+  `hash::random_string` does not.
+- **`cargo_config` needs `with-db`.** It only served `cargo loco db
+  entities`.
+- **Storage.** The local and in-memory drivers run on `tokio::fs` and a map;
+  OpenDAL comes in only with `storage_opendal`, which `storage_aws_s3`,
+  `storage_azure` and `storage_gcp` turn on. `drivers::opendal_adapter` and
+  `Store` exist only with it. `StorageError` gains an `Io` variant.
+- **New default-on `mailer` feature.** It carries the mailer and lettre.
+  With `default-features = false`, list it if you send mail. Configuring a
+  mailer without it fails at boot with a message naming the feature.
+- **In-memory cache.** `Inmem::new(max_capacity)` replaces
+  `Inmem::from(moka::Cache)`; `InMemExpiry` and `Expiration` are gone.
+  `max_capacity` counts entries, as it always did; the docs said bytes.
+
+### Added
+
+- **`db-postgres`, `compression` and `generators` features**, on by
+  default, plus `compression-full`, so apps built with
+  `default-features = false` can leave out dependencies they never use. The
+  mirror image of `db-sqlite` (#1828), and the "feature-flag heavy
+  middleware" item from #937.
+  - `db-postgres`: the Postgres SeaORM/sqlx drivers, the Postgres queue and
+    Postgres test helpers. A SQLite-only app skips `sqlx-postgres`.
+  - `compression`: the `compression` middleware, gzip only.
+    `compression-full` adds brotli, deflate and zstd, and with them a C build
+    of libzstd.
+  - `generators`: `cargo loco generate`. `loco-gen` pulls a second (Tera 1)
+    template engine through `rrgen` and was compiled into release builds,
+    where `generate` does not exist.
+
+  `loco new` lists `generators` and `compression` whenever it emits
+  `default-features = false`, and `db-postgres` for a Postgres queue.
+- **Unique jobs.** `Queue::enqueue_unique` and
+  `BackgroundWorker::perform_later_unique`: a queued job with the same worker
+  and key absorbs repeat enqueues. A partial unique index enforces it, so
+  concurrent callers share one job, and a new one can queue while the
+  previous one runs. SQL queues only; Redis returns an error.
+- **Retries with backoff.** `BackgroundWorker::max_retries` and
+  `retry_backoff` requeue a failed job with exponential backoff, capped at
+  one hour. The defaults keep failing on the first error.
+- **Heartbeats.** A running job refreshes `updated_at`, so the reaper only
+  requeues jobs whose worker died.
+- `initialize_database` adds the `attempts` and `unique_key` columns to an
+  existing queue table on Postgres and SQLite.
+- **`testing-core`**: the request, mailer and database test helpers without
+  the HTML selector assertions (`testing-html`). `testing` is both.
+  Generated apps use `testing-core`, which saves recompiling about 60 crates
+  on the first `cargo test`.
+- **`app::serve_router`**, the body of the default `Hooks::serve`, for an
+  app that overrides `serve` and still wants the stock server.
+
+### Build
+
+- **Generated apps compile only their own database driver.** `loco new`
+  lists loco-rs's default features without `db-postgres` for a SQLite app
+  and without `db-sqlite` for a Postgres app, and the template emits only
+  the matching sea-orm driver. Connecting to a `postgres://` URL without
+  `db-postgres` fails at boot with a message naming the feature.
+- Generated apps build dependencies without debug info, which halves
+  `target/` while keeping debug info for app crates.
+- Gone from generated apps: rstest, insta `redactions` and `yaml`, and
+  sea-orm-cli.
+- The generator templating that came from rrgen lives in loco-gen on Tera 2,
+  so apps no longer build two Tera stacks.
+- Gone from the graph: tokio-cron-scheduler, croner, and the chrono-tz and
+  num-derive they brought.
+- Gone from the graph: jsonwebtoken and the RSA, P-256/P-384 and ed25519
+  code it compiled.
+- argon2 compiles only with `auth`.
+- Gone from the graph: cargo-lock and its second toml stack. `loco doctor`
+  reads `Cargo.lock` line by line.
+- OpenDAL compiles only with the storage features that use it.
+- lettre compiles only with `mailer`.
+- byte-unit is gone; `body_limit` and the `number_to_human_size` filter parse
+  and format sizes in Loco.
+- moka is gone from the graph.
+- The default `Hooks::serve` and `logger::init` compile once in Loco rather
+  than in every app crate; the app binary generates half the code it did.
+
+### Fixed
+
+- **A new Postgres app with a Postgres queue pointed the queue at a database
+  that did not exist.** `queue.uri` in the generated development and test
+  config defaulted to `loco_development` / `loco_test`; it now uses the app
+  name, like `database.uri`.
+- **Generated Postgres apps get 5 connections in development and test.** A
+  one-connection pool stalled any code that held a transaction while another
+  query or a job needed a connection. SQLite keeps 1.
+- **The scheduler stops on SIGTERM.**
+- **Overwriting an in-memory cache key kept its old expiry.** A plain
+  `insert` over a key set with `insert_with_expiry` now keeps it for good.
+
 ## 1.2.0 - 2026-09-22
 
 Ships a Loco skill so coding agents write idiomatic Loco without guessing,

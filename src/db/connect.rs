@@ -58,9 +58,13 @@ impl MultiDb {
 ///
 /// This function will return an error if IO fails
 #[allow(clippy::match_wildcard_for_single_variants)]
-#[cfg_attr(not(feature = "db-sqlite"), allow(unreachable_patterns))]
+#[cfg_attr(
+    not(all(feature = "db-sqlite", feature = "db-postgres")),
+    allow(unreachable_patterns)
+)]
 pub async fn verify_access(db: &DatabaseConnection) -> AppResult<()> {
     match db.inner {
+        #[cfg(feature = "db-postgres")]
         DatabaseConnectionType::SqlxPostgresPoolConnection(_) => {
             let res = db
                 .query_all_raw(Statement::from_string(
@@ -90,6 +94,12 @@ pub async fn verify_access(db: &DatabaseConnection) -> AppResult<()> {
 /// Returns a [`sea_orm::DbErr`] if an error occurs during the database
 /// connection establishment.
 pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr> {
+    #[cfg(not(feature = "db-postgres"))]
+    if config.uri.starts_with("postgres") {
+        return Err(sea_orm::DbErr::Custom(
+            "Postgres support disabled; enable the loco-rs `db-postgres` feature".into(),
+        ));
+    }
     let mut opt = ConnectOptions::new(&config.uri);
     opt.max_connections(config.max_connections)
         .min_connections(config.min_connections)

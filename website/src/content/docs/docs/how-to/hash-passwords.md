@@ -18,7 +18,7 @@ let hashed = hash::hash_password("the-users-plaintext-password")?;
 // store `hashed` in your user row, never the plaintext
 ```
 
-`hash_password` uses Argon2id with a fresh random salt (`OsRng`) per call, so hashing the same password twice produces two different strings — that's expected; `verify_password` (below) handles the comparison. It returns Loco's `Result<String>`; a hashing failure surfaces as `Error::Message` via `Error::msg`.
+Both functions need the `auth` feature, which is on by default. `hash_password` uses Argon2id with a fresh random salt (`OsRng`) per call, so hashing the same password twice produces two different strings — that's expected; `verify_password` (below) handles the comparison. It returns Loco's `Result<String>`; a hashing failure surfaces as `Error::Message` via `Error::msg`.
 
 ## Verify a password on login
 

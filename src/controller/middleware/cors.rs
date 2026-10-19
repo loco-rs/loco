@@ -9,7 +9,6 @@ use std::time::Duration;
 
 use axum::Router as AXRouter;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use tower_http::cors::{self, Any};
 
 use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Error, Result};
@@ -67,7 +66,7 @@ fn default_vary_headers() -> Vec<String> {
 
 impl Default for Cors {
     fn default() -> Self {
-        serde_json::from_value(json!({})).unwrap()
+        super::defaults()
     }
 }
 
@@ -305,7 +304,7 @@ mod tests {
         let response = app.oneshot(req).await.expect("valid response");
 
         assert_debug_snapshot!(
-            format!("cors_OPTIONS_[allow_origins]"),
+            "cors_OPTIONS_[allow_origins]".to_string(),
             (
                 format!(
                     "access-control-allow-origin: {:?}",
