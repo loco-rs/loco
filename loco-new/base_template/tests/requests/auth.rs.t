@@ -1,7 +1,6 @@
 use insta::{assert_debug_snapshot, with_settings};
 use loco_rs::testing::prelude::*;
 use {{settings.module_name}}::{app::App, models::users};
-use rstest::rstest;
 use serial_test::serial;
 
 use super::prepare_data;
@@ -61,12 +60,19 @@ async fn can_register() {
     .await;
 }
 
-#[rstest]
-#[case("login_with_valid_password", "12341234")]
-#[case("login_with_invalid_password", "invalid-password")]
 #[tokio::test]
 #[serial]
-async fn can_login_with_verify(#[case] test_name: &str, #[case] password: &str) {
+async fn can_login_with_verify_valid_password() {
+    can_login_with_verify("login_with_valid_password", "12341234").await;
+}
+
+#[tokio::test]
+#[serial]
+async fn can_login_with_verify_invalid_password() {
+    can_login_with_verify("login_with_invalid_password", "invalid-password").await;
+}
+
+async fn can_login_with_verify(test_name: &str, password: &str) {
     configure_insta!();
 
     request::<App, _, _>(|request, ctx| async move {

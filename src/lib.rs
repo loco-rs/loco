@@ -42,12 +42,12 @@ pub mod logger;
 pub mod mailer;
 pub mod scheduler;
 pub mod task;
-#[cfg(feature = "testing")]
+#[cfg(feature = "testing-core")]
 pub mod testing;
-#[cfg(feature = "testing")]
+#[cfg(feature = "testing-core")]
 pub use axum_test::TestServer;
 pub mod storage;
-#[cfg(feature = "testing")]
+#[cfg(feature = "testing-core")]
 pub mod tests_cfg;
 pub mod validation;
 pub use validator;

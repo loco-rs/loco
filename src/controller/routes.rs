@@ -782,7 +782,7 @@ mod tests {
         assert_eq!(b_handler.actions, vec![axum::http::Method::POST]);
     }
 
-    #[cfg(feature = "testing")]
+    #[cfg(feature = "testing-core")]
     #[tokio::test]
     async fn test_verb_explicit_same_path_multi_verb_merges_in_router() {
         use crate::controller::app_routes::AppRoutes;
