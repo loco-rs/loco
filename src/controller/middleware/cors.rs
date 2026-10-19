@@ -305,7 +305,7 @@ mod tests {
         let response = app.oneshot(req).await.expect("valid response");
 
         assert_debug_snapshot!(
-            format!("cors_OPTIONS_[allow_origins]"),
+            "cors_OPTIONS_[allow_origins]".to_string(),
             (
                 format!(
                     "access-control-allow-origin: {:?}",

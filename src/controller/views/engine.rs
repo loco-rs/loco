@@ -261,11 +261,10 @@ impl TeraView {
         #[cfg(debug_assertions)]
         let tera = &tera.engine;
 
-        Ok(tera
-            .render_component(component, &context, body, true)
+        tera.render_component(component, &context, body, true)
             .map_err(|err| {
                 Error::string(&format!("Error rendering component {component}: {err:?}"))
-            })?)
+            })
     }
 }
 
