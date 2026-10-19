@@ -22,7 +22,7 @@ A plain `loco-rs = "..."` dependency (no `default-features = false`) pulls in JW
 
 | Flag | Default | Enables (deps / sub-features) | Purpose |
 |---|---|---|---|
-| `auth` | **ON** | `dep:hmac`, `dep:sha2`, `dep:base64` | JWT authentication (HS256/HS384/HS512). Pure Rust, so the flag stays self-contained and needs no C toolchain, even when enabled alone with `default-features = false`. |
+| `auth` | **ON** | `dep:hmac`, `dep:sha2`, `dep:base64`, `dep:argon2` | JWT authentication (HS256/HS384/HS512) and `hash::hash_password` / `hash::verify_password`. Pure Rust, so the flag stays self-contained and needs no C toolchain, even when enabled alone with `default-features = false`. |
 | `cli` | **ON** | `dep:clap` | Enables the `cargo loco` runtime CLI (`src/cli.rs`). |
 | `with-db` | **ON** | `dep:sea-orm`, `dep:sea-orm-migration`, `dep:sqlx`, `loco-gen?/with-db` | Sea-ORM 2.0 database support. Gates the `db` CLI subcommand and the DB-dependent generators (`model`, `migration`, `scaffold`). Needs a driver: `db-postgres`, `db-sqlite`, or both. |
 | `db-sqlite` | **ON** | `sea-orm?/sqlx-sqlite`, `sea-orm-migration?/sqlx-sqlite`, `sqlx?/sqlite` | SQLite SeaORM/sqlx drivers and the SQLite queue worker backend. Disable with `default-features = false` on Postgres-only apps to skip `libsqlite3-sys` compile cost. |
