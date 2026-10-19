@@ -1059,7 +1059,6 @@ since they restate the trait's own API.
 - `variant` **IO**
 - `variant` **InvalidConfigSchema**
 - `variant` **InvalidCronSyntax**
-- `variant` **Question**
 - `variant` **TaskNotFound**
 
 ### `Job`

@@ -28,6 +28,9 @@ subcommand.
 - **sea-orm-migration without its CLI.** Loco, the app template and the
   examples depend on it with `default-features = false`. An app that calls
   `sea_orm_migration::cli` itself must enable its `cli` feature.
+- **Cron.** Loco parses cron itself. Runs land on the whole second, a `*`
+  inside a list (`*,5`) parses, and a bare `L` in day of week or a day field
+  of only commas is an error (croner accepted both, then never ran them).
 
 ### Added
 
@@ -77,6 +80,8 @@ subcommand.
   sea-orm-cli.
 - The generator templating that came from rrgen lives in loco-gen on Tera 2,
   so apps no longer build two Tera stacks.
+- Gone from the graph: tokio-cron-scheduler, croner, and the chrono-tz and
+  num-derive they brought.
 
 ### Fixed
 
@@ -87,6 +92,7 @@ subcommand.
 - **Generated Postgres apps get 5 connections in development and test.** A
   one-connection pool stalled any code that held a transaction while another
   query or a job needed a connection. SQLite keeps 1.
+- **The scheduler stops on SIGTERM.**
 
 ## 1.2.0 - 2026-09-22
 
