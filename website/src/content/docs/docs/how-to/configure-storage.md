@@ -49,7 +49,7 @@ Every driver is built by a plain constructor function under `loco_rs::storage::d
 | Null | none | `drivers::null::new()` | The framework default; every op errors |
 | AWS S3 | `storage_aws_s3` | `drivers::aws::new(bucket, region) -> StorageResult<...>`<br>`drivers::aws::with_credentials(bucket, region, cred) -> StorageResult<...>`<br>`drivers::aws::with_credentials_and_endpoint(bucket, region, endpoint, cred) -> StorageResult<...>` | `Credential { key_id, secret_key, token: Option<String> }` |
 | Azure Blob | `storage_azure` | `drivers::azure::new(container, account_name, access_key, endpoint) -> StorageResult<...>` | |
-| Google Cloud Storage | `storage_gcp` | `drivers::gcp::new(bucket, credential_path) -> StorageResult<...>` | `credential_path` points to a service-account JSON key file |
+| Google Cloud Storage | `storage_gcp` | `drivers::gcp::new(bucket, credential_path) -> StorageResult<...>`<br>`drivers::gcp::with_default_credentials(bucket) -> StorageResult<...>` | Explicit credential file or Application Default Credentials (ADC) |
 
 All the cloud constructors return `StorageResult<Box<dyn StoreDriver>>` (they can fail to build the underlying OpenDAL operator), so propagate the error with `?`:
 
@@ -79,6 +79,60 @@ let store = aws::with_credentials("my-app-uploads", "us-east-1", credential)?;
 ```
 
 > The storage driver trait is `StoreDriver` (not `StorageDriver`) — you'll see it in error messages and if you implement your own driver.
+
+### Google Cloud Storage with default credentials
+
+Enable the `storage_gcp` Cargo feature, then use Application Default Credentials
+(ADC) without passing a credential file to the driver:
+
+```rust
+use loco_rs::storage::{self, drivers};
+
+async fn after_context(ctx: AppContext) -> Result<AppContext> {
+    let store =
+        drivers::gcp::with_default_credentials("my-app-uploads")?;
+    Ok(ctx
+        .into_builder()
+        .storage(storage::Storage::single(store).into())
+        .build())
+}
+```
+
+OpenDAL checks `GOOGLE_APPLICATION_CREDENTIALS`, the local gcloud ADC file,
+then the Google metadata service. Supported credential types depend on the
+OpenDAL version. With OpenDAL 0.58, local development can use user ADC:
+
+```sh
+gcloud auth application-default login
+```
+
+On Google Cloud, attach a service account to the workload and grant it only the
+bucket permissions the application needs. For example, Cloud Run can obtain
+credentials from its metadata service without a service-account key file.
+Obtaining a token does not grant bucket access; IAM permissions are still required.
+
+The constructor does not check credentials or bucket access. Authentication and
+authorization errors can occur when a storage operation runs. OpenDAL handles
+token acquisition and refresh; Loco does not manage tokens itself.
+
+**Presigned URLs:** Plain user ADC and default metadata credentials cannot
+generate presigned URLs through `drivers::gcp::with_default_credentials`.
+Service-account JSON keys support presigning whether discovered through ADC
+or supplied explicitly to `drivers::gcp::new(bucket, credential_path)`.
+Default credentials support normal object operations, subject to IAM permissions.
+
+To check ADC against a real bucket from the Loco source checkout, use the opt-in
+test below. It uploads, downloads, and deletes an object with a unique name.
+Use a disposable test bucket and credentials with object read, write, and delete
+permissions. If the test fails, check for objects under `loco-adc-test/` that
+still need deletion.
+
+```sh
+LOCO_TEST_GCS_BUCKET=my-disposable-test-bucket \
+  cargo test -p loco-rs --lib --features storage_gcp \
+  storage::drivers::gcp::tests::default_credentials_roundtrip \
+  -- --ignored --exact
+```
 
 ## 3. Use multiple drivers with a strategy (optional)
 

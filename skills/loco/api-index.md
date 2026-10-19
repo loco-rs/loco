@@ -1322,6 +1322,7 @@ since they restate the trait's own API.
 ## `storage::drivers::gcp`
 
 - `fn` **new**`(bucket_name: &str, credential_path: &str) -> StorageResult<Box<dyn StoreDriver>>` — Create new GCP storage
+- `fn` **with_default_credentials**`(bucket_name: &str) -> StorageResult<Box<dyn StoreDriver>>` — Create GCP storage using Application Default Credentials
 ## `storage::drivers::local`
 
 - `fn` **new**`() -> Box<dyn StoreDriver>` — Create new filesystem storage rooted at the current working directory
