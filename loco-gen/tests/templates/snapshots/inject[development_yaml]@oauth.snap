@@ -1,0 +1,26 @@
+---
+source: loco-gen/tests/templates/oauth.rs
+expression: "read(&tree, \"config/development.yaml\")"
+---
+server:
+  port: 5150
+
+# Authentication Configuration
+auth:
+  session:
+    # Signs the session cookie. Production reads it from SESSION_SECRET;
+    # generate one with `openssl rand -base64 64`.
+    secret: development-session-secret-change-me-0123456789abcdef
+  # JWT authentication
+  jwt:
+    secret: abc
+    expiration: 604800 # 7 days
+  # OAuth sign-in (`cargo loco generate oauth <provider>`)
+  oauth:
+    providers:
+      github:
+        client_id: <%= get_env(name="GITHUB_CLIENT_ID", default="") %>
+        client_secret: <%= get_env(name="GITHUB_CLIENT_SECRET", default="") %>
+
+workers:
+  mode: BackgroundAsync

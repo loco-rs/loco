@@ -361,6 +361,13 @@ After running the migration, follow these steps to complete the process:
         /// Name of the thing to generate
         name: String,
     },
+    /// Generate OAuth sign-in for a provider (github, google, or a generic
+    /// OAuth2/OIDC provider): a controller, its config and the `auth_oauth`
+    /// feature.
+    Oauth {
+        /// Provider name, e.g. `github`, `google` or `okta`
+        provider: String,
+    },
     /// Generate a deployment infrastructure
     Deployment {
         /// The type of deployment to generate
@@ -489,6 +496,7 @@ impl ComponentArg {
             Self::Worker { name } => Ok(loco_gen::Component::Worker { name }),
             Self::Mailer { name } => Ok(loco_gen::Component::Mailer { name }),
             Self::Data { name } => Ok(loco_gen::Component::Data { name }),
+            Self::Oauth { provider } => Ok(loco_gen::Component::OAuth { provider }),
             Self::Deployment { kind } => Ok(kind.to_generator_component(config)),
             Self::Override {
                 template_path: _,
