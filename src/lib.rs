@@ -51,6 +51,7 @@ pub mod storage;
 pub mod tests_cfg;
 pub mod validation;
 pub use validator;
+#[cfg(feature = "with-db")]
 pub mod cargo_config;
 
 /// Application results options list
