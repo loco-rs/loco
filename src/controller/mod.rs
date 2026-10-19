@@ -346,7 +346,7 @@ impl IntoResponse for Error {
                 ErrorDetail::new("internal_server_error", "Internal Server Error"),
             ),
 
-            #[cfg(debug_assertions)]
+            #[cfg(all(debug_assertions, feature = "generators"))]
             Self::Generators(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ErrorDetail::new("internal_server_error", "Internal Server Error"),

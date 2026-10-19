@@ -13,20 +13,25 @@ use futures_util::FutureExt;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use serde_variant::to_variant_name;
-#[cfg(feature = "worker")]
+#[cfg(all(feature = "worker", feature = "db-postgres"))]
 pub mod pg;
 #[cfg(feature = "worker_redis")]
 pub mod redis;
-#[cfg(feature = "worker")]
+#[cfg(all(
+    feature = "worker",
+    any(feature = "db-postgres", feature = "db-sqlite")
+))]
 pub(crate) mod sql;
 #[cfg(all(feature = "worker", feature = "db-sqlite"))]
 pub mod sqlt;
 
+#[cfg(feature = "db-postgres")]
+use crate::config::PostgresQueueConfig;
 #[cfg(feature = "db-sqlite")]
 use crate::config::SqliteQueueConfig;
 use crate::{
     app::AppContext,
-    config::{self, Config, PostgresQueueConfig, QueueConfig, RedisQueueConfig, WorkerMode},
+    config::{self, Config, QueueConfig, RedisQueueConfig, WorkerMode},
     Error, Result,
 };
 
@@ -292,7 +297,13 @@ pub trait QueueProvider: Send + Sync {
 ///
 /// # Errors
 /// This function will return an error if a worker task fails to join
-#[cfg(feature = "worker")]
+#[cfg(any(
+    all(
+        feature = "worker",
+        any(feature = "db-postgres", feature = "db-sqlite")
+    ),
+    feature = "worker_redis"
+))]
 pub(crate) async fn process_worker_handles(
     handles: Vec<tokio::task::JoinHandle<()>>,
 ) -> Result<()> {
@@ -921,6 +932,7 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
 pub async fn converge(queue: &Queue, config: &QueueConfig) -> Result<()> {
     queue.setup().await?;
     match config {
+        #[cfg(feature = "db-postgres")]
         QueueConfig::Postgres(PostgresQueueConfig {
             dangerously_flush,
             uri: _,
@@ -932,8 +944,13 @@ pub async fn converge(queue: &Queue, config: &QueueConfig) -> Result<()> {
             num_workers: _,
             min_connections: _,
             reaper: _,
-        })
-        | QueueConfig::Redis(RedisQueueConfig {
+        }) => {
+            if *dangerously_flush {
+                tracing::warn!("Flush mode enabled - clearing all jobs from queue");
+                queue.clear().await?;
+            }
+        }
+        QueueConfig::Redis(RedisQueueConfig {
             dangerously_flush,
             uri: _,
             queues: _,
@@ -989,7 +1006,7 @@ pub async fn create_queue_provider(config: &Config) -> Result<Option<Arc<Queue>>
                     tracing::debug!("Creating Redis queue provider");
                     Ok(Some(Arc::new(redis::create_provider(qcfg).await?)))
                 }
-                #[cfg(feature = "worker")]
+                #[cfg(all(feature = "worker", feature = "db-postgres"))]
                 config::QueueConfig::Postgres(qcfg) => {
                     tracing::debug!("Creating Postgres queue provider");
                     Ok(Some(Arc::new(pg::create_provider(qcfg).await?)))

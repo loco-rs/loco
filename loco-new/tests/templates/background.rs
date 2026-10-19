@@ -32,8 +32,44 @@ fn test_queue_sqlite_without_db_includes_db_sqlite_feature() {
         &["dependencies", "loco-rs", "features"],
         &[
             toml::Value::String("cli".into()),
+            toml::Value::String("generators".into()),
+            toml::Value::String("compression".into()),
             toml::Value::String("worker".into()),
             toml::Value::String("db-sqlite".into()),
+        ],
+    );
+}
+
+// `db-postgres` is its own feature now, so a db-less app with a Postgres queue
+// has to ask for it or `queue.kind: Postgres` fails to parse at boot.
+#[test]
+fn test_queue_postgres_without_db_includes_db_postgres_feature() {
+    let settings = settings::Settings::from_wizard(
+        "test-app",
+        &wizard::Selections {
+            db: DBOption::None,
+            background: BackgroundOption::QueuePostgres,
+            asset: AssetsOption::None,
+        },
+        OS::Linux,
+    );
+    let generator = TestGenerator::generate(settings);
+    let content = assertion::toml::load(generator.path("Cargo.toml"));
+
+    assertion::toml::eq_path_value_eq_bool(
+        &content,
+        &["workspace", "dependencies", "loco-rs", "default-features"],
+        false,
+    );
+    assertion::toml::assert_path_value_eq_array(
+        &content,
+        &["dependencies", "loco-rs", "features"],
+        &[
+            toml::Value::String("cli".into()),
+            toml::Value::String("generators".into()),
+            toml::Value::String("compression".into()),
+            toml::Value::String("worker".into()),
+            toml::Value::String("db-postgres".into()),
         ],
     );
 }

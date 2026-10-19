@@ -1,12 +1,16 @@
+#[cfg(feature = "db-postgres")]
+use crate::hash;
 use crate::{
     app::{AppContext, Hooks},
-    db, hash, Error, Result,
+    db, Error, Result,
 };
+#[cfg(feature = "db-postgres")]
 use sqlx::{AssertSqlSafe, Pool, Postgres};
 use std::future::Future;
 use std::path::PathBuf;
 use std::pin::Pin;
 use tree_fs::TreeBuilder;
+#[cfg(feature = "db-postgres")]
 use url::Url;
 
 /// Seeds data into the database.
@@ -43,9 +47,11 @@ pub async fn seed<H: Hooks>(ctx: &AppContext) -> Result<()> {
 /// # Errors
 /// Returns an error if could not create a new test db.
 pub fn init_test_db_creation(conn_str: &str) -> Result<Box<dyn TestSupport>> {
+    #[cfg(feature = "db-postgres")]
     if conn_str.starts_with("postgres://") {
-        PostgresTest::new(conn_str).map(|test| Box::new(test) as Box<dyn TestSupport>)
-    } else if conn_str.starts_with("sqlite://") {
+        return PostgresTest::new(conn_str).map(|test| Box::new(test) as Box<dyn TestSupport>);
+    }
+    if conn_str.starts_with("sqlite://") {
         SqliteTest::new(conn_str).map(|test| Box::new(test) as Box<dyn TestSupport>)
     } else {
         Ok(Box::new(Any::new(conn_str)))
@@ -61,12 +67,14 @@ pub trait TestSupport: Send + Sync {
     fn cleanup_db(&self);
 }
 
+#[cfg(feature = "db-postgres")]
 pub struct PostgresTest {
     root_connection_string: String,
     connection_string: String,
     schema_name: String,
 }
 
+#[cfg(feature = "db-postgres")]
 impl PostgresTest {
     /// Creates a new `PostgreSQL` test database.
     ///
@@ -109,6 +117,7 @@ impl PostgresTest {
     }
 }
 
+#[cfg(feature = "db-postgres")]
 impl TestSupport for PostgresTest {
     fn get_connection_str(&self) -> &str {
         &self.connection_string

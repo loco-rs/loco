@@ -33,8 +33,11 @@ regex = { version = "1.11" }
 {%- if settings.db %}
 migration = { path = "migration" }
 sea-orm = { version = "2.0", features = [
+{%- if settings.db.kind == "sqlite" %}
   "sqlx-sqlite",
+{%- else %}
   "sqlx-postgres",
+{%- endif %}
   "runtime-tokio-rustls",
   "macros",
 ] }

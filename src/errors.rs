@@ -161,7 +161,7 @@ pub enum Error {
     #[error(transparent)]
     Cache(#[from] crate::cache::CacheError),
 
-    #[cfg(debug_assertions)]
+    #[cfg(all(debug_assertions, feature = "generators"))]
     #[error(transparent)]
     Generators(#[from] loco_gen::Error),
 
