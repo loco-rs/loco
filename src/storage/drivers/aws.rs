@@ -102,3 +102,30 @@ pub fn with_credentials(
     }
     Ok(Box::new(OpendalAdapter::new(Operator::new(s3)?)))
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use super::*;
+
+    // opendal 0.58 ships its HTTP client behind features and installs it at
+    // startup. Without them every request fails before touching the network.
+    #[tokio::test]
+    async fn requests_reach_the_network() {
+        let credential = Credential {
+            key_id: "key".to_string(),
+            secret_key: "secret".to_string(),
+            token: None,
+        };
+        let driver =
+            with_credentials_and_endpoint("bucket", "us-east-1", "http://127.0.0.1:1", credential)
+                .expect("build driver");
+        let err = driver
+            .upload(Path::new("probe.txt"), &bytes::Bytes::from_static(b"probe"))
+            .await
+            .expect_err("no server on port 1");
+        let msg = format!("{err:?}");
+        assert!(!msg.contains("HTTP transport is not installed"), "{msg}");
+    }
+}
