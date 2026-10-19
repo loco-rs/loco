@@ -49,7 +49,12 @@ default = [
     "db-postgres",
     "compression",
     "generators",
+    "mailer",
 ]
+# Email: the `Mailer` trait, SMTP delivery and the mailer queue worker. lettre
+# brings an SMTP parser and a rustls TLS stack; an app that sends no mail
+# (the no-database starter) leaves this off.
+mailer = ["dep:lettre", "dep:include_dir"]
 # HS256/384/512 JWTs on RustCrypto HMAC; pure Rust, no C toolchain.
 # It also carries argon2 password hashing.
 auth = ["dep:hmac", "dep:sha2", "dep:base64", "dep:argon2"]
@@ -159,8 +164,8 @@ lettre = { version = "0.11.4", default-features = false, features = [
     "hostname",
     "smtp-transport",
     "tokio1-rustls-tls",
-] }
-include_dir = "0.7.3"
+], optional = true }
+include_dir = { version = "0.7.3", optional = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { version = "0.3.16", default-features = false, features = [

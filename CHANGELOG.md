@@ -43,6 +43,9 @@ subcommand.
   OpenDAL comes in only with `storage_opendal`, which `storage_aws_s3`,
   `storage_azure` and `storage_gcp` turn on. `drivers::opendal_adapter` and
   `Store` exist only with it. `StorageError` gains an `Io` variant.
+- **New default-on `mailer` feature.** It carries the mailer and lettre.
+  With `default-features = false`, list it if you send mail. Configuring a
+  mailer without it fails at boot with a message naming the feature.
 
 ### Added
 
@@ -100,6 +103,7 @@ subcommand.
 - Gone from the graph: cargo-lock and its second toml stack. `loco doctor`
   reads `Cargo.lock` line by line.
 - OpenDAL compiles only with the storage features that use it.
+- lettre compiles only with `mailer`.
 
 ### Fixed
 

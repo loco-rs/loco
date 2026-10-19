@@ -297,11 +297,8 @@ impl IntoResponse for Error {
             | Self::JSON(_)
             | Self::YAMLFile(_, _)
             | Self::YAML(_)
-            | Self::EmailSender(_)
-            | Self::Smtp(_)
             | Self::Worker(_)
             | Self::IO(_)
-            | Self::ParseAddress(_)
             | Self::InvalidHeaderValue(_)
             | Self::InvalidHeaderName(_)
             | Self::InvalidMethod(_)
@@ -309,6 +306,12 @@ impl IntoResponse for Error {
             | Self::Cache(_)
             | Self::VersionCheck(_)
             | Self::Any(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ErrorDetail::new("internal_server_error", "Internal Server Error"),
+            ),
+
+            #[cfg(feature = "mailer")]
+            Self::EmailSender(_) | Self::Smtp(_) | Self::ParseAddress(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ErrorDetail::new("internal_server_error", "Internal Server Error"),
             ),

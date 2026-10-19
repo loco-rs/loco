@@ -39,6 +39,7 @@ pub mod environment;
 pub mod errors;
 pub mod hash;
 pub mod logger;
+#[cfg(feature = "mailer")]
 pub mod mailer;
 pub mod scheduler;
 pub mod task;

@@ -7,6 +7,7 @@ pub use axum::{
 };
 pub use axum_extra::extract::cookie;
 pub use chrono::NaiveDateTime as DateTime;
+#[cfg(feature = "mailer")]
 pub use include_dir::{include_dir, Dir};
 // some types required for controller generators
 #[cfg(feature = "with-db")]
@@ -63,12 +64,12 @@ pub use crate::{
         Json, Routes,
     },
     errors::Error,
-    mailer,
-    mailer::Mailer,
     task::{self, Task, TaskInfo},
     validation::{self, Validatable, ValidatorTrait},
     Result,
 };
+#[cfg(feature = "mailer")]
+pub use crate::{mailer, mailer::Mailer};
 // `query::paginate` is in this prelude and returns a `PageResponse` whose
 // `meta` is literally a `PagerMeta` — but the pair you render it with was not,
 // so the only reachable way to answer a paginated endpoint was to hand-roll an
