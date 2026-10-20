@@ -11,7 +11,7 @@ since they restate the trait's own API.
 
 `use loco_rs::prelude::*;` brings these into scope. They are already available — importing them again is redundant.
 
-`ActiveModelBehavior`, `ActiveModelTrait`, `ActiveValue`, `AppContext`, `Authenticable`, `BackgroundWorker`, `ColumnTrait`, `Condition`, `ConnectionTrait`, `DatabaseConnection`, `Date`, `DateTime`, `DateTimeUtc`, `DateTimeWithTimeZone`, `DbErr`, `Decimal`, `Dir`, `EntityTrait`, `Error`, `Expr`, `Form`, `Format`, `Initializer`, `IntoActiveModel`, `IntoResponse`, `Json`, `JsonValidate`, `JsonValidateWithMessage`, `Mailer`, `MiddlewareStackExt`, `ModelError`, `ModelResult`, `ModelTrait`, `Multipart`, `Order`, `Pager`, `PagerMeta`, `PaginatorTrait`, `Path`, `Query`, `QueryFilter`, `QueryOrder`, `QuerySelect`, `Queue`, `RemoteIP`, `RespondTo`, `Response`, `Result`, `Routes`, `Set`, `SharedStore`, `State`, `Task`, `TaskInfo`, `TenantActiveModelExt`, `TenantEntity`, `TenantQueryExt`, `TeraView`, `TransactionTrait`, `Uuid`, `Validatable`, `Validate`, `ValidatorTrait`, `ViewEngine`, `ViewRenderer`, `async_trait`, `auth`, `bad_request`, `cookie`, `data`, `debug_handler`, `delete`, `format`, `get`, `head`, `include_dir`, `mailer`, `not_found`, `options`, `patch`, `post`, `prelude`, `put`, `query`, `task`, `trace`, `unauthorized`, `validation`
+`ActiveModelBehavior`, `ActiveModelTrait`, `ActiveValue`, `AppContext`, `Authenticable`, `BackgroundWorker`, `ColumnTrait`, `Condition`, `ConnectionTrait`, `CurrentUser`, `DatabaseConnection`, `Date`, `DateTime`, `DateTimeUtc`, `DateTimeWithTimeZone`, `DbErr`, `Decimal`, `Dir`, `EncryptedCookies`, `EntityTrait`, `Error`, `Expr`, `Form`, `Format`, `Identity`, `Initializer`, `IntoActiveModel`, `IntoResponse`, `Json`, `JsonValidate`, `JsonValidateWithMessage`, `Mailer`, `MaybeCurrentUser`, `MiddlewareStackExt`, `ModelError`, `ModelResult`, `ModelTrait`, `Multipart`, `OAuthFailure`, `OAuthHandler`, `Order`, `Pager`, `PagerMeta`, `PaginatorTrait`, `Path`, `Query`, `QueryFilter`, `QueryOrder`, `QuerySelect`, `Queue`, `RemoteIP`, `RespondTo`, `Response`, `Result`, `Routes`, `Session`, `SessionUser`, `Set`, `SharedStore`, `SignIn`, `SignedCookies`, `State`, `Task`, `TaskInfo`, `TenantActiveModelExt`, `TenantEntity`, `TenantQueryExt`, `TeraView`, `TransactionTrait`, `Uuid`, `Validatable`, `Validate`, `ValidatorTrait`, `ViewEngine`, `ViewRenderer`, `async_trait`, `auth`, `bad_request`, `cookie`, `data`, `debug_handler`, `delete`, `format`, `get`, `head`, `include_dir`, `mailer`, `not_found`, `options`, `patch`, `post`, `prelude`, `put`, `query`, `task`, `trace`, `unauthorized`, `validation`
 
 ## `loco_rs::testing::prelude`
 
@@ -88,6 +88,44 @@ since they restate the trait's own API.
 - `fn` **get_ref**`(self: &Self) -> Option<RefGuard<T>>` — Get a reference to a value of type T from the shared store
 - `fn` **insert**`(self: &Self, val: T)` — Insert a value of type T into the shared store
 - `fn` **remove**`(self: &Self) -> Option<T>` — Remove a value of type T from the shared store
+## `auth::cookies`
+
+- `struct` **CookieOptions**` { secure: bool, max_age: Option<u64> }` — Cookie attributes Loco applies to the cookies it sets: `Path=/`,
+- `const` **DEFAULT_SESSION_COOKIE** — Default session cookie name
+- `const` **DEFAULT_SESSION_MAX_AGE** — Default session lifetime: 30 days
+- `struct` **EncryptedCookies** — An encrypted (AES-256-GCM) cookie jar keyed off `auth.session.secret`:
+- `struct` **SignedCookies** — A signed cookie jar keyed off `auth.session.secret`
+- `fn` **derive_key**`(secret: &str) -> Key` — Derives the cookie [`Key`] from a secret of any length
+- `fn` **key**`(ctx: &AppContext) -> Result<Key>` — The cookie key for this app
+- `fn` **key_for**`(config: &Config, environment: &Environment) -> Result<Key>` — [`key`] from a config and environment, for code without an `AppContext`
+- `fn` **seal**`(value: &T, ttl_seconds: u64) -> Result<String>` — Encodes `value` with an expiry `ttl_seconds` from now, as cookie-safe
+- `fn` **unseal**`(text: &str) -> Option<T>` — Reads a value written by [`seal`], or `None` when it is malformed or
+- `fn` **uses_default_secret**`(config: &Config) -> bool` — Whether `config` leaves the session secret at its development default
+
+### `CookieOptions`
+
+- `fn` **cookie**`(self: &Self, name: impl Trait, value: impl Trait) -> Cookie` — A cookie carrying these attributes
+- `fn` **from_config**`(config: &Config) -> Self` — The options `config` asks for, with `max_age` from
+- `fn` **removal**`(self: &Self, name: impl Trait) -> Cookie` — A cookie that deletes `name` (empty value, `Max-Age=0`), with the same
+- `fn` **with_max_age**`(self: Self, max_age: Option<u64>) -> Self` — Same options with another `Max-Age`
+
+### `EncryptedCookies`
+
+- `fn` **add**`(self: Self, cookie: impl Trait) -> Self` — Encrypts and adds `cookie`
+- `fn` **from_headers**`(headers: &HeaderMap, key: Key, options: CookieOptions) -> Self` — A jar over `headers`' cookies, decrypted with `key`
+- `fn` **get**`(self: &Self, name: &str) -> Option<Cookie>` — The decrypted cookie `name`, if present and authentic
+- `fn` **into_inner**`(self: Self) -> PrivateCookieJar` — The underlying axum-extra jar
+- `fn` **options**`(self: &Self) -> &CookieOptions` — The app's cookie attributes
+- `fn` **remove**`(self: Self, name: &str) -> Self` — Removes the cookie `name`
+
+### `SignedCookies`
+
+- `fn` **add**`(self: Self, cookie: impl Trait) -> Self` — Signs and adds `cookie`
+- `fn` **from_headers**`(headers: &HeaderMap, key: Key, options: CookieOptions) -> Self` — A jar over `headers`' cookies, verified with `key`
+- `fn` **get**`(self: &Self, name: &str) -> Option<Cookie>` — The verified cookie `name`, if present and untampered
+- `fn` **into_inner**`(self: Self) -> SignedCookieJar` — The underlying axum-extra jar
+- `fn` **options**`(self: &Self) -> &CookieOptions` — The app's cookie attributes, for building cookies to [`add`](Self::add)
+- `fn` **remove**`(self: Self, name: &str) -> Self` — Removes the cookie `name`, using the app's cookie attributes so the
 ## `auth::jwt`
 
 - `struct` **Header**` { typ: Option<String>, alg: JWTAlgorithm }` — The JOSE header of a token
@@ -121,6 +159,95 @@ since they restate the trait's own API.
 - `variant` **InvalidSignature**
 - `variant` **InvalidToken**
 - `variant` **Json**
+## `auth::oauth`
+
+- `struct` **CallbackParams**` { code: Option<String>, state: Option<String>, error: Option<String>, error_description: Option<String> }` — Query of `/auth/{provider}/callback`
+- `enum` **FailureKind** — Why a sign-in did not complete
+- `struct` **OAuthFailure**` { provider: String, kind: FailureKind, detail: Option<String>, retry_path: String }` — A failed sign-in, handed to [`OAuthHandler::on_failure`]
+- `trait` **OAuthHandler** — The app side of the sign-in flow
+- `struct` **SignIn**` { user_id: String, redirect_to: Option<String> }` — What [`OAuthHandler::on_sign_in`] decided
+- `struct` **StartParams**` { return_to: Option<String> }` — Query of `/auth/{provider}`
+- `fn` **default_failure**`(ctx: &AppContext, failure: &OAuthFailure) -> Result<Response>` — [`OAuthHandler::on_failure`]'s default
+- `fn` **routes**`() -> Routes` — The routes for handler `H`, under `/auth`. Add your own with `.add(..)` or
+
+### `FailureKind`
+
+- `variant` **Cancelled** — The user declined at the provider (`error=access_denied`)
+- `variant` **Configuration** — The provider is unknown or misconfigured
+- `variant` **Denied** — [`OAuthHandler::on_sign_in`] returned [`Error::Unauthorized`]
+- `variant` **InvalidState** — The state cookie was missing, expired or did not match: a stale tab,
+- `variant` **MissingCode** — The callback had neither `code` nor `error`
+- `variant` **Profile** — The profile could not be fetched or had no account id
+- `variant` **ProviderError** — The provider redirected back with another `error`
+- `variant` **TokenExchange** — The token endpoint refused the code or could not be reached
+- `fn` **as_str**`(self: Self) -> &str` — A stable identifier (`cancelled`, `invalid_state`, …), used as
+- `fn` **message**`(self: Self) -> &str` — A sentence fit to show the user
+
+### `OAuthHandler`
+
+- `fn` **after_sign_out_path**`(ctx: &AppContext) -> String` — Where `/auth/sign_out` lands. Default
+- `fn` **on_failure**`(ctx: &AppContext, failure: &OAuthFailure) -> Pin<Box<dyn Future + Send>>` — The response for a failed sign-in. Default: redirect to
+- `fn` **on_sign_in**`(ctx: &AppContext, identity: &Identity) -> Pin<Box<dyn Future + Send>>` — Find or create the user for `identity` and return their session id
+
+### `SignIn`
+
+- `fn` **new**`(user_id: impl Trait) -> Self` — Sign in the user with session id `user_id`
+- `fn` **redirect_to**`(self: Self, path: impl Trait) -> Self` — Land on `path` unless the flow carried a `return_to`
+## `auth::oauth::provider`
+
+- `struct` **Identity**` { provider: String, uid: String, login: Option<String>, name: Option<String>, email: Option<String>, email_verified: Option<bool>, avatar_url: Option<String>, access_token: String, refresh_token: Option<String>, expires_at: Option<DateTime<Utc>>, scope: Option<String>, raw: Value }` — A user as an OAuth provider describes them, normalized across providers
+- `struct` **Provider**` { name: String, strategy: OAuthStrategy, client_id: String, client_secret: String, scopes: Vec<String>, authorize_url: String, token_url: String, userinfo_url: String, emails_url: Option<String>, redirect_uri: Option<String>, authorize_params: BTreeMap<String, String>, pkce: bool, token_auth: OAuthTokenAuth }` — A provider's configuration with its preset filled in
+- `struct` **Tokens**` { access_token: String, refresh_token: Option<String>, expires_in: Option<i64>, scope: Option<String> }` — The token endpoint's answer
+- `fn` **exchange_code**`(provider: &Provider, code: &str, redirect_uri: &str, code_verifier: Option<&str>) -> Result<Tokens, String>` — Exchanges an authorization `code` for tokens
+- `fn` **fetch_identity**`(provider: &Provider, tokens: Tokens) -> Result<Identity, String>` — Fetches the profile for `tokens` and normalizes it
+- `fn` **normalize**`(provider: &Provider, profile: Value, github_emails: Option<&Value>, tokens: Tokens, now: DateTime<Utc>) -> Result<Identity, String>` — Normalizes a profile (and, for GitHub, its `/user/emails` list) into an
+- `fn` **parse_token_response**`(body: &str) -> Result<Tokens, String>` — Reads a token response body. GitHub answers form-encoded unless asked for
+
+### `Provider`
+
+- `fn` **authorize_url**`(self: &Self, redirect_uri: &str, state: &str, code_challenge: Option<&str>) -> Result<String, String>` — The URL to send the browser to
+- `fn` **resolve**`(name: &str, config: &OAuthProviderConfig) -> Result<Self, String>` — Resolves `config` for the provider called `name`
+## `auth::oauth::state`
+
+- `struct` **FlowState**` { state: String, verifier: Option<String>, return_to: Option<String> }` — What the start of the flow leaves for the callback
+- `const` **STATE_TTL_SECONDS** — How long a user has to finish at the provider: 10 minutes
+- `fn` **cookie_name**`(provider: &str) -> String` — The state cookie for `provider`. One per provider, so two tabs signing in
+- `fn` **pkce_challenge**`(verifier: &str) -> String` — `BASE64URL(SHA256(verifier))` (RFC 7636 S256)
+- `fn` **random_token**`() -> String` — 32 random bytes, base64url
+- `fn` **safe_return_to**`(value: &str) -> Option<String>` — `value` if it is a path on this site, else `None`
+
+### `FlowState`
+
+- `fn` **challenge**`(self: &Self) -> Option<String>` — The PKCE S256 challenge for the verifier
+- `fn` **matches**`(self: &Self, state: &str) -> bool` — Whether `state` (from the callback query) matches, in constant time
+- `fn` **new**`(pkce: bool, return_to: Option<&str>) -> Self` — A fresh state (and verifier, when `pkce`)
+## `auth::session`
+
+- `struct` **CurrentUser** — The signed-in user; rejects signed-out requests
+- `struct` **MaybeCurrentUser** — The signed-in user, or `None`. Never rejects for being signed out
+- `struct` **Session** — The cookie session. See the [module docs](self)
+- `trait` **SessionUser** — How [`CurrentUser`] loads the signed-in user from the id in the session
+- `const` **USER_ID_KEY** — The session key holding the signed-in user's id
+- `fn` **encode**`(value: &str) -> String` — Percent-encodes `value` for a query string
+
+### `Session`
+
+- `fn` **clear**`(self: Self) -> Self` — Empties the session and deletes its cookie
+- `fn` **cookie_name**`(ctx: &AppContext) -> String` — The session cookie name configured for `ctx`
+- `fn` **from_jar**`(jar: SignedCookies, name: impl Trait) -> Self` — Reads the session from a signed jar
+- `fn` **from_parts**`(parts: &Parts, ctx: &AppContext) -> Result<Self>` — The session for a request, outside an extractor
+- `fn` **get**`(self: &Self, key: &str) -> Option<T>` — The value at `key`, if present and of type `T`
+- `fn` **insert**`(self: Self, key: impl Trait, value: &T) -> Result<Self>` — Stores `value` at `key`
+- `fn` **into_jar**`(self: Self) -> Result<SignedCookies>` — Hands back the signed jar, with this session's changes written to it
+- `fn` **is_empty**`(self: &Self) -> bool` — Whether the session holds no values
+- `fn` **remove**`(self: Self, key: &str) -> Self` — Removes `key`
+- `fn` **renew**`(self: Self) -> Self` — Empties the session, keeping the cookie, so a sign-in starts from a
+- `fn` **set_user_id**`(self: Self, id: impl Trait) -> Self` — Signs `id` in
+- `fn` **user_id**`(self: &Self) -> Option<String>` — The signed-in user's id
+
+### `SessionUser`
+
+- `fn` **find_by_session_id**`(ctx: &AppContext, id: &str) -> Pin<Box<dyn Future + Send>>` — Loads the user whose session id is `id`
 ## `bgworker`
 
 - `trait` **BackgroundWorker**
@@ -405,9 +532,10 @@ since they restate the trait's own API.
 - `variant` **Nginx**
 ## `config`
 
-- `struct` **Auth**` { jwt: Option<JWT> }` — User authentication configuration
+- `struct` **Auth**` { jwt: Option<JWT>, session: Option<SessionConfig>, oauth: Option<OAuthConfig> }` — User authentication configuration
 - `enum` **CacheConfig** — Cache configurations for the application
 - `struct` **Config**` { logger: Logger, server: Server, database: Database, cache: CacheConfig, queue: Option<QueueConfig>, auth: Option<Auth>, workers: Workers, mailer: Option<Mailer>, initializers: Option<Initializers>, settings: Option<Value>, scheduler: Option<Config> }` — Main application configuration structure
+- `const` **DEV_SESSION_SECRET** — The secret every signed cookie is keyed off when `auth.session.secret` is
 - `struct` **Database**` { uri: String, enable_logging: bool, min_connections: u32, max_connections: u32, connect_timeout: u64, idle_timeout: u64, acquire_timeout: Option<u64>, auto_migrate: bool, dangerously_truncate: bool, dangerously_recreate: bool, run_on_start: Option<String> }` — Database configuration
 - `struct` **InMemCacheConfig**` { max_capacity: u64 }`
 - `type` **Initializers** — Initializers configuration
@@ -419,12 +547,17 @@ since they restate the trait's own API.
 - `struct` **Mailer**` { smtp: Option<SmtpMailer>, stub: bool }` — Mailer configuration
 - `struct` **MailerAuth**` { user: String, password: String }` — Authentication details for the mailer
 - `enum` **MailerTls** — TLS mode for the SMTP connection
+- `struct` **OAuthConfig**` { base_url: Option<String>, after_sign_in_path: Option<String>, after_sign_out_path: Option<String>, failure_path: Option<String>, providers: BTreeMap<String, OAuthProviderConfig> }` — OAuth2 / OpenID Connect sign-in, OmniAuth-style
+- `struct` **OAuthProviderConfig**` { strategy: Option<OAuthStrategy>, client_id: String, client_secret: String, scopes: Option<Vec<String>>, base_url: Option<String>, api_url: Option<String>, authorize_url: Option<String>, token_url: Option<String>, userinfo_url: Option<String>, emails_url: Option<String>, redirect_uri: Option<String>, authorize_params: BTreeMap<String, String>, pkce: Option<bool>, token_auth: Option<OAuthTokenAuth> }` — One OAuth provider. Every URL is overridable, for GitHub Enterprise,
+- `enum` **OAuthStrategy** — Which provider preset a configured provider uses
+- `enum` **OAuthTokenAuth** — How the client authenticates to the token endpoint
 - `struct` **PostgresQueueConfig**` { uri: String, dangerously_flush: bool, enable_logging: bool, max_connections: u32, min_connections: u32, connect_timeout: u64, idle_timeout: u64, poll_interval_sec: u32, num_workers: u32, reaper: Option<ReaperConfig> }`
 - `enum` **QueueConfig**
 - `struct` **ReaperConfig**` { age_minutes: i64, interval_seconds: u64 }` — Configuration for an opt-in visibility-timeout reaper
 - `struct` **RedisCacheConfig**` { uri: String, max_size: u32 }`
 - `struct` **RedisQueueConfig**` { uri: String, dangerously_flush: bool, queues: Option<Vec<String>>, num_workers: u32, reaper: Option<ReaperConfig> }`
 - `struct` **Server**` { binding: String, port: i32, host: String, ident: Option<String>, middlewares: Config }` — Server configuration structure
+- `struct` **SessionConfig**` { secret: Option<String>, cookie_name: Option<String>, max_age: Option<u64>, secure: Option<bool>, sign_in_path: Option<String> }` — Signed cookies and the cookie session, Rails' `secret_key_base` plus its
 - `struct` **SmtpMailer**` { enable: bool, host: String, port: u16, secure: bool, tls: Option<MailerTls>, auth: Option<MailerAuth>, hello_name: Option<String> }` — SMTP mailer configuration structure
 - `struct` **SqliteQueueConfig**` { uri: String, dangerously_flush: bool, enable_logging: bool, max_connections: u32, min_connections: u32, connect_timeout: u64, idle_timeout: u64, poll_interval_sec: u32, num_workers: u32, reaper: Option<ReaperConfig> }`
 - `enum` **WorkerMode** — Worker mode configuration
@@ -463,6 +596,17 @@ since they restate the trait's own API.
 - `variant` **Implicit** — Implicit TLS: the connection is encrypted from the first byte (SMTPS,
 - `variant` **None** — No transport security (cleartext). For local sinks like Mailpit only
 - `variant` **Starttls** — Opportunistic TLS: connect in cleartext, then upgrade with `STARTTLS`
+
+### `OAuthStrategy`
+
+- `variant` **Generic** — Any OAuth2 / OIDC provider; `authorize_url`, `token_url` and
+- `variant` **Github** — github.com, or GitHub Enterprise with `base_url`/`api_url`
+- `variant` **Google** — Google (OpenID Connect)
+
+### `OAuthTokenAuth`
+
+- `variant` **Basic** — HTTP Basic auth (`client_secret_basic`)
+- `variant` **Post** — `client_id`/`client_secret` in the form body (`client_secret_post`)
 
 ### `QueueConfig`
 

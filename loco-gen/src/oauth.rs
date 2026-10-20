@@ -207,32 +207,26 @@ pub fn add_provider(
         .unwrap_or(lines.len());
 
     let mut inserts: Vec<(usize, Vec<String>)> = vec![];
-    match find_key(&lines, auth + 1, auth_end, 2, "oauth") {
-        Some(oauth) => {
-            let oauth_end = block_end(&lines, oauth, 2);
-            match find_key(&lines, oauth + 1, oauth_end, 4, "providers") {
-                Some(providers) => {
-                    let providers_end = block_end(&lines, providers, 4);
-                    if find_key(&lines, providers + 1, providers_end, 6, provider).is_some() {
-                        return Err(format!("auth.oauth.providers.{provider} already exists"));
-                    }
-                    inserts.push((providers_end, indent(&provider_stanza(provider, env), 6)));
-                }
-                None => {
-                    let mut block = vec!["    providers:".to_string()];
-                    block.extend(indent(&provider_stanza(provider, env), 6));
-                    inserts.push((oauth_end, block));
-                }
+    if let Some(oauth) = find_key(&lines, auth + 1, auth_end, 2, "oauth") {
+        let oauth_end = block_end(&lines, oauth, 2);
+        if let Some(providers) = find_key(&lines, oauth + 1, oauth_end, 4, "providers") {
+            let providers_end = block_end(&lines, providers, 4);
+            if find_key(&lines, providers + 1, providers_end, 6, provider).is_some() {
+                return Err(format!("auth.oauth.providers.{provider} already exists"));
             }
-        }
-        None => {
-            let mut block =
-                vec!["  # OAuth sign-in (`cargo loco generate oauth <provider>`)".to_string()];
-            block.push("  oauth:".to_string());
-            block.push("    providers:".to_string());
+            inserts.push((providers_end, indent(&provider_stanza(provider, env), 6)));
+        } else {
+            let mut block = vec!["    providers:".to_string()];
             block.extend(indent(&provider_stanza(provider, env), 6));
-            inserts.push((block_end(&lines, auth, 0), block));
+            inserts.push((oauth_end, block));
         }
+    } else {
+        let mut block =
+            vec!["  # OAuth sign-in (`cargo loco generate oauth <provider>`)".to_string()];
+        block.push("  oauth:".to_string());
+        block.push("    providers:".to_string());
+        block.extend(indent(&provider_stanza(provider, env), 6));
+        inserts.push((block_end(&lines, auth, 0), block));
     }
     if find_key(&lines, auth + 1, auth_end, 2, "session").is_none() {
         inserts.push((auth + 1, indent(&session_stanza(env), 2)));
@@ -302,7 +296,7 @@ pub fn enable_feature(cargo_toml: &str, feature: &str) -> Option<Edit> {
         let version = version.trim();
         version
             .starts_with('"')
-            .then(|| format!("{}= {{ version = {version}, features = [{quoted}] }}", name))?
+            .then(|| format!("{name}= {{ version = {version}, features = [{quoted}] }}"))?
     } else {
         return None;
     };
