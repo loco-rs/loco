@@ -547,7 +547,7 @@ since they restate the trait's own API.
 - `struct` **Mailer**` { smtp: Option<SmtpMailer>, stub: bool }` — Mailer configuration
 - `struct` **MailerAuth**` { user: String, password: String }` — Authentication details for the mailer
 - `enum` **MailerTls** — TLS mode for the SMTP connection
-- `struct` **OAuthConfig**` { base_url: Option<String>, after_sign_in_path: Option<String>, after_sign_out_path: Option<String>, failure_path: Option<String>, providers: BTreeMap<String, OAuthProviderConfig> }` — OAuth2 / OpenID Connect sign-in, OmniAuth-style
+- `struct` **OAuthConfig**` { base_url: Option<String>, after_sign_in_path: Option<String>, after_sign_out_path: Option<String>, failure_path: Option<String>, providers: BTreeMap<String, OAuthProviderConfig> }` — `OAuth2` / `OpenID` Connect sign-in, `OmniAuth`-style
 - `struct` **OAuthProviderConfig**` { strategy: Option<OAuthStrategy>, client_id: String, client_secret: String, scopes: Option<Vec<String>>, base_url: Option<String>, api_url: Option<String>, authorize_url: Option<String>, token_url: Option<String>, userinfo_url: Option<String>, emails_url: Option<String>, redirect_uri: Option<String>, authorize_params: BTreeMap<String, String>, pkce: Option<bool>, token_auth: Option<OAuthTokenAuth> }` — One OAuth provider. Every URL is overridable, for GitHub Enterprise,
 - `enum` **OAuthStrategy** — Which provider preset a configured provider uses
 - `enum` **OAuthTokenAuth** — How the client authenticates to the token endpoint
@@ -599,9 +599,9 @@ since they restate the trait's own API.
 
 ### `OAuthStrategy`
 
-- `variant` **Generic** — Any OAuth2 / OIDC provider; `authorize_url`, `token_url` and
+- `variant` **Generic** — Any `OAuth2` / OIDC provider; `authorize_url`, `token_url` and
 - `variant` **Github** — github.com, or GitHub Enterprise with `base_url`/`api_url`
-- `variant` **Google** — Google (OpenID Connect)
+- `variant` **Google** — Google (`OpenID` Connect)
 
 ### `OAuthTokenAuth`
 
