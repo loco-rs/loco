@@ -30,12 +30,15 @@ ciphertext and leaks timing.
 
 Revisit when `rsa` ships a fix, or if Loco ever grows RSA decryption.
 """ },
-  { id = "RUSTSEC-2026-0173", reason = """
-`proc-macro-error2` is unmaintained, with no safe upgrade. It is a build-time
-proc-macro dependency of `sea-orm-macros` (via `sea-bae`) and
-`validator_derive` — it runs during compilation and contributes no code to the
-built binary, so "unmaintained" here is an upstream-hygiene problem rather
-than a runtime risk. Clears when both crates migrate off it.
+  { id = "RUSTSEC-2024-0449", reason = """
+`unsafe-libyaml` is unmaintained. It is the YAML parser under
+`serde_yaml_ng`, which Loco uses to read its own config files and the
+generators' templates. Those are files the app's developer writes, not
+input from the network, and the advisory reports no vulnerability.
+
+The way out is a parser written in Rust from the start, such as
+`serde-saphyr`. Loco uses `serde_yaml::Value` in about two dozen places and
+`serde-saphyr` has no equivalent yet, so that move is its own change.
 """ },
 ]
 
