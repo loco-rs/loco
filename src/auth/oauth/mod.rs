@@ -1,4 +1,4 @@
-//! OAuth2 sign-in — Loco's `OmniAuth`.
+//! `OAuth2` sign-in — Loco's `OmniAuth`.
 //!
 //! Configure providers under `auth.oauth.providers`, implement
 //! [`OAuthHandler`] to turn an [`Identity`] into a user, and mount
@@ -37,7 +37,7 @@
 //! **Starting with POST.** A `GET` start lets any page sign a visitor in
 //! with whatever account their browser is already logged in to at the
 //! provider. That is harmless for plain sign-in but not for *account
-//! linking* (OmniAuth's CVE-2015-9284): an app that attaches the identity to
+//! linking* (`OmniAuth`'s CVE-2015-9284): an app that attaches the identity to
 //! the already signed-in user should start the flow from a CSRF-protected
 //! `POST` form.
 
@@ -347,7 +347,7 @@ async fn complete<H: OAuthHandler>(
     callback_path: &str,
     params: CallbackParams,
     flow: Option<FlowState>,
-    fail: &impl Fn(FailureKind, Option<String>) -> OAuthFailure,
+    fail: &(impl Fn(FailureKind, Option<String>) -> OAuthFailure + Sync),
 ) -> std::result::Result<(SignIn, Option<String>), Outcome> {
     let failed = |kind, detail| Outcome::Failed(fail(kind, detail));
     if let Some(error) = params.error {

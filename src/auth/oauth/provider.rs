@@ -14,7 +14,7 @@ use crate::config::{OAuthProviderConfig, OAuthStrategy, OAuthTokenAuth};
 /// `(provider, uid)`, never by `email` or `login`, which users can change.
 /// `email` is set only when the provider reported one; trust it for account
 /// linking only when `email_verified` is `Some(true)`.
-#[derive(Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Identity {
     /// The provider's configured name (`github`, `google`, …).
     pub provider: String,

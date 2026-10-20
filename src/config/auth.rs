@@ -32,14 +32,16 @@ pub struct Auth {
     /// `auth_session` feature; absent means development defaults.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub session: Option<SessionConfig>,
-    /// OAuth2 / OpenID Connect sign-in providers. Read by the `auth_oauth`
+    /// `OAuth2` / `OpenID` Connect sign-in providers. Read by the `auth_oauth`
     /// feature.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub oauth: Option<OAuthConfig>,
 }
 
 /// The secret every signed cookie is keyed off when `auth.session.secret` is
-/// not set. Fine on a laptop; `cargo loco doctor --production` reports it, and
+/// not set.
+///
+/// Fine on a laptop; `cargo loco doctor --production` reports it, and
 /// a production app refuses to sign or read cookies with it.
 pub const DEV_SESSION_SECRET: &str =
     "loco-development-session-secret-do-not-use-in-production-0123456789";
@@ -79,7 +81,7 @@ pub struct SessionConfig {
     pub sign_in_path: Option<String>,
 }
 
-/// OAuth2 / OpenID Connect sign-in, OmniAuth-style.
+/// `OAuth2` / `OpenID` Connect sign-in, `OmniAuth`-style.
 ///
 /// ```yaml
 /// auth:
@@ -117,7 +119,7 @@ pub struct OAuthConfig {
     /// Where the sign-out route redirects. Default `/`.
     pub after_sign_out_path: Option<String>,
     /// When set, the default failure handler redirects here with
-    /// `?error=<kind>&provider=<name>` (OmniAuth's `/auth/failure`) instead of
+    /// `?error=<kind>&provider=<name>` (`OmniAuth`'s `/auth/failure`) instead of
     /// rendering a small error page.
     pub failure_path: Option<String>,
     /// Providers by name. The name is the URL segment: `github` is served at
@@ -133,9 +135,9 @@ pub enum OAuthStrategy {
     /// github.com, or GitHub Enterprise with `base_url`/`api_url`.
     #[serde(alias = "GitHub")]
     Github,
-    /// Google (OpenID Connect).
+    /// Google (`OpenID` Connect).
     Google,
-    /// Any OAuth2 / OIDC provider; `authorize_url`, `token_url` and
+    /// Any `OAuth2` / OIDC provider; `authorize_url`, `token_url` and
     /// `userinfo_url` are required.
     #[serde(alias = "oidc", alias = "oauth2")]
     Generic,

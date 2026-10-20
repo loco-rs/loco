@@ -97,6 +97,7 @@ pub fn key(ctx: &AppContext) -> Result<Key> {
 /// In production, when `auth.session.secret` is unset or left at the
 /// development default.
 pub fn key_for(config: &Config, environment: &Environment) -> Result<Key> {
+    static WARNED: OnceLock<()> = OnceLock::new();
     if uses_default_secret(config) {
         if *environment == Environment::Production {
             tracing::error!(
@@ -109,7 +110,6 @@ pub fn key_for(config: &Config, environment: &Environment) -> Result<Key> {
                     .to_string(),
             ));
         }
-        static WARNED: OnceLock<()> = OnceLock::new();
         WARNED.get_or_init(|| {
             tracing::warn!(
                 "auth.session.secret is not set; signing cookies with the development default"
