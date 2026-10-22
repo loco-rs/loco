@@ -5,7 +5,7 @@ sidebar:
   order: 1
 ---
 
-This page is a dictionary of every key Loco's configuration loader understands. It documents `struct Config` (`src/config/mod.rs`) and its sub-structs (`src/config/{auth,server,database,logger,mailer,queue,cache}.rs`). For a narrative walkthrough of settings and environments, see the-app/your-project.
+This page is a dictionary of every key Loco's configuration loader understands. It documents `struct Config` (`src/config/mod.rs`) and its sub-structs (`src/config/{auth,server,database,logger,mailer,queue,cache,storage}.rs`). For a narrative walkthrough of settings and environments, see the-app/your-project.
 
 ## Loading & precedence
 
@@ -29,21 +29,22 @@ This page is a dictionary of every key Loco's configuration loader understands. 
 
 ## Top-level `Config`
 
-`struct Config` — `src/config/mod.rs:62-92`. Every field is a top-level YAML key.
+`struct Config` — `src/config/mod.rs:66-98`. Every field is a top-level YAML key.
 
 | Key | Type | Required? | Notes |
 |---|---|---|---|
-| `logger` | [`Logger`](#logger) | required | `mod.rs:64` |
-| `server` | [`Server`](#server) | required | `mod.rs:65` |
-| `database` | [`Database`](#database) | required, only when the `with-db` feature is enabled | `#[cfg(feature = "with-db")]`, `mod.rs:66-67` |
-| `cache` | [`CacheConfig`](#cache) | optional — `#[serde(default)]`, defaults to `Null` | `mod.rs:68-69` |
-| `queue` | `Option<`[`QueueConfig`](#queue)`>` | optional | `mod.rs:70` |
-| `auth` | `Option<`[`Auth`](#auth)`>` | optional | `mod.rs:71` |
-| `workers` | [`Workers`](#workers) | optional — `#[serde(default)]` | `mod.rs:72-73` |
-| `mailer` | `Option<`[`Mailer`](#mailer)`>` | optional | `mod.rs:74` |
-| `initializers` | `Option<Initializers>` (= `Option<BTreeMap<String, serde_json::Value>>`) | optional | `mod.rs:75`, type alias at `mod.rs:106` |
-| `settings` | `Option<serde_json::Value>` | optional — `#[serde(default)]` | `mod.rs:88-89`; free-form app settings, surfaced at `ctx.config.settings` |
-| `scheduler` | `Option<scheduler::Config>` | optional | `mod.rs:91`; struct owned by the scheduler area, not detailed here |
+| `logger` | [`Logger`](#logger) | required | `mod.rs:67` |
+| `server` | [`Server`](#server) | required | `mod.rs:68` |
+| `database` | [`Database`](#database) | required, only when the `with-db` feature is enabled | `#[cfg(feature = "with-db")]`, `mod.rs:69-70` |
+| `cache` | [`CacheConfig`](#cache) | optional — `#[serde(default)]`, defaults to `Null` | `mod.rs:71-72` |
+| `storage` | [`StorageConfig`](#storage) | optional — `#[serde(default)]`, defaults to `Null` | `mod.rs:73-74` |
+| `queue` | `Option<`[`QueueConfig`](#queue)`>` | optional | `mod.rs:75` |
+| `auth` | `Option<`[`Auth`](#auth)`>` | optional | `mod.rs:76` |
+| `workers` | [`Workers`](#workers) | optional — `#[serde(default)]` | `mod.rs:77-78` |
+| `mailer` | `Option<`[`Mailer`](#mailer)`>` | optional | `mod.rs:79` |
+| `initializers` | `Option<Initializers>` (= `Option<BTreeMap<String, serde_json::Value>>`) | optional | `mod.rs:80`, type alias at `mod.rs:112` |
+| `settings` | `Option<serde_json::Value>` | optional — `#[serde(default)]` | `mod.rs:95`; free-form app settings, surfaced at `ctx.config.settings` |
+| `scheduler` | `Option<scheduler::Config>` | optional | `mod.rs:97`; struct owned by the scheduler area, not detailed here |
 
 ## `auth`
 
@@ -343,9 +344,76 @@ cache:
 
 If the corresponding feature (`cache_inmem` / `cache_redis`) is not compiled in, that `kind` value will fail to deserialize.
 
+## `storage`
+
+`enum StorageConfig` — `src/config/storage.rs:14-30`, `#[serde(tag = "kind")]`. **Default variant: `Null`** (`#[default]`, `storage.rs:28-29`) — this is what `Config.storage`'s `#[serde(default)]` produces when the `storage` key is omitted entirely (the same fallback the framework hardcoded before this field existed).
+
+This produces the single default store at `ctx.storage.as_store("store")`. It does not cover multiple named stores — see [Configure file storage](/docs/how-to/configure-storage) for that.
+
+```yaml
+storage:
+  kind: Local              # no extra feature required
+  path: storage/uploads    # optional, defaults to the process working directory
+
+# --- or ---
+storage:
+  kind: Aws                # requires the `storage_aws_s3` feature
+  bucket: my-app-uploads   # required
+  region: us-east-1        # required
+  endpoint: <%= get_env(name="S3_ENDPOINT", default="") %>              # optional
+  access_key_id: <%= get_env(name="AWS_ACCESS_KEY_ID", default="") %>   # optional; falls back to env/instance profile if omitted
+  secret_access_key: <%= get_env(name="AWS_SECRET_ACCESS_KEY", default="") %> # optional, same fallback
+  session_token: <%= get_env(name="AWS_SESSION_TOKEN", default="") %>   # optional
+
+# --- or ---
+storage:
+  kind: Gcp                 # requires the `storage_gcp` feature
+  bucket: my-app-uploads    # required
+  credential_path: /path/to/service-account.json  # required
+
+# --- or ---
+storage:
+  kind: Azure                # requires the `storage_azure` feature
+  container: my-container    # required
+  account_name: my-account   # required
+  access_key: <%= get_env(name="AZURE_STORAGE_KEY") %>  # required
+  endpoint: https://my-account.blob.core.windows.net    # required
+
+# --- or (default) ---
+storage:
+  kind: "Null"               # no-op storage; used when `storage` key is omitted
+                             # must be quoted — bare Null is YAML's null, not the string
+```
+
+| Key | Type | Required? | Notes |
+|---|---|---|---|
+| `storage.kind` | tag: `Aws` \| `Gcp` \| `Azure` \| `Local` \| `"Null"` | required if `storage` present | `storage.rs:14-30`. `Null` must be written quoted: unquoted, YAML resolves it to null and the tagged enum fails to deserialize |
+| **Local** (`LocalStorageConfig`, `storage.rs:32-37`) | | | |
+| `storage.path` | `Option<String>` | optional | Root directory for stored files; defaults to the process working directory (`drivers::local::new()`) when omitted, otherwise `drivers::local::new_with_prefix(path)` |
+| **Aws** (`AwsStorageConfig`, `storage.rs:39-47`) — feature-gated on `storage_aws_s3` | | | |
+| `storage.bucket` | `String` | required | |
+| `storage.region` | `String` | required | |
+| `storage.endpoint` | `Option<String>` | optional | S3-compatible endpoint override (e.g. MinIO) |
+| `storage.access_key_id` | `Option<String>` | optional | With `secret_access_key` present, selects the credentialed constructor; otherwise falls back to environment/instance-profile credentials |
+| `storage.secret_access_key` | `Option<String>` | optional | See above |
+| `storage.session_token` | `Option<String>` | optional | Only used when `access_key_id`/`secret_access_key` are also set |
+| **Gcp** (`GcpStorageConfig`, `storage.rs:49-53`) — feature-gated on `storage_gcp` | | | |
+| `storage.bucket` | `String` | required | |
+| `storage.credential_path` | `String` | required | Path to a service-account JSON key file |
+| **Azure** (`AzureStorageConfig`, `storage.rs:55-61`) — feature-gated on `storage_azure` | | | |
+| `storage.container` | `String` | required | |
+| `storage.account_name` | `String` | required | |
+| `storage.access_key` | `String` | required | |
+| `storage.endpoint` | `String` | required | |
+| **Null** | (no fields) | — | default no-op storage; every operation errors |
+
+If the corresponding feature (`storage_aws_s3` / `storage_gcp` / `storage_azure`) is not compiled in, that `kind` value will fail to deserialize.
+
+`Hooks::after_context` still runs after this config builds the default store (`boot::create_context`, `src/boot.rs`), and can freely replace `ctx.storage` — see [Configure file storage](/docs/how-to/configure-storage) for the multi-store/strategy case, which has no dedicated YAML key.
+
 ## `initializers`, `settings`, `scheduler`
 
-- `initializers: Option<BTreeMap<String, serde_json::Value>>` (`mod.rs:75,106`) — a free-form map consumed by app initializers (e.g. an `oauth2` initializer reading `initializers.oauth2`). Keys and shapes are defined by whichever initializer reads them, not by `Config` itself.
+- `initializers: Option<BTreeMap<String, serde_json::Value>>` (`mod.rs:80,112`) — a free-form map consumed by app initializers (e.g. an `oauth2` initializer reading `initializers.oauth2`). Keys and shapes are defined by whichever initializer reads them, not by `Config` itself.
 - `settings: Option<serde_json::Value>` (`mod.rs:88-89`) — arbitrary app-defined settings, deserialize your own type from `ctx.config.settings`.
 - `scheduler: Option<scheduler::Config>` (`mod.rs:91`) — struct and keys owned by the scheduler area; not detailed on this page.
 

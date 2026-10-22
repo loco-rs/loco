@@ -406,14 +406,18 @@ since they restate the trait's own API.
 ## `config`
 
 - `struct` **Auth**` { jwt: Option<JWT> }` — User authentication configuration
+- `struct` **AwsStorageConfig**` { bucket: String, region: String, endpoint: Option<String>, access_key_id: Option<String>, secret_access_key: Option<String>, session_token: Option<String> }`
+- `struct` **AzureStorageConfig**` { container: String, account_name: String, access_key: String, endpoint: String }`
 - `enum` **CacheConfig** — Cache configurations for the application
-- `struct` **Config**` { logger: Logger, server: Server, database: Database, cache: CacheConfig, queue: Option<QueueConfig>, auth: Option<Auth>, workers: Workers, mailer: Option<Mailer>, initializers: Option<Initializers>, settings: Option<Value>, scheduler: Option<Config> }` — Main application configuration structure
+- `struct` **Config**` { logger: Logger, server: Server, database: Database, cache: CacheConfig, storage: StorageConfig, queue: Option<QueueConfig>, auth: Option<Auth>, workers: Workers, mailer: Option<Mailer>, initializers: Option<Initializers>, settings: Option<Value>, scheduler: Option<Config> }` — Main application configuration structure
 - `struct` **Database**` { uri: String, enable_logging: bool, min_connections: u32, max_connections: u32, connect_timeout: u64, idle_timeout: u64, acquire_timeout: Option<u64>, auto_migrate: bool, dangerously_truncate: bool, dangerously_recreate: bool, run_on_start: Option<String> }` — Database configuration
+- `struct` **GcpStorageConfig**` { bucket: String, credential_path: String }`
 - `struct` **InMemCacheConfig**` { max_capacity: u64 }`
 - `type` **Initializers** — Initializers configuration
 - `struct` **JWT**` { location: Option<JWTLocationConfig>, secret: String, expiration: u64 }` — JWT configuration structure
 - `enum` **JWTLocation** — Defines the authentication mechanism for middleware
 - `enum` **JWTLocationConfig** — Configuration for JWT location(s) - supports both single location and multiple locations
+- `struct` **LocalStorageConfig**` { path: Option<String> }`
 - `struct` **Logger**` { enable: bool, pretty_backtrace: bool, level: LogLevel, format: Format, override_filter: Option<String>, file_appender: Option<LoggerFileAppender> }` — Logger configuration
 - `struct` **LoggerFileAppender**` { enable: bool, non_blocking: bool, level: LogLevel, format: Format, rotation: Rotation, dir: Option<String>, filename_prefix: Option<String>, filename_suffix: Option<String>, max_log_files: usize }`
 - `struct` **Mailer**` { smtp: Option<SmtpMailer>, stub: bool }` — Mailer configuration
@@ -427,6 +431,7 @@ since they restate the trait's own API.
 - `struct` **Server**` { binding: String, port: i32, host: String, ident: Option<String>, middlewares: Config }` — Server configuration structure
 - `struct` **SmtpMailer**` { enable: bool, host: String, port: u16, secure: bool, tls: Option<MailerTls>, auth: Option<MailerAuth>, hello_name: Option<String> }` — SMTP mailer configuration structure
 - `struct` **SqliteQueueConfig**` { uri: String, dangerously_flush: bool, enable_logging: bool, max_connections: u32, min_connections: u32, connect_timeout: u64, idle_timeout: u64, poll_interval_sec: u32, num_workers: u32, reaper: Option<ReaperConfig> }`
+- `enum` **StorageConfig** — Storage configuration for the application
 - `enum` **WorkerMode** — Worker mode configuration
 - `struct` **Workers**` { mode: WorkerMode }` — Background worker configuration
 - `fn` **db_connect_timeout**`() -> u64`
@@ -480,6 +485,14 @@ since they restate the trait's own API.
 - `field` **secure** — Enable TLS
 - `field` **tls** — Explicit TLS mode. When set, overrides [`SmtpMailer::secure`]. Use
 - `fn` **tls_mode**`(self: &Self) -> MailerTls` — Resolve the effective TLS mode: explicit [`SmtpMailer::tls`] when set,
+
+### `StorageConfig`
+
+- `variant` **Aws** — AWS S3 storage
+- `variant` **Azure** — Azure Blob storage
+- `variant` **Gcp** — Google Cloud Storage
+- `variant` **Local** — Local filesystem storage
+- `variant` **Null** — Null storage: every operation errors. The default when no `storage:`
 
 ### `WorkerMode`
 
@@ -1254,6 +1267,7 @@ since they restate the trait's own API.
 - `struct` **Storage**` { stores: BTreeMap<String, Box<dyn StoreDriver>>, strategy: Box<dyn StorageStrategy> }`
 - `enum` **StorageError**
 - `type` **StorageResult**
+- `fn` **create_storage_provider**`(config: &Config) -> StorageResult<Storage>` — Builds the default [`Storage`] from `config.storage`
 
 ### `Storage`
 

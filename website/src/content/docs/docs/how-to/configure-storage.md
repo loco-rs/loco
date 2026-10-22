@@ -19,9 +19,32 @@ loco-rs = { version = "...", features = ["storage_aws_s3"] } # or storage_azure,
 
 See the [feature flags reference](/docs/reference/feature-flags) for the full matrix.
 
-## 1. Wire up a single driver
+## 1. Configure a single driver
 
-Storage isn't configured in YAML — it's wired in code, in the `after_context` hook (`src/app.rs`), and lands on `ctx.storage: Arc<Storage>`.
+The common case — one store for the whole app — is set in YAML, the same way `database`/`cache`/`queue` are. See the [`storage` reference](/docs/reference/configuration#storage) for the full key list per driver.
+
+```yaml
+# config/development.yaml
+storage:
+  kind: Local
+  path: storage/uploads
+```
+
+```yaml
+# config/production.yaml
+storage:
+  kind: Aws
+  bucket: my-app-uploads
+  region: us-east-1
+  access_key_id: <%= get_env(name="AWS_ACCESS_KEY_ID") %>
+  secret_access_key: <%= get_env(name="AWS_SECRET_ACCESS_KEY") %>
+```
+
+No `storage:` key at all → Loco defaults to the **`Null` driver** — every storage operation returns `StorageError::Any("Operation not supported by null storage")`. That's a deliberate fail-fast default, not a bug: it means "you haven't wired storage yet." Both the config-driven default and the no-config fallback land on `ctx.storage: Arc<Storage>`.
+
+## 2. Or wire it in code (still supported)
+
+For anything the config's per-driver field set doesn't cover — custom credential resolution, a driver Loco doesn't ship — set `ctx.storage` yourself in the `after_context` hook (`src/app.rs`). This runs *after* the config-driven store above is built, so it always wins:
 
 ```rust
 use loco_rs::storage::{self, drivers};
@@ -36,9 +59,7 @@ async fn after_context(ctx: AppContext) -> Result<AppContext> {
 
 `AppContext` is `#[non_exhaustive]`, so `AppContext { storage, ..ctx }` won't compile in your app — that's what keeps a new field in a future Loco release from breaking your build. `into_builder()` is the replacement: it carries every component the boot sequence already attached (mailer, queue, cache, shared store) across, and you override just the one you care about. Building from `AppContext::builder(..)` instead would compile and silently drop the rest.
 
-If you don't override `after_context` at all, Loco defaults to the **`Null` driver** — every storage operation returns `StorageError::Any("Operation not supported by null storage")`. That's a deliberate fail-fast default, not a bug: it means "you haven't wired storage yet."
-
-## 2. Pick a driver
+## 3. Pick a driver
 
 Every driver is built by a plain constructor function under `loco_rs::storage::drivers::*` — no trait object wrangling required.
 
@@ -80,7 +101,7 @@ let store = aws::with_credentials("my-app-uploads", "us-east-1", credential)?;
 
 > The storage driver trait is `StoreDriver` (not `StorageDriver`) — you'll see it in error messages and if you implement your own driver.
 
-## 3. Use multiple drivers with a strategy (optional)
+## 4. Use multiple drivers with a strategy (optional)
 
 For redundancy across providers, set up several named stores and a `StorageStrategy` that decides how operations fan out across them.
 
@@ -127,7 +148,7 @@ let strategy: Box<dyn StorageStrategy> = Box::new(ReplicatedStrategy::backup(
 
 Mirror and backup are both `ReplicatedStrategy`, differing only in the constructor used (`mirror` vs `backup`) and the `FailurePolicy` you pick. It exposes a `_with_policy`/`_with_strategy` variant on every `Storage` method (`upload_with_strategy`, `download_with_policy`, ...) if you need to override the strategy for a single call.
 
-## 4. Upload and download in a controller
+## 5. Upload and download in a controller
 
 ```rust
 use loco_rs::prelude::*;
@@ -161,7 +182,7 @@ async fn upload_file(
 
 (Requires the `multipart` feature on the `axum` crate.)
 
-## 5. Stream large files instead of buffering them
+## 6. Stream large files instead of buffering them
 
 For files too large to comfortably hold in memory, use the streaming API — `download_stream`/`upload_stream` return/accept a `BytesStream`, which converts directly to/from an axum `Body`. This is undocumented in earlier Loco releases but is a stable, full public feature.
 
@@ -198,7 +219,7 @@ If you need the whole payload as one `Bytes` buffer anyway, `BytesStream::collec
 
 **Strategy caveat:** streaming isn't uniformly "true streaming" once a strategy other than `SingleStrategy` is involved. `ReplicatedStrategy` unifies the former mirror/backup behavior: reads (both the buffered `download` and `download_stream`) fall back to secondaries when `read_from_secondaries` is set — i.e. constructed via `ReplicatedStrategy::mirror` — and are served from the primary only when constructed via `ReplicatedStrategy::backup`. Either way, `upload_stream` buffers the whole payload once via `collect()` and then fans out concurrently to secondaries. If you need guaranteed zero-buffering streaming to a single store, stick to `SingleStrategy` (the default).
 
-## 6. Check existence, list, and stat
+## 7. Check existence, list, and stat
 
 `Storage` also exposes `exists`, `list`, and `stat`, each going through the selected strategy the same way `upload`/`download` do (with `exists_with_policy`/`list_with_policy`/`stat_with_policy` siblings for overriding the strategy per call).
 
@@ -229,7 +250,7 @@ On `ReplicatedStrategy` (mirror / `read_from_secondaries`):
 
 Backup mode (`read_from_secondaries: false`) keeps all three primary-only.
 
-## 7. Presign direct uploads and downloads
+## 8. Presign direct uploads and downloads
 
 `Storage` exposes `presign_get` and `presign_put` for handing clients a
 time-limited URL that talks to the backing store directly (S3, Azure Blob, GCS)
@@ -276,7 +297,7 @@ LOCO_TEST_S3_SECRET_ACCESS_KEY=minio123 \
 cargo test -p loco-rs presign_s3_roundtrip --features storage_aws_s3 -- --ignored
 ```
 
-## 8. Verify
+## 9. Verify
 
 ```rust
 use axum_test::multipart::{MultipartForm, Part}; // not re-exported by the testing prelude
@@ -306,4 +327,5 @@ async fn can_upload_and_download() {
 ## Reference
 
 - `storage_aws_s3` / `storage_azure` / `storage_gcp` / `all_storage` feature flags: [Feature flags reference](/docs/reference/feature-flags)
-- Storage has no YAML configuration surface — everything above is the complete configuration story; there is no `storage:` key to look up in the [Configuration reference](/docs/reference/configuration)
+- The `storage:` key (single default store, driver-tagged like `cache:`): [Configuration reference](/docs/reference/configuration#storage)
+- Multiple named stores with a strategy have no dedicated YAML key — configure them in code as shown in [§4](#4-use-multiple-drivers-with-a-strategy-optional)
