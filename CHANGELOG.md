@@ -117,6 +117,13 @@ subcommand.
 
 ### Fixed
 
+- **A `fallback.file` page answered 200.** The `fallback` middleware served
+  its file through `ServeFile`, which reports 200 for a file it finds, so an
+  unmatched route set to `assets/static/404.html` answered 200 and the
+  `code` setting did nothing. It now answers with `code` (404 unless set).
+  If you pointed `fallback.file` at an SPA's `index.html` and relied on the
+  200, set `code: 200`, or use the `static` middleware's `fallback`, which
+  is the documented way to serve an SPA.
 - **A new Postgres app with a Postgres queue pointed the queue at a database
   that did not exist.** `queue.uri` in the generated development and test
   config defaulted to `loco_development` / `loco_test`; it now uses the app
