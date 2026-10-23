@@ -217,10 +217,10 @@ impl JobDescription {
     /// In addition to all the IO errors possible
     pub fn run(&self) -> io::Result<std::process::Output> {
         tracing::info!(command = &self.command, "execute job command");
-        self.run_process(shell_process(&self.command))
+        self.run_process(&shell_process(&self.command))
     }
 
-    fn run_process(&self, process: duct::Expression) -> io::Result<std::process::Output> {
+    fn run_process(&self, process: &duct::Expression) -> io::Result<std::process::Output> {
         let mut exec_job = process.env("LOCO_ENV", self.environment.to_string());
         exec_job = match self.output {
             Output::Silent => exec_job.stdout_null().stderr_null(),
@@ -380,7 +380,7 @@ fn spawn_job(job_name: &str, job_description: &JobDescription, process: &duct::E
     let job_description = job_description.clone();
     let process = process.clone();
     tokio::task::spawn_blocking(move || {
-        execute_job(&job_name, Uuid::new_v4(), &job_description, process);
+        execute_job(&job_name, Uuid::new_v4(), &job_description, &process);
     });
 }
 
@@ -388,7 +388,7 @@ fn execute_job(
     job_name: &str,
     uuid: Uuid,
     job_description: &JobDescription,
-    process: duct::Expression,
+    process: &duct::Expression,
 ) {
     let task_span = tracing::span!(
         tracing::Level::DEBUG,
@@ -669,7 +669,7 @@ jobs:
             } else {
                 process
             };
-            let result = description.run_process(process).unwrap();
+            let result = description.run_process(&process).unwrap();
             assert_eq!(result.status.code(), Some(37));
             if matches!(output, Output::Silent) {
                 assert!(result.stdout.is_empty());
