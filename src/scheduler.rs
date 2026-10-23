@@ -510,6 +510,77 @@ jobs:
         );
     }
 
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn native_task_preserves_arguments_on_start_and_later_ticks() {
+        let tree = TreeBuilder::default()
+            .drop(true)
+            .add_file(
+                "probe.rs",
+                include_str!("../tests/fixtures/scheduler_probe.rs"),
+            )
+            .create()
+            .unwrap();
+        let executable = tree.root.join("application with spaces");
+        let compiled = std::process::Command::new("rustc")
+            .arg(tree.root.join("probe.rs"))
+            .arg("-o")
+            .arg(&executable)
+            .output()
+            .unwrap();
+        assert!(
+            compiled.status.success(),
+            "{}",
+            String::from_utf8_lossy(&compiled.stderr)
+        );
+        let output = tree.root.join("native results");
+        let sentinel = tree.root.join("shell-sentinel");
+        let (mut scheduler, _config_tree) = setup_scheduler_config();
+        scheduler.jobs.retain(|name, _| name == "print_task");
+        let job = scheduler.jobs.get_mut("print_task").unwrap();
+        job.run = format!(
+            "foo '{}' 'two words' '' '$LOCO_ENV' ; touch '{}'",
+            output.display(),
+            sentinel.display()
+        );
+        job.run_on_start = true;
+        job.cron = "* * * * * *".to_string();
+        scheduler.binary_path = executable;
+        scheduler.environment = Environment::Test;
+        let handle = tokio::spawn(async move { scheduler.run().await });
+        let completed = time::timeout(Duration::from_secs(5), async {
+            loop {
+                if std::fs::read_to_string(&output)
+                    .is_ok_and(|contents| contents.lines().count() >= 2)
+                {
+                    break;
+                }
+                time::sleep(Duration::from_millis(20)).await;
+            }
+        })
+        .await;
+        handle.abort();
+        assert!(
+            completed.is_ok(),
+            "native scheduler did not invoke its executable on startup and a later tick"
+        );
+        let arguments = [
+            "two words",
+            "",
+            "$LOCO_ENV",
+            ";",
+            "touch",
+            sentinel.to_str().unwrap(),
+        ];
+        let expected = format!("{arguments:?}|test|true");
+        let contents = std::fs::read_to_string(output).unwrap();
+        assert!(contents.lines().all(|line| line == expected));
+        assert!(
+            !sentinel.exists(),
+            "native arguments must not execute shell syntax"
+        );
+    }
+
     #[tokio::test]
     pub async fn can_run() {
         let (mut scheduler, _config_tree) = setup_scheduler_config();
