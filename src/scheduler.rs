@@ -663,9 +663,12 @@ jobs:
             let process = job
                 .prepare_process(Path::new("unused"))
                 .unwrap()
-                .unchecked()
-                .stdout_capture()
-                .stderr_capture();
+                .unchecked();
+            let process = if matches!(output, Output::STDOUT) {
+                process.stdout_capture().stderr_capture()
+            } else {
+                process
+            };
             let result = description.run_process(process).unwrap();
             assert_eq!(result.status.code(), Some(37));
             if matches!(output, Output::Silent) {
