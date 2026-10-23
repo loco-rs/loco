@@ -1,0 +1,24 @@
+---
+source: src/auth/oauth/provider.rs
+expression: "Provider::resolve(\"github\", &config(None)).unwrap()"
+---
+Provider {
+    name: "github",
+    strategy: Github,
+    client_id: "cid",
+    client_secret: "[redacted]",
+    scopes: [
+        "read:user",
+        "user:email",
+    ],
+    authorize_url: "https://github.com/login/oauth/authorize",
+    token_url: "https://github.com/login/oauth/access_token",
+    userinfo_url: "https://api.github.com/user",
+    emails_url: Some(
+        "https://api.github.com/user/emails",
+    ),
+    redirect_uri: None,
+    authorize_params: {},
+    pkce: true,
+    token_auth: Post,
+}

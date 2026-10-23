@@ -1,0 +1,14 @@
+---
+source: src/auth/oauth/mod.rs
+expression: ids
+---
+[
+    "cancelled",
+    "provider_error",
+    "invalid_state",
+    "missing_code",
+    "token_exchange",
+    "profile",
+    "denied",
+    "configuration",
+]

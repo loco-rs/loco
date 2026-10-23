@@ -47,7 +47,7 @@ This page is a dictionary of every key Loco's configuration loader understands. 
 
 ## `auth`
 
-`struct Auth` — `src/config/auth.rs:13-17`.
+`struct Auth` — `src/config/auth.rs:28-39`.
 
 ```yaml
 auth:
@@ -60,18 +60,18 @@ auth:
 
 | Key | Type | Required? | Notes |
 |---|---|---|---|
-| `auth.jwt` | `Option<JWT>` | optional | `auth.rs:16` |
-| `auth.jwt.location` | `Option<JWTLocationConfig>` | optional, default: `Bearer` (resolved by `get_jwt_locations`, `src/controller/extractor/auth.rs:181-189`) | `auth.rs:24` |
-| `auth.jwt.secret` | `String` | required | `auth.rs:26`. **Must be valid base64** — the JWT signer/verifier call `EncodingKey`/`DecodingKey::from_base64_secret` (`src/auth/jwt.rs:83,108`); a non-base64 string fails at token generation/validation time, not at config load time |
-| `auth.jwt.expiration` | `u64` (seconds) | required | `auth.rs:28` |
+| `auth.jwt` | `Option<JWT>` | optional | `auth.rs:30` |
+| `auth.jwt.location` | `Option<JWTLocationConfig>` | optional, default: `Bearer` (resolved by `get_jwt_locations`, `src/controller/extractor/auth.rs:181-189`) | `auth.rs:203` |
+| `auth.jwt.secret` | `String` | required | `auth.rs:205`. **Must be valid base64** — the JWT signer/verifier call `EncodingKey`/`DecodingKey::from_base64_secret` (`src/auth/jwt.rs:83,108`); a non-base64 string fails at token generation/validation time, not at config load time |
+| `auth.jwt.expiration` | `u64` (seconds) | required | `auth.rs:207` |
 
-`JWTLocationConfig` (`auth.rs:61-106`) accepts either form:
+`JWTLocationConfig` (`auth.rs:236-280`) accepts either form:
 - `Single(JWTLocation)` — a single location map
 - `Multiple(Vec<JWTLocation>)` — a YAML list of location maps, tried in order until one yields a token
 
 `#[serde(untagged)]` applies to `Serialize` only. `Deserialize` is hand-written and dispatches on the input's shape — a map is a single location, a sequence is a fallback list — so a malformed entry reports the actual reason (a wrong-case `from: cookie`, a `Cookie` missing its `name`) instead of an untagged enum's opaque "did not match any variant".
 
-`JWTLocation` (`#[serde(tag = "from")]`, `auth.rs:35-44`):
+`JWTLocation` (`#[serde(tag = "from")]`, `auth.rs:215-223`):
 
 | Variant | YAML shape | Notes |
 |---|---|---|
@@ -80,6 +80,42 @@ auth:
 | `Cookie { name }` | `from: Cookie`<br>`name: <string>` | reads a cookie |
 
 Related, not YAML-configurable: default signing algorithm is **HS512** (`JWT_ALGORITHM`, `src/auth/jwt.rs:13`), overridable in code via `JWT::algorithm(..)` (`jwt.rs:51`), not via config.
+
+### `auth.session` and `auth.oauth`
+
+Read only with the `auth_session` / `auth_oauth` features (`SessionConfig`, `OAuthConfig`, `OAuthProviderConfig` in `src/config/auth.rs`). See [Sign in with GitHub, Google or OAuth2](/docs/how-to/oauth-sign-in).
+
+```yaml
+auth:
+  session:
+    secret: <%= get_env(name="SESSION_SECRET") %>
+    cookie_name: loco_session   # optional
+    max_age: 2592000            # optional, seconds
+    secure: true                # optional, default: server.host is https://
+    sign_in_path: /login        # optional
+  oauth:
+    base_url: https://app.example.com
+    after_sign_in_path: /
+    after_sign_out_path: /
+    failure_path: /login
+    providers:
+      github:
+        client_id: <%= get_env(name="GITHUB_CLIENT_ID") %>
+        client_secret: <%= get_env(name="GITHUB_CLIENT_SECRET") %>
+```
+
+| Key | Type | Required? | Notes |
+|---|---|---|---|
+| `auth.session.secret` | `Option<String>` | required in production | Keys every signed and encrypted cookie (SHA-512-derived). Unset in development/test means a public default and a warning; in production cookie extractors fail and `doctor --production` reports it, and also flags secrets under 32 characters |
+| `auth.session.cookie_name` | `Option<String>` | optional, default `loco_session` | |
+| `auth.session.max_age` | `Option<u64>` | optional, default 30 days | Cookie `Max-Age` and the server-enforced expiry inside the signed value |
+| `auth.session.secure` | `Option<bool>` | optional | Default: on when `server.host` starts with `https://` |
+| `auth.session.sign_in_path` | `Option<String>` | optional | Where `CurrentUser` redirects signed-out HTML requests (`?return_to=` appended); without it they get `401` |
+| `auth.oauth.base_url` | `Option<String>` | optional | Public origin for callback URLs; default `server.full_url()` |
+| `auth.oauth.after_sign_in_path` | `Option<String>` | optional, default `/` | Used when neither `return_to` nor `SignIn::redirect_to` is set |
+| `auth.oauth.after_sign_out_path` | `Option<String>` | optional, default `/` | |
+| `auth.oauth.failure_path` | `Option<String>` | optional | Default failure handler redirects here with `?error=&provider=`; without it, a minimal `401` page |
+| `auth.oauth.providers.<name>` | `OAuthProviderConfig` | at least one | `strategy` (`github`/`google`/`generic`; inferred from the name for `github`/`google`), `client_id`, `client_secret`, `scopes`, `base_url`, `api_url`, `authorize_url`, `token_url`, `userinfo_url`, `emails_url`, `redirect_uri`, `authorize_params` (map), `pkce` (default `true`), `token_auth` (`post`/`basic`) |
 
 ## `server`
 

@@ -1,0 +1,23 @@
+---
+source: src/auth/oauth/provider.rs
+expression: "Provider::resolve(\"google\", &config(None)).unwrap()"
+---
+Provider {
+    name: "google",
+    strategy: Google,
+    client_id: "cid",
+    client_secret: "[redacted]",
+    scopes: [
+        "openid",
+        "email",
+        "profile",
+    ],
+    authorize_url: "https://accounts.google.com/o/oauth2/v2/auth",
+    token_url: "https://oauth2.googleapis.com/token",
+    userinfo_url: "https://openidconnect.googleapis.com/v1/userinfo",
+    emails_url: None,
+    redirect_uri: None,
+    authorize_params: {},
+    pkce: true,
+    token_auth: Post,
+}
