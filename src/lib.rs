@@ -42,6 +42,8 @@ pub mod hash;
 pub mod logger;
 #[cfg(feature = "mailer")]
 pub mod mailer;
+#[cfg(feature = "notifications")]
+pub mod notifications;
 pub mod scheduler;
 pub mod task;
 #[cfg(feature = "testing-core")]

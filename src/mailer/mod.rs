@@ -3,7 +3,7 @@
 //! asynchronous email processing.
 
 mod email_sender;
-mod template;
+pub(crate) mod template;
 
 use async_trait::async_trait;
 pub use email_sender::EmailSender;
