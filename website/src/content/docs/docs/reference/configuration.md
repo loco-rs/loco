@@ -41,6 +41,7 @@ This page is a dictionary of every key Loco's configuration loader understands. 
 | `auth` | `Option<`[`Auth`](#auth)`>` | optional | `mod.rs:71` |
 | `workers` | [`Workers`](#workers) | optional — `#[serde(default)]` | `mod.rs:72-73` |
 | `mailer` | `Option<`[`Mailer`](#mailer)`>` | optional | `mod.rs:74` |
+| `notifications` | `Option<Notifications>` | optional — `#[serde(default)]` | `notifications.rs`; Slack, webhook and email defaults plus `max_retries`, `retry_backoff_secs`, `timeout_secs`, and `stub` (record instead of send, for tests). See [Send notifications](/docs/how-to/send-notifications#4-configure-the-channels) |
 | `initializers` | `Option<Initializers>` (= `Option<BTreeMap<String, serde_json::Value>>`) | optional | `mod.rs:75`, type alias at `mod.rs:106` |
 | `settings` | `Option<serde_json::Value>` | optional — `#[serde(default)]` | `mod.rs:88-89`; free-form app settings, surfaced at `ctx.config.settings` |
 | `scheduler` | `Option<scheduler::Config>` | optional | `mod.rs:91`; struct owned by the scheduler area, not detailed here |

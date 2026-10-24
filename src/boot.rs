@@ -572,6 +572,8 @@ async fn register_workers<H: Hooks>(app_context: &AppContext) -> Result<()> {
         if let Some(queue) = &app_context.queue_provider {
             #[cfg(feature = "mailer")]
             queue.register(MailerWorker::build(app_context)).await?;
+            #[cfg(feature = "notifications")]
+            crate::notifications::register_worker(app_context, queue).await?;
             H::connect_workers(app_context, queue).await?;
         } else {
             return Err(Error::QueueProviderMissing);

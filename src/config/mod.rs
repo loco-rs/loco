@@ -36,6 +36,7 @@ mod cache;
 mod database;
 mod logger;
 mod mailer;
+mod notifications;
 mod queue;
 mod server;
 mod template;
@@ -45,6 +46,7 @@ pub use cache::*;
 pub use database::*;
 pub use logger::*;
 pub use mailer::*;
+pub use notifications::*;
 pub use queue::*;
 pub use server::*;
 
@@ -73,6 +75,9 @@ pub struct Config {
     #[serde(default)]
     pub workers: Workers,
     pub mailer: Option<Mailer>,
+    /// Notification channels and delivery retries; see [`Notifications`].
+    #[serde(default)]
+    pub notifications: Option<Notifications>,
     pub initializers: Option<Initializers>,
 
     /// Custom app settings

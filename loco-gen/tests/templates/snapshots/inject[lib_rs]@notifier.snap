@@ -1,0 +1,9 @@
+---
+source: loco-gen/tests/templates/notifier.rs
+expression: "read(&tree, \"src/lib.rs\")"
+---
+pub mod app;
+pub mod controllers;
+pub mod workers;
+
+pub mod notifiers;
