@@ -120,6 +120,7 @@ notifications:
   max_retries: 5         # default 5
   retry_backoff_secs: 10 # default 10; doubles on every retry, up to an hour
   timeout_secs: 10       # HTTP timeout per attempt, default 10
+  stub: false            # true records deliveries instead of sending them; see Test notifiers
 ```
 
 Every block is optional. A channel without a destination is **skipped with a warning**, not treated as an error: a default channel whose block is missing or whose URL is empty, or an explicit URL that is empty. So leaving `SLACK_WEBHOOK_URL` unset in development turns Slack off.
@@ -204,11 +205,62 @@ let ok = webhook::verify_signature(&secret, timestamp, &raw_body, signature);
 
 ## Test notifiers
 
-Point channels at a server your test controls, or leave them unconfigured so they are skipped. With `workers.mode: ForegroundBlocking` in `config/test.yaml`, deliveries run inline, so the returned `Report` already reflects what was sent:
+Set `stub: true` in `config/test.yaml` (the generator does this) and notifications are **recorded instead of sent**, the way the mailer's `stub: true` records email:
 
-```rust
-let report = DeployPaused { /* .. */ }.deliver_later(&ctx).await;
-assert_eq!(report.failed, 0);
+```yaml
+# config/test.yaml
+notifications:
+  stub: true
+  slack:
+    webhook_url: "https://hooks.slack.com/services/test" # never called
 ```
 
-Email deliveries go through the mailer, so `mailer.stub: true` captures them as described in [Send an email](/docs/how-to/send-email#7-test-without-sending-real-email).
+While recording is on, `deliver_later` and `deliver_now` render every channel, resolve its destination exactly as the worker would (config defaults, the webhook secret and headers, email recipients), and append the result to a recording on the `AppContext`. Nothing is enqueued and nothing goes over the network. Recording happens before the call returns in every worker mode, so the assertions can come straight after it:
+
+```rust
+use loco_rs::notifications::testing;
+
+#[tokio::test]
+async fn pausing_notifies_slack() {
+    let boot = boot_test::<App>().await.unwrap();
+    let ctx = &boot.app_context;
+
+    DeployPaused {
+        project: "web".into(),
+        by: "ana".into(),
+        reason: "release freeze".into(),
+        slack_url: None,
+    }
+    .deliver_later(ctx)
+    .await;
+
+    let sent = testing::deliveries(ctx);
+    let slack: Vec<_> = sent.iter().filter(|d| d.channel == "slack").collect();
+    assert_eq!(slack.len(), 1);
+    assert!(slack[0].text().contains("Deploys paused by ana"));
+    testing::clear(ctx);
+}
+```
+
+Each `Recorded` delivery has:
+
+| field | holds |
+|---|---|
+| `channel` | `slack`, `webhook` or `email` |
+| `event`, `id` | the event name and delivery ID, as sent in `X-Loco-Event` and `X-Loco-Delivery` |
+| `to` | the resolved Slack or webhook URL, or the email recipients |
+| `payload` | the Slack or webhook JSON body, or `{from, subject, text, html}` for email |
+| `headers`, `signed` | a webhook's extra headers, and whether it would be signed |
+
+`text()` returns the readable part of any channel (Slack `text`, webhook `title` and `body`, or email subject and text), for assertions that should not depend on the channel.
+
+The API, in `loco_rs::notifications::testing`:
+
+- `deliveries(&ctx)`: everything recorded so far, oldest first.
+- `clear(&ctx)`: forget the recording and keep recording.
+- `record(&ctx)`: turn recording on for a context whose config does not set `stub`.
+- `is_recording(&ctx)`: whether recording is on.
+
+The recording belongs to the context, so tests that boot their own app do not see each other's deliveries. Channels are skipped while recording just as they are when sending, so a test with an unconfigured `Channel::webhook()` records nothing for it. A delivery whose destination cannot be resolved is counted as failed.
+
+To exercise real sending instead, leave `stub` off and point the channels at a server your test controls. With `workers.mode: ForegroundBlocking` (the test default), `deliver_later` runs the worker inline, so the request has already happened when it returns, and the `Report` reflects what was sent. Email deliveries then go through the mailer, where `mailer.stub: true` captures them as described in [Send an email](/docs/how-to/send-email#7-test-without-sending-real-email).
