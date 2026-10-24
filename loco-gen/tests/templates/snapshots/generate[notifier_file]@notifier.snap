@@ -1,0 +1,37 @@
+---
+source: loco-gen/tests/templates/notifier.rs
+expression: "read(&tree, \"src/notifiers/queue_paused.rs\")"
+---
+use loco_rs::notifications::{Channel, Message};
+use loco_rs::prelude::*;
+use serde::Serialize;
+
+/// The data of one `QueuePaused` notification. It is also sent as `data`
+/// in webhook payloads.
+///
+/// Send it from a controller, task or worker; delivery happens in the
+/// background and never fails the caller:
+///
+/// ```rust,ignore
+/// QueuePaused { text: "...".to_string() }.deliver_later(&ctx).await;
+/// ```
+#[derive(Debug, Clone, Serialize)]
+pub struct QueuePaused {
+    pub text: String,
+}
+
+impl Notifier for QueuePaused {
+    fn message(&self) -> Message {
+        Message::new("Queue Paused").body(&self.text)
+    }
+
+    /// Where it goes. A channel with no destination in `config/*.yaml`
+    /// (`notifications:`) is skipped with a warning.
+    ///
+    /// Other channels: `Channel::slack_url(url)`, `Channel::webhook()`,
+    /// `Channel::webhook_url(url).signed(secret)`, `Channel::email()` and
+    /// `Channel::email_to(address)` (needs the `mailer` feature).
+    fn channels(&self, _ctx: &AppContext) -> Vec<Channel> {
+        vec![Channel::slack()]
+    }
+}
