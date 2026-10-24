@@ -171,6 +171,13 @@ pub struct AppInfo {
     /// that uses it should pass `"."`.
     pub working_dir: PathBuf,
 }
+impl AppInfo {
+    /// Rails-style single routes file (src/routes.rs).
+    /// When present, generators write route blocks there and leave `routes()` out of the controller.
+    pub fn has_routes_file(&self) -> bool {
+        self.working_dir.join("src").join("routes.rs").exists()
+    }
+}
 
 #[must_use]
 pub fn new_generator() -> RRgen {

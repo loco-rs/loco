@@ -1,5 +1,6 @@
 use super::utils::{
-    guess_file_by_time, APP_ROUTS, HOME_TSX_FIXTURE, MIGRATION_SRC_LIB, ROUTES_TSX_FIXTURE,
+    guess_file_by_time, APP_ROUTS, HOME_TSX_FIXTURE, MIGRATION_SRC_LIB, ROUTES_RS,
+    ROUTES_TSX_FIXTURE,
 };
 use insta::{assert_snapshot, with_settings};
 use loco_gen::RRgen;
@@ -637,5 +638,74 @@ fn a_scaffold_without_a_frontend_writes_no_typescript_bindings() {
     assert!(
         dto.contains("pub struct MovieDto"),
         "the backend DTO should still be generated:\n{dto}"
+    );
+}
+
+/// With a Rails-style `src/routes.rs` in the app, the scaffold writes its route
+/// block there instead of into `app.rs`, and the controller ships only the handlers. 
+/// 
+/// Those handlers must be `pub`: `routes.rs` reaches them from outside the module.
+#[test]
+fn a_routes_file_takes_the_route_block_instead_of_the_controller() {
+    // SAFETY: test-local env setup; no other thread reads the environment during this test.
+    unsafe { std::env::set_var("SKIP_MIGRATION", "") };
+    let mut settings = insta::Settings::clone_current();
+    settings.set_prepend_module_to_snapshot(false);
+    settings.set_snapshot_suffix("Api_scaffold_routes_file");
+    let _guard = settings.bind_to_scope();
+
+    let tree_fs = tree_fs::TreeBuilder::default()
+        .drop(true)
+        .add_empty("src/controllers/mod.rs")
+        .add_empty("src/dtos/mod.rs")
+        .add_empty("tests/models/mod.rs")
+        .add("migration/src/lib.rs", MIGRATION_SRC_LIB)
+        .add("src/app.rs", APP_ROUTS)
+        .add("src/routes.rs", ROUTES_RS)
+        .create()
+        .unwrap();
+
+    let rrgen = RRgen::with_working_dir(&tree_fs.root);
+
+    generate(
+        &rrgen,
+        Component::Scaffold {
+            name: "post".to_string(),
+            with_tz: true,
+            fields: vec![("title".to_string(), "string!".to_string())],
+            frontend: false,
+            auth: true,
+        },
+        &AppInfo {
+            app_name: "tester".to_string(),
+            working_dir: tree_fs.root.clone(),
+        },
+    )
+    .expect("Generation failed");
+
+    let controller = fs::read_to_string(tree_fs.root.join("src/controllers/posts.rs"))
+        .expect("controller file missing");
+    assert!(
+        !controller.contains("pub fn routes()"),
+        "the controller must not carry a `routes()` when `src/routes.rs` owns the \
+         table:\n{controller}"
+    );
+    for handler in ["list", "get_one", "create", "update", "remove"] {
+        assert!(
+            controller.contains(&format!("pub async fn {handler}(")),
+            "`{handler}` must be `pub` so `src/routes.rs` can reach it:\n{controller}"
+        );
+    }
+    assert_snapshot!("generate[controller_file]", controller);
+
+    assert_snapshot!(
+        "inject[routes_rs]",
+        fs::read_to_string(tree_fs.root.join("src/routes.rs")).expect("routes.rs injection failed")
+    );
+
+    assert_eq!(
+        fs::read_to_string(tree_fs.root.join("src/app.rs")).expect("app.rs missing"),
+        APP_ROUTS,
+        "app.rs must be left untouched when the route block goes to `src/routes.rs`"
     );
 }
