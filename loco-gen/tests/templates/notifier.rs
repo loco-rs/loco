@@ -92,7 +92,7 @@ fn can_generate() {
 }
 
 #[test]
-fn config_stays_valid_yaml_with_an_empty_url_in_test() {
+fn config_stays_valid_yaml_and_test_records_deliveries() {
     let tree = app();
     run(&tree, "queue_paused");
 
@@ -103,10 +103,12 @@ fn config_stays_valid_yaml_with_an_empty_url_in_test() {
     );
     assert_eq!(dev["server"]["port"], serde_yaml::Value::from(5150));
     let test = parsed(&read(&tree, "config/test.yaml"));
-    assert_eq!(
-        test["notifications"]["slack"]["webhook_url"],
-        serde_yaml::Value::from("")
-    );
+    assert_eq!(test["notifications"]["stub"], serde_yaml::Value::from(true));
+    // A placeholder so `Channel::slack()` is recorded rather than skipped;
+    // nothing is sent while recording.
+    assert!(test["notifications"]["slack"]["webhook_url"]
+        .as_str()
+        .is_some_and(|url| !url.is_empty()));
 }
 
 #[test]

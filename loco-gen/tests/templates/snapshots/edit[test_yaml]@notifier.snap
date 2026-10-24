@@ -8,5 +8,6 @@ server:
 # Notifier channels (`cargo loco generate notifier`). A channel whose URL is
 # empty is skipped.
 notifications:
+  stub: true
   slack:
-    webhook_url: ""
+    webhook_url: "https://hooks.slack.com/services/test"
