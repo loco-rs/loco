@@ -78,12 +78,13 @@ fn escape_html(text: &str) -> String {
         .replace('"', "&quot;")
 }
 
-pub(super) async fn send(
+/// The recipients and sender of an email delivery: the delivery's own, else
+/// `notifications.email`, else the mailer default sender.
+pub(super) fn resolve(
     ctx: &AppContext,
     to: Vec<String>,
     from: Option<String>,
-    content: EmailContent,
-) -> Result<()> {
+) -> Result<(Vec<String>, String)> {
     let config = ctx
         .config
         .notifications
@@ -101,6 +102,16 @@ pub(super) async fn send(
     let from = from
         .or_else(|| config.and_then(|c| c.from.clone()))
         .unwrap_or_else(|| DEFAULT_FROM_SENDER.to_string());
+    Ok((to, from))
+}
+
+pub(super) async fn send(
+    ctx: &AppContext,
+    to: Vec<String>,
+    from: Option<String>,
+    content: EmailContent,
+) -> Result<()> {
+    let (to, from) = resolve(ctx, to, from)?;
     let Some(mailer) = &ctx.mailer else {
         return Err(Error::string(
             "email notification but no mailer is configured: add a `mailer:` config block",

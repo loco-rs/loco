@@ -490,3 +490,172 @@ async fn deliveries_go_through_a_real_queue_as_one_job_per_channel() {
         assert_eq!(delivery.event, "queue_paused");
     }
 }
+
+// -- recording (`notifications.stub: true` / `testing::record`) --
+
+fn stubbed(notifications: Notifications) -> Option<Notifications> {
+    Some(Notifications {
+        stub: true,
+        ..notifications
+    })
+}
+
+#[tokio::test]
+async fn stub_config_records_resolved_deliveries_instead_of_sending() {
+    let (base, log) = mock_server(StatusCode::OK).await;
+    let ctx = context(stubbed(Notifications {
+        slack: Some(SlackNotifications {
+            webhook_url: format!("{base}/configured"),
+        }),
+        ..Notifications::default()
+    }))
+    .await;
+    assert!(testing::is_recording(&ctx));
+
+    let report = QueuePaused::to(vec![Channel::slack(), Channel::webhook()])
+        .deliver_later(&ctx)
+        .await;
+
+    // The webhook has no config, so it is skipped exactly as when sending.
+    assert_eq!(
+        report,
+        Report {
+            accepted: 1,
+            skipped: 1,
+            failed: 0
+        }
+    );
+    assert!(requests(&log).is_empty(), "nothing is sent while recording");
+    let sent = testing::deliveries(&ctx);
+    assert_eq!(sent.len(), 1);
+    assert_eq!(sent[0].channel, "slack");
+    assert_eq!(sent[0].event, "queue_paused");
+    assert_eq!(sent[0].to, [format!("{base}/configured")]);
+    assert!(sent[0].text().contains("Queue paused by ana"), "{sent:?}");
+}
+
+#[tokio::test]
+async fn record_turns_recording_on_without_config_and_captures_webhook_details() {
+    let (base, log) = mock_server(StatusCode::OK).await;
+    let ctx = context(None).await;
+    assert!(!testing::is_recording(&ctx));
+    testing::record(&ctx);
+
+    QueuePaused::to(vec![Channel::webhook_url(format!("{base}/hook"))
+        .signed("s3cret")
+        .header("X-Team", "infra")])
+    .deliver_later(&ctx)
+    .await;
+
+    assert!(requests(&log).is_empty());
+    let sent = testing::deliveries(&ctx);
+    assert_eq!(sent.len(), 1);
+    let hook = &sent[0];
+    assert_eq!(hook.channel, "webhook");
+    assert_eq!(hook.to, [format!("{base}/hook")]);
+    assert!(hook.signed);
+    assert_eq!(
+        hook.headers.get("X-Team").map(String::as_str),
+        Some("infra")
+    );
+    assert_eq!(hook.payload["id"], hook.id.as_str());
+    assert_eq!(hook.payload["data"]["by"], "ana");
+    assert_eq!(hook.text(), "Queue paused by ana\ndeploy freeze");
+}
+
+#[tokio::test]
+async fn recording_is_synchronous_even_in_background_queue_mode() {
+    let mut ctx = context(stubbed(Notifications::default())).await;
+    // No queue provider: a real enqueue would fail here.
+    ctx.config.workers.mode = WorkerMode::BackgroundQueue;
+    assert!(ctx.queue_provider.is_none());
+
+    let report = QueuePaused::to(vec![Channel::slack_url("https://hooks.example.com/x")])
+        .deliver_later(&ctx)
+        .await;
+
+    assert_eq!(report.accepted, 1);
+    assert_eq!(testing::deliveries(&ctx).len(), 1);
+}
+
+#[cfg(feature = "mailer")]
+#[tokio::test]
+async fn recorded_email_has_resolved_recipients_and_needs_no_mailer() {
+    let mut ctx = context(stubbed(Notifications {
+        email: Some(crate::config::EmailNotifications {
+            to: vec!["ops@example.com".to_string()],
+            from: Some("Alerts <alerts@example.com>".to_string()),
+        }),
+        ..Notifications::default()
+    }))
+    .await;
+    ctx.mailer = None;
+
+    let report = QueuePaused::to(vec![Channel::email()])
+        .deliver_now(&ctx)
+        .await
+        .unwrap();
+
+    assert_eq!(report.accepted, 1);
+    let sent = testing::deliveries(&ctx);
+    assert_eq!(sent[0].channel, "email");
+    assert_eq!(sent[0].to, ["ops@example.com"]);
+    assert_eq!(sent[0].payload["from"], "Alerts <alerts@example.com>");
+    assert!(
+        sent[0].text().starts_with("Queue paused by ana\n"),
+        "{sent:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_recorded_delivery_without_a_destination_still_fails() {
+    let ctx = context(stubbed(Notifications::default())).await;
+
+    // An explicit webhook with an unconfigured default: rendering succeeds
+    // but resolution fails, as it would in the worker.
+    let delivery = Delivery {
+        id: "1".to_string(),
+        event: "e".to_string(),
+        target: Target::Webhook {
+            url: None,
+            secret: None,
+            headers: BTreeMap::new(),
+            payload: json!({}),
+        },
+    };
+    let recorder = testing::recorder(&ctx).unwrap();
+    assert!(recorder.record(&ctx, delivery).is_err());
+    assert!(testing::deliveries(&ctx).is_empty());
+}
+
+#[tokio::test]
+async fn clear_forgets_deliveries_and_contexts_do_not_share_recordings() {
+    let one = context(stubbed(Notifications::default())).await;
+    let two = context(stubbed(Notifications::default())).await;
+    let notifier = QueuePaused::to(vec![Channel::slack_url("https://hooks.example.com/x")]);
+
+    notifier.deliver_later(&one).await;
+    notifier.deliver_later(&one).await;
+    notifier.deliver_later(&two).await;
+
+    assert_eq!(testing::deliveries(&one).len(), 2);
+    assert_eq!(testing::deliveries(&two).len(), 1);
+    testing::clear(&one);
+    assert!(testing::deliveries(&one).is_empty());
+    assert!(testing::is_recording(&one));
+    assert_eq!(testing::deliveries(&two).len(), 1);
+}
+
+#[tokio::test]
+async fn foreground_blocking_mode_sends_before_deliver_later_returns() {
+    let (base, log) = mock_server(StatusCode::OK).await;
+    let ctx = context(None).await;
+    assert_eq!(ctx.config.workers.mode, WorkerMode::ForegroundBlocking);
+
+    QueuePaused::to(vec![Channel::slack_url(format!("{base}/now"))])
+        .deliver_later(&ctx)
+        .await;
+
+    // No waiting, no polling: the request already happened.
+    assert_eq!(requests(&log).len(), 1);
+}

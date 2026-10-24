@@ -38,6 +38,7 @@ mod channel;
 #[cfg(feature = "mailer")]
 pub mod email;
 pub mod slack;
+pub mod testing;
 pub mod webhook;
 
 use std::{collections::BTreeMap, time::Duration};
@@ -52,6 +53,7 @@ use serde_json::{json, Value};
 use crate::{
     app::AppContext,
     bgworker::{BackgroundWorker, Queue, RetryPolicy},
+    config::Notifications,
     Error, Result,
 };
 
@@ -252,6 +254,18 @@ pub trait Notifier: Serialize + Send + Sync + Sized {
             skipped,
             ..Report::default()
         };
+        if let Some(recorder) = testing::recorder(ctx) {
+            for delivery in deliveries {
+                match recorder.record(ctx, delivery) {
+                    Ok(()) => report.accepted += 1,
+                    Err(err) => {
+                        tracing::error!(event, err = err.to_string(), "notification failed");
+                        report.failed += 1;
+                    }
+                }
+            }
+            return report;
+        }
         for delivery in deliveries {
             let channel = delivery.target.name();
             match NotificationWorker::perform_later_with_priority(ctx, delivery, Self::priority())
@@ -285,9 +299,14 @@ pub trait Notifier: Serialize + Send + Sync + Sized {
             ..Report::default()
         };
         let mut errors = Vec::new();
+        let recorder = testing::recorder(ctx);
         for delivery in deliveries {
             let channel = delivery.target.name();
-            match worker.perform(delivery).await {
+            let sent = match &recorder {
+                Some(recorder) => recorder.record(ctx, delivery),
+                None => worker.perform(delivery).await,
+            };
+            match sent {
                 Ok(()) => report.accepted += 1,
                 Err(err) => {
                     report.failed += 1;
@@ -391,47 +410,16 @@ impl BackgroundWorker<Delivery> for NotificationWorker {
                 webhook_url,
                 payload,
             } => {
-                let url = webhook_url
-                    .or_else(|| {
-                        config
-                            .and_then(|c| c.slack.as_ref())
-                            .map(|s| s.webhook_url.clone())
-                    })
-                    .filter(|u| !u.trim().is_empty())
-                    .ok_or_else(|| {
-                        Error::string(
-                            "slack notification: notifications.slack.webhook_url is not set",
-                        )
-                    })?;
+                let url = slack_url(config, webhook_url)?;
                 slack::send(&self.http, &url, &payload).await
             }
             Target::Webhook {
                 url,
                 secret,
-                mut headers,
+                headers,
                 payload,
             } => {
-                let (url, secret) = match url {
-                    Some(url) => (url, secret),
-                    None => {
-                        let defaults =
-                            config.and_then(|c| c.webhook.as_ref()).ok_or_else(|| {
-                                Error::string(
-                                    "webhook notification: notifications.webhook is not set",
-                                )
-                            })?;
-                        for (name, value) in &defaults.headers {
-                            headers.entry(name.clone()).or_insert_with(|| value.clone());
-                        }
-                        (
-                            defaults.url.clone(),
-                            secret.or_else(|| defaults.secret.clone()),
-                        )
-                    }
-                };
-                if url.trim().is_empty() {
-                    return Err(Error::string("webhook notification: no URL"));
-                }
+                let (url, secret, headers) = webhook_destination(config, url, secret, headers)?;
                 webhook::send(
                     &self.http,
                     webhook::Request {
@@ -449,6 +437,51 @@ impl BackgroundWorker<Delivery> for NotificationWorker {
             Target::Email { to, from, content } => email::send(&self.ctx, to, from, content).await,
         }
     }
+}
+
+/// The Slack URL of a delivery: its own, else `notifications.slack`.
+fn slack_url(config: Option<&Notifications>, webhook_url: Option<String>) -> Result<String> {
+    webhook_url
+        .or_else(|| {
+            config
+                .and_then(|c| c.slack.as_ref())
+                .map(|s| s.webhook_url.clone())
+        })
+        .filter(|u| !u.trim().is_empty())
+        .ok_or_else(|| {
+            Error::string("slack notification: notifications.slack.webhook_url is not set")
+        })
+}
+
+/// The URL, secret and headers of a webhook delivery. An explicit URL keeps
+/// its own secret; the default one takes `notifications.webhook`'s secret and
+/// headers.
+fn webhook_destination(
+    config: Option<&Notifications>,
+    url: Option<String>,
+    secret: Option<String>,
+    mut headers: BTreeMap<String, String>,
+) -> Result<(String, Option<String>, BTreeMap<String, String>)> {
+    let (url, secret) = match url {
+        Some(url) => (url, secret),
+        None => {
+            let defaults = config.and_then(|c| c.webhook.as_ref()).ok_or_else(|| {
+                Error::string("webhook notification: notifications.webhook is not set")
+            })?;
+            for (name, value) in &defaults.headers {
+                headers.entry(name.clone()).or_insert_with(|| value.clone());
+            }
+            (
+                defaults.url.clone(),
+                secret.or_else(|| defaults.secret.clone()),
+            )
+        }
+    };
+    if url.trim().is_empty() {
+        return Err(Error::string("webhook notification: no URL"));
+    }
+    let secret = secret.filter(|s| !s.is_empty());
+    Ok((url, secret, headers))
 }
 
 /// Registers [`NotificationWorker`] with the retry policy from config.
