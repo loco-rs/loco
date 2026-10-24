@@ -101,21 +101,24 @@ fn add_config(content: &str, env: &str) -> Option<String> {
     {
         return None;
     }
-    let url = if env == "test" {
-        // Tests never post to Slack; an empty URL skips the channel.
-        "\"\"".to_string()
+    let block = if env == "test" {
+        // Tests record deliveries (`notifications::testing::deliveries`)
+        // instead of sending them, like the mailer's `stub: true`.
+        "notifications:\n  stub: true\n  slack:\n    webhook_url: \"https://hooks.slack.com/services/test\"\n"
+            .to_string()
     } else {
-        "<%= get_env(name=\"SLACK_WEBHOOK_URL\", default=\"\") %>".to_string()
+        "notifications:\n  slack:\n    webhook_url: <%= get_env(name=\"SLACK_WEBHOOK_URL\", default=\"\") %>\n"
+            .to_string()
     };
     let mut out = content.to_string();
     if !out.is_empty() && !out.ends_with('\n') {
         out.push('\n');
     }
-    out.push_str(&format!(
+    out.push_str(
         "\n# Notifier channels (`cargo loco generate notifier`). A channel whose URL is\n\
-         # empty is skipped.\n\
-         notifications:\n  slack:\n    webhook_url: {url}\n"
-    ));
+         # empty is skipped.\n",
+    );
+    out.push_str(&block);
     Some(out)
 }
 
@@ -131,8 +134,9 @@ mod tests {
     }
 
     #[test]
-    fn test_env_gets_an_empty_url() {
+    fn test_env_records_instead_of_sending() {
         let added = add_config("", "test").unwrap();
-        assert!(added.contains("webhook_url: \"\""), "{added}");
+        assert!(added.contains("notifications:\n  stub: true\n"), "{added}");
+        assert!(!added.contains("get_env"), "{added}");
     }
 }
