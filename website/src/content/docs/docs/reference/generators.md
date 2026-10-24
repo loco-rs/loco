@@ -23,6 +23,7 @@ This page is the exhaustive dictionary of generator kinds and the field-type min
 | **scheduler** | `cargo loco generate scheduler` | none | Writes `config/scheduler.yaml`. `lib.rs:288` |
 | **worker** | `cargo loco generate worker <name>` | none | Background worker stub in `src/workers/`, registered in `src/workers/mod.rs`. `lib.rs:289` |
 | **mailer** | `cargo loco generate mailer <name>` | none | Mailer struct in `src/mailers/<name>.rs` + embedded `welcome/{subject,html,text}.t` templates. `lib.rs:293` |
+| **notifier** | `cargo loco generate notifier <name>` | none (the app needs the `notifications` feature, which it enables in `Cargo.toml`) | Notifier struct in `src/notifiers/<name>.rs`, registered in `src/notifiers/mod.rs`, plus a `notifications:` block in `config/*.yaml`. See [Send notifications](/docs/how-to/send-notifications). |
 | **data** | `cargo loco generate data <name>` | none | Data-loader struct + a `data/<name>/data.json` static file. `lib.rs:297` |
 | **deployment** | `cargo loco generate deployment <docker\|nginx\|lambda>` | none | `kind` is a **positional** value, not a `--kind` flag (see [Deployment](#deployment)). |
 | **override** | `cargo loco generate override [template_path] [--info]` | none | Copies built-in templates into the app's `.loco-templates/` so you can customize them. `cli.rs:373` |
