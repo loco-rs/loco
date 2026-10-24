@@ -26,6 +26,7 @@ use serde::{Deserialize, Serialize};
 ///   max_retries: 5
 ///   retry_backoff_secs: 10
 ///   timeout_secs: 10
+///   stub: false # true in config/test.yaml: record instead of sending
 /// ```
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Notifications {
@@ -48,6 +49,10 @@ pub struct Notifications {
     /// HTTP timeout for Slack and webhook deliveries, in seconds.
     #[serde(default = "default_timeout_secs")]
     pub timeout_secs: u64,
+    /// Record deliveries instead of sending them, for tests. Read them back
+    /// with `loco_rs::notifications::testing::deliveries(&ctx)`.
+    #[serde(default)]
+    pub stub: bool,
 }
 
 impl Default for Notifications {
@@ -59,6 +64,7 @@ impl Default for Notifications {
             max_retries: default_max_retries(),
             retry_backoff_secs: default_retry_backoff_secs(),
             timeout_secs: default_timeout_secs(),
+            stub: false,
         }
     }
 }
