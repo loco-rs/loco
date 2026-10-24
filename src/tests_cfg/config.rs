@@ -34,6 +34,7 @@ pub fn test_config() -> Config {
             mode: config::WorkerMode::ForegroundBlocking,
         },
         mailer: None,
+        notifications: None,
         initializers: None,
         settings: None,
         scheduler: Some(scheduler::Config {

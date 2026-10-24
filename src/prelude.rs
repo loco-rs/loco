@@ -79,6 +79,12 @@ pub use crate::{
 };
 #[cfg(feature = "mailer")]
 pub use crate::{mailer, mailer::Mailer};
+// Only the trait: `deliver_later` needs it in scope at every call site. It has
+// no blanket impl, so it adds no methods to unrelated values. `Channel` and
+// `Message` are generic names an app may well define itself; import them from
+// `loco_rs::notifications`.
+#[cfg(feature = "notifications")]
+pub use crate::notifications::{self, Notifier};
 // `query::paginate` is in this prelude and returns a `PageResponse` whose
 // `meta` is literally a `PagerMeta` — but the pair you render it with was not,
 // so the only reachable way to answer a paginated endpoint was to hand-roll an
