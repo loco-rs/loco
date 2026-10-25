@@ -69,18 +69,21 @@ impl Settings {
     /// Creates a new [`Settings`] instance based on prompt selections.
     #[must_use]
     pub fn from_wizard(package_name: &str, prompt_selection: &wizard::Selections, os: OS) -> Self {
-        let mut features = if prompt_selection.db.enable() {
-            Features::default()
-        } else {
-            Features::disable_features()
+        let mut features = match prompt_selection.db {
+            DBOption::Sqlite => Features::defaults_without("db-postgres"),
+            DBOption::Postgres => Features::defaults_without("db-sqlite"),
+            DBOption::None => Features::disable_features(),
         };
 
         match prompt_selection.background {
-            BackgroundOption::QueueRedis => features.names.push("worker_redis".to_string()),
-            BackgroundOption::QueuePostgres => features.names.push("worker".to_string()),
+            BackgroundOption::QueueRedis => features.add("worker_redis"),
+            BackgroundOption::QueuePostgres => {
+                features.add("worker");
+                features.add("db-postgres");
+            }
             BackgroundOption::QueueSqlite => {
-                features.names.push("worker".to_string());
-                features.names.push("db-sqlite".to_string());
+                features.add("worker");
+                features.add("db-sqlite");
             }
             BackgroundOption::Async | BackgroundOption::Blocking => {}
         }
@@ -205,12 +208,55 @@ impl Default for Features {
 }
 
 impl Features {
-    /// Disables default features.
+    /// Disables default features, keeping the ones every generated app uses:
+    /// the `cargo loco` CLI, `cargo loco generate`, and the `compression`
+    /// middleware with the same codecs the default feature set ships.
     #[must_use]
     pub fn disable_features() -> Self {
         Self {
             default_features: false,
-            names: vec!["cli".to_string()],
+            names: vec![
+                "cli".to_string(),
+                "generators".to_string(),
+                "compression".to_string(),
+            ],
+        }
+    }
+
+    /// `loco-rs`'s default features minus one database driver, spelled out.
+    /// An app that kept the defaults would compile the driver it does not use
+    /// (`libsqlite3-sys` for Postgres, `sqlx-postgres` for SQLite).
+    #[must_use]
+    pub fn defaults_without(driver: &str) -> Self {
+        Self {
+            default_features: false,
+            names: LOCO_DEFAULT_FEATURES
+                .iter()
+                .filter(|name| **name != driver)
+                .map(ToString::to_string)
+                .collect(),
+        }
+    }
+
+    /// Adds a feature name unless it is already listed.
+    pub fn add(&mut self, name: &str) {
+        if !self.names.iter().any(|n| n == name) {
+            self.names.push(name.to_string());
         }
     }
 }
+
+/// Must match `[features] default` in the `loco-rs` `Cargo.toml`. A test
+/// reads that file and fails when the two drift.
+pub const LOCO_DEFAULT_FEATURES: &[&str] = &[
+    "auth",
+    "cli",
+    "with-db",
+    "cache_inmem",
+    "worker",
+    "db-sqlite",
+    "db-postgres",
+    "compression",
+    "generators",
+    "mailer",
+];

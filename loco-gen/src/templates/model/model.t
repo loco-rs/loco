@@ -31,12 +31,12 @@ impl MigrationTrait for Migration {
             &[
             ("id", ColType::PkAuto),
             {% for column in columns -%}
-            ("{{column.0}}", ColType::{{column.1}}),
+            ("{{column[0]}}", ColType::{{column[1]}}),
             {% endfor -%}
             ],
             &[
             {% for ref in references -%}
-            ("{{ref.0}}", "{{ref.1}}"),
+            ("{{ref[0]}}", "{{ref[1]}}"),
             {% endfor -%}
             ]
         ).await

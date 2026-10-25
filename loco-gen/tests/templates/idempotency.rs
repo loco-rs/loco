@@ -11,8 +11,8 @@
 //! `git checkout` that dropped the file, or because the first run's output
 //! scrolled past.
 
+use loco_gen::RRgen;
 use loco_gen::{generate, AppInfo, Component};
-use rrgen::RRgen;
 use rstest::rstest;
 use std::fs;
 

@@ -9,6 +9,7 @@ mod mailer;
 mod migration;
 #[cfg(feature = "with-db")]
 mod model;
+mod oauth;
 #[cfg(feature = "with-db")]
 mod scaffold;
 mod scheduler;

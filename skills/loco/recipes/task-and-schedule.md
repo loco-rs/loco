@@ -153,6 +153,11 @@ cargo loco scheduler --tag maintenance       # run only tagged jobs
 cargo loco scheduler                         # start the scheduler
 ```
 
+`cargo loco start` does not run the scheduler. Run it as its own process
+(`cargo loco scheduler`), or use `cargo loco start --all` (server, worker and
+scheduler in one process). Run exactly one scheduler per deployment, or every
+job fires once per instance.
+
 ## Choosing, in one pass
 
 - The user is waiting on an HTTP response → **worker** (`perform_later`).

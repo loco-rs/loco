@@ -3,6 +3,7 @@ use std::task::{Context, Poll};
 
 use bytes::Bytes;
 use futures_util::{Stream, StreamExt};
+#[cfg(feature = "storage_opendal")]
 use opendal::Reader;
 
 /// A stream of bytes that abstracts over the underlying storage implementation.
@@ -12,6 +13,7 @@ pub struct BytesStream {
 }
 
 impl BytesStream {
+    #[cfg(feature = "storage_opendal")]
     /// Create a `BytesStream` from an `OpenDAL` `Reader`.
     /// This is an internal method used by storage drivers.
     pub(crate) async fn from_reader(reader: Reader) -> Result<Self, crate::storage::StorageError> {

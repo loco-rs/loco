@@ -65,7 +65,7 @@ Table order = coding/config order (`default_middleware_stack`, `mod.rs:80-169`).
 
 | Name | Type | Default |
 |---|---|---|
-| `body_limit` | `DefaultBodyLimitKind` (`"<size>"` e.g. `"5mb"`, or `"disable"`) | `2mb` (2,000,000 bytes) — `limit_payload.rs:43-45` |
+| `body_limit` | `DefaultBodyLimitKind` (`"<size>"` e.g. `"5mb"` or `"1.5 GiB"`, case-insensitive, `KB` = 1000 and `KiB` = 1024 bytes, a bare number is bytes; or `"disable"`) | `2mb` (2,000,000 bytes) — `limit_payload.rs:43-45` |
 
 ### 2. `cors`
 
@@ -213,7 +213,7 @@ Table order = coding/config order (`default_middleware_stack`, `mod.rs:80-169`).
 |---|---|---|
 | `enable` | `bool` | `true` outside Production, `false` in Production (framework default when key absent) |
 | `code` | `StatusCode` (as `u16`) | `404` (`NOT_FOUND`) — `default_status_code`, `fallback.rs:39-41`. Set it only for the unusual case where an unmatched route should answer with something else |
-| `file` | `Option<String>` | `None` — path to a file served as the fallback body |
+| `file` | `Option<String>` | `None` — path to a file served as the fallback body, with the status in `code`. Loco reads it on each request, so edits show without a restart |
 | `not_found` | `Option<String>` | `None` — a plain-text message served as the fallback body |
 
 If neither `file` nor `not_found` is set, the bundled `fallback.html` is served.

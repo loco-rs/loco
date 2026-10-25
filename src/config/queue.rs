@@ -8,7 +8,8 @@ use super::database::{db_connect_timeout, db_idle_timeout, db_max_conn, db_min_c
 pub enum QueueConfig {
     /// Redis queue
     Redis(RedisQueueConfig),
-    /// Postgres queue
+    /// Postgres queue (requires `db-postgres` feature)
+    #[cfg(feature = "db-postgres")]
     Postgres(PostgresQueueConfig),
     /// Sqlite queue (requires `db-sqlite` feature)
     #[cfg(feature = "db-sqlite")]
@@ -22,6 +23,7 @@ impl QueueConfig {
     pub const fn dangerously_flush(&self) -> bool {
         match self {
             Self::Redis(config) => config.dangerously_flush,
+            #[cfg(feature = "db-postgres")]
             Self::Postgres(config) => config.dangerously_flush,
             #[cfg(feature = "db-sqlite")]
             Self::Sqlite(config) => config.dangerously_flush,

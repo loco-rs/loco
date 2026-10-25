@@ -60,6 +60,29 @@ If a query-building method is missing, check the spelling against
 `sea-orm-index.md` before adding an import — the prelude almost certainly
 already has the trait.
 
+**Generated model files are the exception: they do not import the Loco
+prelude.** `src/models/<name>.rs` (written by `cargo loco db entities`) starts
+with `use sea_orm::entity::prelude::*;`, and Sea-ORM's entity prelude is much
+narrower. Code you add to that file's `impl Model` / `impl ActiveModel` /
+`impl Entity` blocks hits this:
+
+```
+error[E0599]: no method named `into_active_model` found for struct `_entities::repos::Model`
+```
+
+| Missing from `sea_orm::entity::prelude` | Add to the model file |
+|---|---|
+| `IntoActiveModel` — `.into_active_model()` | `use sea_orm::IntoActiveModel;` |
+| `QueryOrder` / `QuerySelect` — `.order_by_*()`, `.limit()` | `use sea_orm::{QueryOrder, QuerySelect};` |
+| `TransactionTrait` — `.begin()` | `use sea_orm::TransactionTrait;` |
+| `Set` (bare) | `use sea_orm::ActiveValue::Set;` |
+
+Import only what the file uses (an unused import is a warning, and generated
+apps are kept warning-free). The same applies to a test file that does not glob
+`loco_rs::prelude::*`: `Entity::find()` without `EntityTrait` in scope fails as
+"`Entity` is not an iterator" (E0599), because `find` then resolves to
+`Iterator::find`. Add `use loco_rs::prelude::*;` or `use sea_orm::EntityTrait;`.
+
 **`ExprTrait` is the one exception, and do not glob it into a module.** It is
 `impl<T> ExprTrait for T`, so `use sea_orm::ExprTrait;` at the top of a file
 reaches every value in it: `n.max(1)` stops compiling, and `n.eq(&3)` quietly
@@ -195,6 +218,33 @@ the registration by hand — it is to check why the generator did not run.
 
 The same failure shape applies to workers (never registered in `connect_workers`,
 so `perform_later` goes nowhere) and tasks (absent from `cargo loco task --list`).
+
+## 10. Raw SQL: "expected `&_`, found `Statement`" (E0308), then "`Statement: StatementBuilder` is not satisfied" (E0277)
+
+```
+error[E0308]: mismatched types
+    expected `&_`, found `Statement`
+error[E0277]: the trait bound `Statement: StatementBuilder` is not satisfied
+```
+
+In Sea-ORM 2, `ConnectionTrait::execute`, `query_all` and `query_one` take
+`&impl StatementBuilder`: a query builder (`Query::select()`, an entity
+`Select`), not a raw `Statement`. Adding `&` fixes the first error and produces
+the second. Raw SQL has its own methods, which take the `Statement` by value:
+
+```rust no-syntax-check="call fragments side by side; db is any ConnectionTrait"
+let stmt = Statement::from_sql_and_values(
+    db.get_database_backend(),
+    "UPDATE jobs SET status = $1 WHERE id = $2",
+    [status.into(), id.into()],
+);
+db.execute_raw(stmt).await?;                 // not execute(stmt)
+let rows = db.query_all_raw(stmt).await?;    // not query_all(stmt)
+let row = db.query_one_raw(stmt).await?;     // not query_one(stmt)
+```
+
+`sea-orm-index.md` lists all of them under `ConnectionTrait`; read it before
+guessing a second time.
 
 ---
 

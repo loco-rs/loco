@@ -18,7 +18,6 @@ use axum::{
     routing::get,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 
 use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
 
@@ -47,7 +46,7 @@ pub struct StaticAssets {
 
 impl Default for StaticAssets {
     fn default() -> Self {
-        serde_json::from_value(json!({})).unwrap()
+        super::defaults()
     }
 }
 

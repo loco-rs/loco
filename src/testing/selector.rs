@@ -1,3 +1,6 @@
+//! CSS selector assertions over rendered HTML. Needs the `testing-html`
+//! feature (included in `testing`, not in `testing-core`).
+
 use scraper::{Html, Selector};
 
 /// Asserts that an element matching the given CSS selector exists in the

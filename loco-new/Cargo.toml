@@ -57,7 +57,7 @@ tree-fs = { version = "0.3" }
 uuid = { version = "1.11.0", features = ["v4", "fast-rng"] }
 semver = { version = "1" }
 serde_yaml = { package = "serde_yaml_ng", version = "0.10" }
-insta = { version = "1.41.1", features = ["redactions", "yaml", "filters"] }
+insta = { version = "1.41.1", features = ["filters"] }
 rstest = { version = "0.26.1" }
 serial_test = "3"
 mockall = "0.13.0"

@@ -8,6 +8,7 @@ use axum::{
         StatusCode,
     },
 };
+#[cfg(feature = "mailer")]
 use lettre::{address::AddressError, transport::smtp};
 
 use crate::{controller::ErrorDetail, depcheck, validation::ModelValidationErrors};
@@ -119,9 +120,11 @@ pub enum Error {
     #[error(transparent)]
     YAML(#[from] serde_yaml::Error),
 
+    #[cfg(feature = "mailer")]
     #[error("Error sending email: '{0}'")]
     EmailSender(#[from] lettre::error::Error),
 
+    #[cfg(feature = "mailer")]
     #[error("Error sending email (smtp): '{0}'")]
     Smtp(#[from] smtp::Error),
 
@@ -135,6 +138,7 @@ pub enum Error {
     #[error(transparent)]
     DB(#[from] sea_orm::DbErr),
 
+    #[cfg(feature = "mailer")]
     #[error(transparent)]
     ParseAddress(#[from] AddressError),
 
@@ -161,7 +165,7 @@ pub enum Error {
     #[error(transparent)]
     Cache(#[from] crate::cache::CacheError),
 
-    #[cfg(debug_assertions)]
+    #[cfg(all(debug_assertions, feature = "generators"))]
     #[error(transparent)]
     Generators(#[from] loco_gen::Error),
 

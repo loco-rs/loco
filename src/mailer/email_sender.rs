@@ -29,7 +29,7 @@ pub struct EmailSender {
     pub transport: EmailTransport,
 }
 
-#[cfg(feature = "testing")]
+#[cfg(feature = "testing-core")]
 #[derive(Default, Debug)]
 pub struct Deliveries {
     pub count: usize,
@@ -92,7 +92,7 @@ impl EmailSender {
         }
     }
 
-    #[cfg(feature = "testing")]
+    #[cfg(feature = "testing-core")]
     #[must_use]
     pub fn deliveries(&self) -> Deliveries {
         if let EmailTransport::Test(stub) = &self.transport {

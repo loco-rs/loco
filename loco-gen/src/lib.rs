@@ -2,6 +2,7 @@
 // TODO: should be more properly aligned with extracting out the db-related gen
 // code and then feature toggling it
 #![allow(dead_code)]
+mod rrgen;
 pub use rrgen::{GenResult, RRgen};
 use serde_json::{json, Value};
 mod controller;
@@ -19,6 +20,7 @@ mod infer;
 mod migration;
 #[cfg(feature = "with-db")]
 mod model;
+mod oauth;
 #[cfg(feature = "with-db")]
 mod scaffold;
 pub mod template;
@@ -151,6 +153,11 @@ pub enum Component {
     Deployment {
         kind: DeploymentKind,
     },
+    /// OAuth sign-in for one provider (`github`, `google`, or a generic one).
+    OAuth {
+        /// The provider's name; also its key under `auth.oauth.providers`.
+        provider: String,
+    },
 }
 
 pub struct AppInfo {
@@ -225,6 +232,7 @@ pub fn generate(rrgen: &RRgen, component: Component, appinfo: &AppInfo) -> Resul
             let vars = json!({ "name": name });
             render_template(rrgen, Path::new("mailer"), &vars)?
         }
+        Component::OAuth { provider } => oauth::generate(rrgen, &provider, appinfo)?,
         Component::Deployment { kind } => match kind {
             DeploymentKind::Docker {
                 copy_paths,

@@ -3,7 +3,5 @@ source: src/auth/jwt.rs
 expression: jwt.validate(&token)
 ---
 Err(
-    Error(
-        ExpiredSignature,
-    ),
+    ExpiredSignature,
 )

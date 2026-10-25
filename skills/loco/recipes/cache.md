@@ -34,7 +34,7 @@ loco-rs = { version = "1.1", features = ["cache_redis"] }
 ```yaml
 cache:
   kind: Redis
-  uri: "{{ get_env(name='REDIS_URL', default='redis://127.0.0.1') }}"
+  uri: <%= get_env(name="REDIS_URL", default="redis://127.0.0.1") %>
 ```
 
 Use `InMem` in development and test. Use `Redis` in production as soon as there

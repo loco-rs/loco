@@ -1,8 +1,8 @@
 use std::{collections::BTreeSet, path::Path};
 
+use crate::RRgen;
 use cruet::Inflector;
 use heck::{ToLowerCamelCase, ToUpperCamelCase};
-use rrgen::RRgen;
 use serde_json::{json, Value};
 
 use crate::{

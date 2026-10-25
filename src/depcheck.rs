@@ -1,13 +1,12 @@
 //! Minimum-version checks for a Loco app's dependencies.
 //!
-//! Reads the app's `Cargo.lock` (via the `cargo-lock` crate) and compares the
+//! Reads the app's `Cargo.lock` and compares the
 //! resolved versions of "blessed" crates against their minimum requirements.
 //! Used by `loco doctor`.
 
 use std::collections::HashMap;
 use std::path::Path;
 
-use cargo_lock::Lockfile;
 use semver::{Version, VersionReq};
 use thiserror::Error;
 
@@ -38,6 +37,57 @@ pub enum VersionCheckError {
 
 pub type Result<T> = std::result::Result<T, VersionCheckError>;
 
+/// A resolved package in `Cargo.lock`.
+struct LockedPackage {
+    name: String,
+    version: Version,
+}
+
+/// Every `[[package]]` name and version in a `Cargo.lock`. Cargo writes the
+/// file one `key = "value"` per line, so this reads lines rather than TOML.
+fn locked_packages(content: &str) -> Result<Vec<LockedPackage>> {
+    let mut tables: Vec<(Option<&str>, Option<&str>)> = Vec::new();
+    let mut in_package = false;
+    for line in content.lines().map(str::trim) {
+        if line.starts_with('[') {
+            in_package = line == "[[package]]";
+            if in_package {
+                tables.push((None, None));
+            }
+            continue;
+        }
+        let Some(package) = tables.last_mut().filter(|_| in_package) else {
+            continue;
+        };
+        let Some((key, value)) = line.split_once('=') else {
+            continue;
+        };
+        let value = value
+            .trim()
+            .strip_prefix('"')
+            .and_then(|v| v.strip_suffix('"'));
+        match key.trim() {
+            "name" => package.0 = value,
+            "version" => package.1 = value,
+            _ => {}
+        }
+    }
+    tables
+        .into_iter()
+        .map(|table| match table {
+            (Some(name), Some(version)) => Ok(LockedPackage {
+                name: name.to_string(),
+                version: Version::parse(version).map_err(|e| {
+                    VersionCheckError::LockfileError(format!("{name} {version}: {e}"))
+                })?,
+            }),
+            _ => Err(VersionCheckError::LockfileError(
+                "a [[package]] without a name and version".to_string(),
+            )),
+        })
+        .collect()
+}
+
 /// Load `Cargo.lock` at `lock_path` and check the requested crates against
 /// their minimum versions.
 ///
@@ -51,8 +101,9 @@ pub fn check_crate_versions(
     lock_path: impl AsRef<Path>,
     min_versions: HashMap<&str, &str>,
 ) -> Result<Vec<CrateStatus>> {
-    let lockfile = Lockfile::load(lock_path.as_ref())
-        .map_err(|e| VersionCheckError::LockfileError(e.to_string()))?;
+    let packages = std::fs::read_to_string(lock_path.as_ref())
+        .map_err(|e| VersionCheckError::LockfileError(e.to_string()))
+        .and_then(|content| locked_packages(&content))?;
 
     let mut results = Vec::new();
 
@@ -63,22 +114,9 @@ pub fn check_crate_versions(
                 msg: format!("Invalid minimum version format: {min_version}"),
             })?;
 
-        let status = match lockfile
-            .packages
-            .iter()
-            .find(|pkg| pkg.name.as_str() == crate_name)
-        {
-            Some(pkg) => {
-                // `cargo_lock` re-exports semver; re-parse via our own `semver`
-                // for a stable comparison type.
-                let version = Version::parse(&pkg.version.to_string()).map_err(|_| {
-                    VersionCheckError::CrateError {
-                        crate_name: crate_name.to_string(),
-                        msg: format!("Invalid version format in Cargo.lock: {}", pkg.version),
-                    }
-                })?;
-
-                if min_version_req.matches(&version) {
+        let status = match packages.iter().find(|pkg| pkg.name.as_str() == crate_name) {
+            Some(LockedPackage { version, .. }) => {
+                if min_version_req.matches(version) {
                     VersionStatus::Ok(version.to_string())
                 } else {
                     VersionStatus::Invalid {

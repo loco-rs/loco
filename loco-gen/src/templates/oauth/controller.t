@@ -1,0 +1,45 @@
+to: src/controllers/oauth.rs
+skip_exists: true
+message: "OAuth sign-in was added: `/auth/{{ provider }}` starts it, `/auth/sign_out` ends it. Read the user back with `CurrentUser<String>`, then make `on_sign_in` in src/controllers/oauth.rs create your user."
+injections:
+- into: src/controllers/mod.rs
+  append: true
+  content: "pub mod oauth;"
+- into: src/app.rs
+  after: "AppRoutes::"
+  content: "            .add_route(controllers::oauth::routes())"
+---
+//! OAuth sign-in (`cargo loco generate oauth <provider>`).
+//!
+//! Mounted routes:
+//!   GET|POST /auth/{provider}            -> redirect to the provider
+//!   GET      /auth/{provider}/callback   -> `OAuth::on_sign_in`, then sign in
+//!   GET|POST /auth/sign_out              -> clear the session
+//!
+//! Providers live in `config/*.yaml` under `auth.oauth.providers`.
+//! Read the signed-in user in any handler with `CurrentUser<String>` (the id
+//! `on_sign_in` returned), or implement `SessionUser` for your user model and
+//! take `CurrentUser<users::Model>`.
+use loco_rs::{auth::oauth, prelude::*};
+
+pub struct OAuth;
+
+#[async_trait]
+impl OAuthHandler for OAuth {
+    /// Called once the provider has vouched for `identity`. Find or create
+    /// the user, and return the id to keep in the session.
+    ///
+    /// Key accounts by `(identity.provider, identity.uid)` — `email` and
+    /// `login` can change, and `email` is trustworthy for linking only when
+    /// `identity.email_verified == Some(true)`.
+    ///
+    /// Return `Err(Error::Unauthorized(..))` to refuse a sign-in.
+    async fn on_sign_in(_ctx: &AppContext, identity: &Identity) -> Result<SignIn> {
+        // TODO: upsert a user from `identity` and return its `pid`.
+        Ok(SignIn::new(format!("{}:{}", identity.provider, identity.uid)))
+    }
+}
+
+pub fn routes() -> Routes {
+    oauth::routes::<OAuth>()
+}

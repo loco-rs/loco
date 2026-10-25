@@ -71,7 +71,7 @@ There is no dedicated `Secret` type or vault integration built into `Config`. A 
 - Secret values are injected via `get_env(name=..)` at render time, so the checked-in YAML never contains the literal secret — only the name of the environment variable to read it from.
 - Machine-local secrets that shouldn't even have an env-var name in shared code can go in `{env}.local.yaml` instead, which is expected to be gitignored entirely.
 
-This is deliberately unopinionated about *where* the environment variable itself comes from — a `.env` file, a process manager, a secrets manager injecting env vars at container start — because that's an operational concern outside the framework's scope, and Loco's contract stops at "a `String` field, populated from `get_env` or a local override file." One consequence worth knowing in advance: `auth.jwt.secret` specifically is expected to be valid **base64** (it's fed to `jsonwebtoken`'s `from_base64_secret` constructors) — a plain passphrase string will fail at the point the JWT extractor tries to decode it, not at config-load time.
+This is deliberately unopinionated about *where* the environment variable itself comes from — a `.env` file, a process manager, a secrets manager injecting env vars at container start — because that's an operational concern outside the framework's scope, and Loco's contract stops at "a `String` field, populated from `get_env` or a local override file." One consequence worth knowing in advance: `auth.jwt.secret` specifically is expected to be valid **base64** (Loco base64-decodes it into the HMAC key) — a plain passphrase string will fail at the point the JWT extractor tries to decode it, not at config-load time.
 
 ## What this buys you day to day
 

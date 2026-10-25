@@ -21,8 +21,10 @@ path = "src/lib.rs"
 [dependencies]
 
 cruet = "1.0"
-rrgen = "0.6"
-serde = { workspace = true }
+tera = { workspace = true }
+serde_yaml = { package = "serde_yaml_ng", version = "0.10" }
+glob = "0.3"
+serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 regex = { workspace = true }
@@ -39,7 +41,7 @@ tree-fs = { version = "0.3" }
 syn = { version = "2", features = ["full"] }
 serial_test = "3.1.1"
 uuid = { version = "1.11.0", features = ["v4", "fast-rng"] }
-insta = { version = "1.41.1", features = ["redactions", "yaml", "filters"] }
+insta = { version = "1.41.1", features = ["filters"] }
 rstest = "0.26.1"
 # `test_migrations_flow` needs a real Postgres when `DATABASE_URL` is unset;
 # see `tests/postgres/mod.rs`.
