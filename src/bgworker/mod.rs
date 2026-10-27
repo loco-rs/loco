@@ -1120,6 +1120,7 @@ pub async fn converge(queue: &Queue, config: &QueueConfig) -> Result<()> {
             num_workers: _,
             min_connections: _,
             reaper: _,
+            retention: _,
         }) => {
             if *dangerously_flush {
                 tracing::warn!("Flush mode enabled - clearing all jobs from queue");
@@ -1150,6 +1151,7 @@ pub async fn converge(queue: &Queue, config: &QueueConfig) -> Result<()> {
             num_workers: _,
             min_connections: _,
             reaper: _,
+            retention: _,
         }) => {
             if *dangerously_flush {
                 tracing::warn!("Flush mode enabled - clearing all jobs from queue");
@@ -1237,6 +1239,7 @@ mod tests {
             poll_interval_sec: 1,
             num_workers: 1,
             reaper: None,
+            retention: None,
         }
     }
 

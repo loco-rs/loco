@@ -80,6 +80,10 @@ pub struct PostgresQueueConfig {
     /// Opt-in visibility-timeout reaper. See [`ReaperConfig`].
     #[serde(default)]
     pub reaper: Option<ReaperConfig>,
+
+    /// Opt-in deletion of finished jobs. See [`RetentionConfig`].
+    #[serde(default)]
+    pub retention: Option<RetentionConfig>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -114,6 +118,10 @@ pub struct SqliteQueueConfig {
     /// Opt-in visibility-timeout reaper. See [`ReaperConfig`].
     #[serde(default)]
     pub reaper: Option<ReaperConfig>,
+
+    /// Opt-in deletion of finished jobs. See [`RetentionConfig`].
+    #[serde(default)]
+    pub retention: Option<RetentionConfig>,
 }
 
 /// Configuration for an opt-in visibility-timeout reaper.
@@ -145,6 +153,66 @@ pub struct ReaperConfig {
     /// How often, in seconds, the reaper sweeps for stale jobs.
     #[serde(default = "default_reaper_interval_seconds")]
     pub interval_seconds: u64,
+}
+
+/// Configuration for opt-in retention of finished jobs.
+///
+/// The Postgres and `SQLite` queues keep every finished job. When
+/// `retention` is set, the queue provider spawns a background task that
+/// periodically deletes jobs whose status is finished and whose
+/// `updated_at` (the moment they finished) is older than the age set for
+/// that status. A status left out is kept forever. `queued` and
+/// `processing` jobs have no setting and are never deleted.
+///
+/// Off unless set, so upgrading never deletes anyone's jobs.
+///
+/// ```yaml
+/// queue:
+///   kind: Postgres
+///   uri: "{{ get_env(name=\"LOCO_QUEUE_URL\", default=\"postgres://localhost:5432/loco_app\") }}"
+///   # retention:
+///   #   completed_days: 7
+///   #   cancelled_days: 7
+///   #   failed_days: 30
+///   #   interval_seconds: 3600
+/// ```
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub struct RetentionConfig {
+    /// Delete `completed` jobs this many days after they completed.
+    #[serde(default)]
+    pub completed_days: Option<i64>,
+
+    /// Delete `cancelled` jobs this many days after they were cancelled.
+    #[serde(default)]
+    pub cancelled_days: Option<i64>,
+
+    /// Delete `failed` jobs this many days after they failed.
+    #[serde(default)]
+    pub failed_days: Option<i64>,
+
+    /// How often, in seconds, the sweep runs.
+    #[serde(default = "default_retention_interval_seconds")]
+    pub interval_seconds: u64,
+}
+
+impl RetentionConfig {
+    /// The finished statuses that have an age set, with that age in days.
+    #[must_use]
+    pub fn ages(&self) -> Vec<(crate::bgworker::JobStatus, i64)> {
+        use crate::bgworker::JobStatus;
+        [
+            (JobStatus::Completed, self.completed_days),
+            (JobStatus::Cancelled, self.cancelled_days),
+            (JobStatus::Failed, self.failed_days),
+        ]
+        .into_iter()
+        .filter_map(|(status, days)| days.map(|d| (status, d)))
+        .collect()
+    }
+}
+
+fn default_retention_interval_seconds() -> u64 {
+    3600
 }
 
 fn pgq_poll_interval() -> u32 {

@@ -151,7 +151,7 @@ Source: `src/cli.rs:64-171` (`enum Commands`).
 |---|---|---|
 | `cancel` | `--name <NAME>` (required) | Set jobs matching `<NAME>` to `cancelled` |
 | `tidy` | — | Delete jobs that are `completed` or `cancelled` |
-| `purge` | `--max-age <DAYS>` (default `90`), `--status <csv>`, `--dump <PATH>` | Delete old failed/cancelled jobs, optionally dumping them first |
+| `purge` | `--max-age <DAYS>` (default `90`), `--status <csv>`, `--dump <PATH>` | Delete old completed/failed/cancelled jobs, optionally dumping them first. Queued and processing jobs are deleted only if named in `--status` |
 | `dump` | `--status <csv>`, `-f/--folder <DIR>` (default `.`) | Save job details to files |
 | `import` | `-f/--file <PATH>` | Import jobs from a file |
 | `requeue` | `--from-age <MINS>` (default `0`) | Move `processing` jobs older than the given age back to `queued` |
