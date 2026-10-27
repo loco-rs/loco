@@ -40,6 +40,8 @@ storage:
   secret_access_key: <%= get_env(name="AWS_SECRET_ACCESS_KEY") %>
 ```
 
+For `Aws`, an empty string counts as unset for `access_key_id`, `secret_access_key`, `session_token` and `endpoint`, so a missing environment variable falls back to the default credential chain instead of sending an empty key. `endpoint` alone (no keys) is honored too, for an S3-compatible service like MinIO that gets its credentials from the environment.
+
 No `storage:` key at all → Loco defaults to the **`Null` driver** — every storage operation returns `StorageError::Any("Operation not supported by null storage")`. That's a deliberate fail-fast default, not a bug: it means "you haven't wired storage yet." Both the config-driven default and the no-config fallback land on `ctx.storage: Arc<Storage>`.
 
 ## 2. Or wire it in code (still supported)

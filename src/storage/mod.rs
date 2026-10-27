@@ -83,25 +83,34 @@ pub fn create_storage_provider(config: &crate::config::Config) -> StorageResult<
 
     let driver = match &config.storage {
         #[cfg(feature = "storage_aws_s3")]
-        StorageConfig::Aws(c) => match (&c.access_key_id, &c.secret_access_key, &c.endpoint) {
-            (Some(key_id), Some(secret_key), endpoint) => {
-                let credentials = drivers::aws::Credential {
-                    key_id: key_id.clone(),
-                    secret_key: secret_key.clone(),
-                    token: c.session_token.clone(),
-                };
-                match endpoint {
-                    Some(endpoint) => drivers::aws::with_credentials_and_endpoint(
-                        &c.bucket,
-                        &c.region,
-                        endpoint,
-                        credentials,
-                    )?,
-                    None => drivers::aws::with_credentials(&c.bucket, &c.region, credentials)?,
+        StorageConfig::Aws(c) => {
+            // An empty string means unset: `${AWS_KEY:-}` style templating
+            // yields "" for a missing variable, and "" is never a real key.
+            let non_empty = |v: &Option<String>| v.clone().filter(|s| !s.is_empty());
+            let endpoint = non_empty(&c.endpoint);
+            match (non_empty(&c.access_key_id), non_empty(&c.secret_access_key)) {
+                (Some(key_id), Some(secret_key)) => {
+                    let credentials = drivers::aws::Credential {
+                        key_id,
+                        secret_key,
+                        token: non_empty(&c.session_token),
+                    };
+                    match endpoint {
+                        Some(endpoint) => drivers::aws::with_credentials_and_endpoint(
+                            &c.bucket,
+                            &c.region,
+                            &endpoint,
+                            credentials,
+                        )?,
+                        None => drivers::aws::with_credentials(&c.bucket, &c.region, credentials)?,
+                    }
                 }
+                _ => match endpoint {
+                    Some(endpoint) => drivers::aws::with_endpoint(&c.bucket, &c.region, &endpoint)?,
+                    None => drivers::aws::new(&c.bucket, &c.region)?,
+                },
             }
-            _ => drivers::aws::new(&c.bucket, &c.region)?,
-        },
+        }
         #[cfg(feature = "storage_gcp")]
         StorageConfig::Gcp(c) => drivers::gcp::new(&c.bucket, &c.credential_path)?,
         #[cfg(feature = "storage_azure")]
@@ -757,5 +766,32 @@ mod config_provider_tests {
             .await
             .expect("upload into the configured root");
         assert!(tree.root.join("probe.txt").exists());
+    }
+
+    #[cfg(feature = "storage_aws_s3")]
+    #[test]
+    fn aws_empty_strings_count_as_unset_and_endpoint_alone_is_honored() {
+        use crate::config::{AwsStorageConfig, StorageConfig};
+
+        let mut config = crate::tests_cfg::config::test_config();
+        for (key, secret, endpoint) in [
+            ("", "", ""),
+            ("", "", "http://127.0.0.1:9000"),
+            ("k", "s", ""),
+            ("k", "", ""),
+            ("k", "s", "http://127.0.0.1:9000"),
+        ] {
+            let some = |v: &str| Some(v.to_string());
+            config.storage = StorageConfig::Aws(AwsStorageConfig {
+                bucket: "b".into(),
+                region: "us-east-1".into(),
+                endpoint: some(endpoint),
+                access_key_id: some(key),
+                secret_access_key: some(secret),
+                session_token: some(""),
+            });
+            create_storage_provider(&config)
+                .unwrap_or_else(|e| panic!("({key:?},{secret:?},{endpoint:?}) failed: {e}"));
+        }
     }
 }

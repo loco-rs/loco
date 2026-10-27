@@ -1500,6 +1500,7 @@ since they restate the trait's own API.
 - `fn` **new**`(bucket_name: &str, region: &str) -> StorageResult<Box<dyn StoreDriver>>` — Create new AWS s3 storage with bucket and region
 - `fn` **with_credentials**`(bucket_name: &str, region: &str, credentials: Credential) -> StorageResult<Box<dyn StoreDriver>>` — Create new AWS s3 storage with bucket, region and credentials
 - `fn` **with_credentials_and_endpoint**`(bucket_name: &str, region: &str, endpoint: &str, credentials: Credential) -> StorageResult<Box<dyn StoreDriver>>` — Create new AWS s3 storage with bucket, region and credentials and URL
+- `fn` **with_endpoint**`(bucket_name: &str, region: &str, endpoint: &str) -> StorageResult<Box<dyn StoreDriver>>` — Create new AWS s3 storage with bucket, region and a custom endpoint (for
 ## `storage::drivers::azure`
 
 - `fn` **new**`(container_name: &str, account_name: &str, access_key: &str, endpoint: &str) -> StorageResult<Box<dyn StoreDriver>>` — Create new Azure storage
