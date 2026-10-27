@@ -25,6 +25,8 @@ pub mod db;
 pub mod model;
 #[cfg(feature = "with-db")]
 pub mod schema;
+#[cfg(all(feature = "db-sqlite", any(feature = "with-db", feature = "worker")))]
+pub(crate) mod sqlite_pragmas;
 mod tera;
 
 pub mod app;

@@ -457,6 +457,7 @@ since they restate the trait's own API.
 - `enum` **CacheError** — Errors related to cache operations
 - `type` **CacheResult**
 - `fn` **create_cache_provider**`(config: &Config) -> Result<Arc<Cache>>` — Create a provider
+- `fn` **create_cache_provider_with_db**`(config: &Config, db: &DatabaseConnection) -> Result<Arc<Cache>>` — Create a provider, giving the database cache the app's connection
 
 ### `Cache`
 
@@ -474,6 +475,7 @@ since they restate the trait's own API.
 ### `CacheError`
 
 - `variant` **Any**
+- `variant` **Database**
 - `variant` **Deserialization**
 - `variant` **Redis**
 - `variant` **RedisConnectionError**
@@ -491,6 +493,16 @@ since they restate the trait's own API.
 - `fn` **insert_with_expiry**`(self: &Self, key: &str, value: &str, duration: Duration) -> Pin<Box<dyn Future + Send>>` — Inserts a key-value pair into the cache that expires after the
 - `fn` **ping**`(self: &Self) -> Pin<Box<dyn Future + Send>>` — Pings the cache to check if it is reachable
 - `fn` **remove**`(self: &Self, key: &str) -> Pin<Box<dyn Future + Send>>` — Removes a key-value pair from the cache
+## `cache::drivers::db`
+
+- `struct` **Database** — Represents the database cache driver
+- `const` **TABLE** — Name of the table holding the cache entries
+- `fn` **new**`(config: &DatabaseCacheConfig, db: &DatabaseConnection) -> Cache` — Creates a new instance of the database cache driver on top of `db`
+
+### `Database`
+
+- `fn` **new**`(db: DatabaseConnection, sweep_every: u64, sweep_batch: u64) -> Self` — Constructs the driver. `sweep_every` is the number of writes between
+- `fn` **sweep**`(self: &Self) -> CacheResult<u64>` — Deletes up to `sweep_batch` expired rows and returns how many went
 ## `cache::drivers::inmem`
 
 - `struct` **Inmem** — Represents the in-memory cache driver
@@ -538,7 +550,8 @@ since they restate the trait's own API.
 - `enum` **CacheConfig** — Cache configurations for the application
 - `struct` **Config**` { logger: Logger, server: Server, database: Database, cache: CacheConfig, queue: Option<QueueConfig>, auth: Option<Auth>, workers: Workers, mailer: Option<Mailer>, initializers: Option<Initializers>, settings: Option<Value>, scheduler: Option<Config> }` — Main application configuration structure
 - `const` **DEV_SESSION_SECRET** — The secret every signed cookie is keyed off when `auth.session.secret` is
-- `struct` **Database**` { uri: String, enable_logging: bool, min_connections: u32, max_connections: u32, connect_timeout: u64, idle_timeout: u64, acquire_timeout: Option<u64>, auto_migrate: bool, dangerously_truncate: bool, dangerously_recreate: bool, run_on_start: Option<String> }` — Database configuration
+- `struct` **Database**` { uri: String, enable_logging: bool, min_connections: u32, max_connections: u32, connect_timeout: u64, idle_timeout: u64, acquire_timeout: Option<u64>, auto_migrate: bool, dangerously_truncate: bool, dangerously_recreate: bool, run_on_start: Option<String>, sqlite: SqliteConfig }` — Database configuration
+- `struct` **DatabaseCacheConfig**` { sweep_every: u64, sweep_batch: u64 }` — Settings of the database cache (`cache.kind: Database`). Both fields have
 - `struct` **InMemCacheConfig**` { max_capacity: u64 }`
 - `type` **Initializers** — Initializers configuration
 - `struct` **JWT**` { location: Option<JWTLocationConfig>, secret: String, expiration: u64 }` — JWT configuration structure
@@ -562,7 +575,8 @@ since they restate the trait's own API.
 - `struct` **Server**` { binding: String, port: i32, host: String, ident: Option<String>, middlewares: Config }` — Server configuration structure
 - `struct` **SessionConfig**` { secret: Option<String>, cookie_name: Option<String>, max_age: Option<u64>, secure: Option<bool>, sign_in_path: Option<String> }` — Signed cookies and the cookie session, Rails' `secret_key_base` plus its
 - `struct` **SmtpMailer**` { enable: bool, host: String, port: u16, secure: bool, tls: Option<MailerTls>, auth: Option<MailerAuth>, hello_name: Option<String> }` — SMTP mailer configuration structure
-- `struct` **SqliteQueueConfig**` { uri: String, dangerously_flush: bool, enable_logging: bool, max_connections: u32, min_connections: u32, connect_timeout: u64, idle_timeout: u64, poll_interval_sec: u32, num_workers: u32, reaper: Option<ReaperConfig>, retention: Option<RetentionConfig> }`
+- `struct` **SqliteConfig**` { pragmas: BTreeMap<String, String> }` — `SQLite` settings shared by the database and the `SQLite` queue
+- `struct` **SqliteQueueConfig**` { uri: String, dangerously_flush: bool, enable_logging: bool, max_connections: u32, min_connections: u32, connect_timeout: u64, idle_timeout: u64, poll_interval_sec: u32, num_workers: u32, reaper: Option<ReaperConfig>, retention: Option<RetentionConfig>, pragmas: BTreeMap<String, String> }`
 - `enum` **WorkerMode** — Worker mode configuration
 - `struct` **Workers**` { mode: WorkerMode }` — Background worker configuration
 - `fn` **db_connect_timeout**`() -> u64`
@@ -572,6 +586,7 @@ since they restate the trait's own API.
 
 ### `CacheConfig`
 
+- `variant` **Database** — Cache stored in the application database (Postgres or `SQLite`)
 - `variant` **InMem** — In-memory cache
 - `variant` **Null** — Null cache
 - `variant` **Redis** — Redis cache

@@ -80,6 +80,8 @@ queue:
   # remaining keys identical to Postgres
 ```
 
+Running one server on SQLite? See [Run SQLite in production](/docs/how-to/run-sqlite-in-production) for the connection defaults (WAL, `busy_timeout`) the queue's pool gets, how to override them with `queue.pragmas`, and how to back the file up.
+
 Requires the `worker` Cargo feature (on by default) — the same flag that gates the Postgres backend above; both share the `sqlx`-based provider and are picked between at runtime by `queue.kind`. Uses `sqlt_loco_queue` (+ a lock table, since SQLite has no `SELECT ... FOR UPDATE SKIP LOCKED`).
 
 The upshot: `worker` covers Postgres and SQLite queues (already in the default feature set), while `worker_redis` adds the Redis queue on top. Which backend actually runs is a runtime choice — `queue.kind: Postgres | Sqlite | Redis` — not a per-database feature flag. For the exhaustive key list (defaults included), see [Configuration reference → queue](/docs/reference/configuration#queue). For flag names and how to trim the default feature set, see [Feature flags reference](/docs/reference/feature-flags).

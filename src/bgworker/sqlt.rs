@@ -256,6 +256,8 @@ impl QueueProvider for SqliteQueue {
 
 async fn connect(cfg: &SqliteQueueConfig) -> Result<SqlitePool> {
     let mut conn_opts: SqliteConnectOptions = cfg.uri.parse()?;
+    crate::sqlite_pragmas::validate(&cfg.pragmas)?;
+    conn_opts = crate::sqlite_pragmas::apply(conn_opts, &cfg.uri, &cfg.pragmas);
     if !cfg.enable_logging {
         conn_opts = conn_opts.disable_statement_logging();
     }
@@ -1080,6 +1082,7 @@ mod tests {
             num_workers: 1,
             reaper: None,
             retention: None,
+            pragmas: std::collections::BTreeMap::new(),
         }
     }
 
@@ -1474,6 +1477,41 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(job_count, 0);
+    }
+
+    #[tokio::test]
+    async fn queue_pool_gets_production_pragmas_and_overrides() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .drop(true)
+            .create()
+            .expect("create temp folder");
+        let qcfg = SqliteQueueConfig {
+            min_connections: 2,
+            max_connections: 2,
+            pragmas: [("synchronous".to_string(), "FULL".to_string())].into(),
+            ..config(&tree_fs.root)
+        };
+        let pool = connect(&qcfg).await.expect("connect");
+        let mut held = vec![pool.acquire().await.unwrap(), pool.acquire().await.unwrap()];
+        for conn in &mut held {
+            let mode: String = sqlx::query_scalar("PRAGMA journal_mode")
+                .fetch_one(&mut **conn)
+                .await
+                .unwrap();
+            assert_eq!(mode, "wal");
+            for (pragma, expected) in [
+                ("synchronous", 2_i64),
+                ("busy_timeout", 5000),
+                ("foreign_keys", 1),
+                ("cache_size", 2000),
+            ] {
+                let value: i64 = sqlx::query_scalar(AssertSqlSafe(format!("PRAGMA {pragma}")))
+                    .fetch_one(&mut **conn)
+                    .await
+                    .unwrap();
+                assert_eq!(value, expected, "PRAGMA {pragma}");
+            }
+        }
     }
 
     /// Two workers polling at once must never be handed the same job. This is
@@ -1883,6 +1921,7 @@ mod tests {
                 interval_seconds: 30,
             }),
             retention: None,
+            pragmas: std::collections::BTreeMap::new(),
         };
 
         let provider = build_provider(&qcfg).await.expect("build provider");
@@ -1915,6 +1954,7 @@ mod tests {
             num_workers: 1,
             reaper: None,
             retention: None,
+            pragmas: std::collections::BTreeMap::new(),
         };
 
         let provider = build_provider(&qcfg).await.expect("build provider");

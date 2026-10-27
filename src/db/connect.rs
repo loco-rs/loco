@@ -111,27 +111,27 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
         opt.acquire_timeout(Duration::from_millis(acquire_timeout));
     }
 
+    #[cfg(feature = "db-sqlite")]
+    if config.uri.starts_with("sqlite:") {
+        let uri = config.uri.clone();
+        let pragmas = config.sqlite.pragmas.clone();
+        crate::sqlite_pragmas::validate(&pragmas).map_err(|e| DbErr::Custom(e.to_string()))?;
+        // Applied by sqlx to every connection the pool opens, not just one.
+        opt.map_sqlx_sqlite_opts(move |opts| crate::sqlite_pragmas::apply(opts, &uri, &pragmas));
+    }
+
     let db = Database::connect(opt).await?;
 
     match db.get_database_backend() {
         #[cfg(feature = "db-sqlite")]
         DatabaseBackend::Sqlite => {
-            db.execute_raw(Statement::from_string(
-                DatabaseBackend::Sqlite,
-                config.run_on_start.clone().unwrap_or_else(|| {
-                    "
-            PRAGMA foreign_keys = ON;
-            PRAGMA journal_mode = WAL;
-            PRAGMA synchronous = NORMAL;
-            PRAGMA mmap_size = 134217728;
-            PRAGMA journal_size_limit = 67108864;
-            PRAGMA cache_size = 2000;
-            PRAGMA busy_timeout = 5000;
-            "
-                    .to_string()
-                }),
-            ))
-            .await?;
+            if let Some(run_on_start) = &config.run_on_start {
+                db.execute_raw(Statement::from_string(
+                    DatabaseBackend::Sqlite,
+                    run_on_start.clone(),
+                ))
+                .await?;
+            }
         }
         #[cfg(not(feature = "db-sqlite"))]
         DatabaseBackend::Sqlite => {
@@ -357,6 +357,82 @@ mod tests {
                 "PRAGMA {pragma} value mismatch - expected '{expected_value}', got '{actual_value}'"
             );
         }
+    }
+
+    #[cfg(feature = "db-sqlite")]
+    #[tokio::test]
+    async fn test_sqlite_defaults_apply_to_every_pooled_connection() {
+        let (mut config, _tree_fs) = crate::tests_cfg::config::get_sqlite_test_config("pool");
+        config.min_connections = 3;
+        config.max_connections = 3;
+
+        let db = connect(&config).await.expect("Failed to connect to SQLite");
+        let pool = db.get_sqlite_connection_pool();
+        let mut held = Vec::new();
+        for _ in 0..3 {
+            held.push(pool.acquire().await.unwrap());
+        }
+        for conn in &mut held {
+            for (pragma, expected) in [
+                ("busy_timeout", 5000_i64),
+                ("foreign_keys", 1),
+                ("synchronous", 1),
+                ("cache_size", 2000),
+            ] {
+                let value: i64 =
+                    sqlx::query_scalar(sqlx::AssertSqlSafe(format!("PRAGMA {pragma}")))
+                        .fetch_one(&mut **conn)
+                        .await
+                        .unwrap();
+                assert_eq!(value, expected, "PRAGMA {pragma} on a pooled connection");
+            }
+        }
+    }
+
+    #[cfg(feature = "db-sqlite")]
+    #[tokio::test]
+    async fn test_sqlite_journal_mode_is_wal_for_files_not_memory() {
+        let (config, _tree_fs) = crate::tests_cfg::config::get_sqlite_test_config("wal");
+        let db = connect(&config).await.unwrap();
+        assert_eq!(get_value(&db, "PRAGMA journal_mode").await, "wal");
+
+        let mut mem = crate::tests_cfg::config::get_database_config();
+        mem.uri = "sqlite::memory:".to_string();
+        let db = connect(&mem).await.unwrap();
+        assert_eq!(get_value(&db, "PRAGMA journal_mode").await, "memory");
+    }
+
+    #[cfg(feature = "db-sqlite")]
+    #[tokio::test]
+    async fn test_sqlite_pragmas_config_overrides_defaults() {
+        let (mut config, _tree_fs) = crate::tests_cfg::config::get_sqlite_test_config("override");
+        config.sqlite.pragmas = [
+            ("synchronous", "FULL"),
+            ("busy_timeout", "1234"),
+            ("temp_store", "MEMORY"),
+        ]
+        .into_iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect();
+
+        let db = connect(&config).await.unwrap();
+        assert_eq!(get_value(&db, "PRAGMA synchronous").await, "2");
+        assert_eq!(get_value(&db, "PRAGMA busy_timeout").await, "1234");
+        assert_eq!(get_value(&db, "PRAGMA temp_store").await, "2");
+        // Not overridden, so still the default.
+        assert_eq!(get_value(&db, "PRAGMA journal_mode").await, "wal");
+        assert_eq!(get_value(&db, "PRAGMA foreign_keys").await, "1");
+    }
+
+    #[cfg(feature = "db-sqlite")]
+    #[tokio::test]
+    async fn test_sqlite_rejects_bad_pragma_names() {
+        let (mut config, _tree_fs) = crate::tests_cfg::config::get_sqlite_test_config("bad");
+        config
+            .sqlite
+            .pragmas
+            .insert("x; DROP TABLE y".to_string(), "1".to_string());
+        assert!(connect(&config).await.is_err());
     }
 
     #[tokio::test]
