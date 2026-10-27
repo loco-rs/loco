@@ -4,7 +4,6 @@ use super::{opendal_adapter::OpendalAdapter, StoreDriver};
 use crate::storage::StorageResult;
 
 /// A set of AWS security credentials
-#[derive(Debug)]
 pub struct Credential {
     /// `AWS_ACCESS_KEY_ID`
     pub key_id: String,
@@ -12,6 +11,16 @@ pub struct Credential {
     pub secret_key: String,
     /// `AWS_SESSION_TOKEN`
     pub token: Option<String>,
+}
+
+impl std::fmt::Debug for Credential {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Credential")
+            .field("key_id", &self.key_id)
+            .field("secret_key", &"[redacted]")
+            .field("token", &self.token.as_ref().map(|_| "[redacted]"))
+            .finish()
+    }
 }
 
 /// Create new AWS s3 storage with bucket and region.
@@ -28,6 +37,31 @@ pub struct Credential {
 pub fn new(bucket_name: &str, region: &str) -> StorageResult<Box<dyn StoreDriver>> {
     let s3 = S3::default().bucket(bucket_name).region(region);
     // opendal 0.58: Operator::new returns a finished Operator (no .finish()).
+    Ok(Box::new(OpendalAdapter::new(Operator::new(s3)?)))
+}
+
+/// Create new AWS s3 storage with bucket, region and a custom endpoint (for
+/// S3-compatible services such as `MinIO`). Credentials come from the
+/// environment, as with [`new`].
+///
+/// # Examples
+///```
+/// use loco_rs::storage::drivers::aws;
+/// let aws_driver = aws::with_endpoint("bucket_name", "region", "http://localhost:9000");
+/// ```
+///
+/// # Errors
+///
+/// When could not initialize the client instance
+pub fn with_endpoint(
+    bucket_name: &str,
+    region: &str,
+    endpoint: &str,
+) -> StorageResult<Box<dyn StoreDriver>> {
+    let s3 = S3::default()
+        .bucket(bucket_name)
+        .region(region)
+        .endpoint(endpoint);
     Ok(Box::new(OpendalAdapter::new(Operator::new(s3)?)))
 }
 
