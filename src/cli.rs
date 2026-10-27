@@ -647,6 +647,7 @@ fn default_purge_statuses() -> Vec<JobStatus> {
     ]
 }
 
+#[cfg(feature = "worker")]
 #[derive(Subcommand)]
 enum JobsCommands {
     /// Cancels jobs with the specified names, setting their status to
@@ -674,9 +675,8 @@ enum JobsCommands {
     },
     /// Saves the details of all jobs to files in the specified folder.
     Dump {
-        /// Statuses to delete, comma separated. Defaults to the finished
-        /// ones (completed, failed, cancelled); queued and processing jobs
-        /// are only deleted when named here.
+        /// Limits the jobs being saved to those with specific criteria like
+        /// completed or queued.
         #[arg(long, use_value_delimiter = true)]
         status: Option<Vec<JobStatus>>,
         /// Folder to save the job files (default: current directory).
