@@ -122,6 +122,10 @@ pub struct SqliteQueueConfig {
     /// Opt-in deletion of finished jobs. See [`RetentionConfig`].
     #[serde(default)]
     pub retention: Option<RetentionConfig>,
+    /// PRAGMAs merged over the production defaults on every queue connection.
+    /// See [`SqliteConfig`](super::SqliteConfig).
+    #[serde(default)]
+    pub pragmas: std::collections::BTreeMap<String, String>,
 }
 
 /// Configuration for an opt-in visibility-timeout reaper.
