@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+Cuts what a generated app compiles. On a SQLite app with auth, workers and
+mail, a clean `cargo build` does 31% less compiler work (rustc instructions,
+1550 → 1072 billion), the first `cargo test` after it 34% less, the graph
+drops from 460 to 333 crates and `target/` from 2.7 GB to 1.9 GB. The
+no-database starter does 44% less on a clean build (1039 → 580) and goes
+from 336 to 210 crates. Six dependencies are replaced by
+small native code, each run side by side with the crate it replaces on a
+generated corpus before the crate went.
+
 **Upgrading:** nothing to do if you use `loco-rs`'s default features. If your
 `Cargo.toml` sets `default-features = false`, add whichever of the new
 features below your app uses: `db-postgres` if it talks to Postgres (database
@@ -130,6 +139,9 @@ subcommand.
 
 ### Fixed
 
+- **Fallback page hint.** The default 404 page told you to look for a
+  `fallback:` setting that generated configs do not contain; it now shows
+  `server.middlewares.fallback.enable: false`. (#1852)
 - **A `fallback.file` page answered 200.** The `fallback` middleware served
   its file through `ServeFile`, which reports 200 for a file it finds, so an
   unmatched route set to `assets/static/404.html` answered 200 and the
