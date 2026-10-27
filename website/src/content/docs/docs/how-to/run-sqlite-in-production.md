@@ -86,7 +86,15 @@ dbs:
       - url: s3://my-bucket/myapp/queue
 ```
 
-Credentials come from `LITESTREAM_ACCESS_KEY_ID` and `LITESTREAM_SECRET_ACCESS_KEY` (or the usual AWS variables). Skip the queue entry if you do not mind losing queued jobs, or if your jobs are recreated on boot.
+Credentials come from `LITESTREAM_ACCESS_KEY_ID` and `LITESTREAM_SECRET_ACCESS_KEY` (or the usual AWS variables). For an S3-compatible provider other than AWS (MinIO, R2, Backblaze B2), add `endpoint` and, for MinIO, `force-path-style: true` to each replica:
+
+```yaml
+      - url: s3://my-bucket/myapp/app
+        endpoint: http://minio:9000
+        force-path-style: true
+```
+
+Skip the queue entry if you do not mind losing queued jobs, or if your jobs are recreated on boot.
 
 ### As a sidecar
 
@@ -115,7 +123,7 @@ volumes:
   data:
 ```
 
-Both containers see the same files, and WAL mode is what makes it safe for Litestream to read them while the app writes.
+The `path` entries in `litestream.yml` must be the paths the Litestream container sees. Here that means `/data/app.sqlite` and `/data/queue.sqlite`, not the `/var/lib/myapp` paths above. Both containers see the same files, and WAL mode is what makes it safe for Litestream to read them while the app writes.
 
 ### Inside the app image
 
@@ -138,7 +146,7 @@ On a new machine, before the app starts:
 litestream restore -if-db-not-exists -if-replica-exists -config /etc/litestream.yml /var/lib/myapp/app.sqlite
 ```
 
-Run it as the container's first step, and a fresh volume comes back with the data it had.
+The path must be one of the `path` entries in the config, and the command restores it from that entry's replica. Repeat it for each database. It does nothing when the file already exists or the replica is empty, so run it as the container's first step, and a fresh volume comes back with the data it had.
 
 ## 5. No Redis needed
 
