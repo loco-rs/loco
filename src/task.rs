@@ -9,10 +9,22 @@ use async_trait::async_trait;
 use crate::{app::AppContext, errors::Error, Result};
 
 /// Struct representing a collection of task arguments.
+///
+/// A task sees its command line two ways. Pick one per task:
+///
+/// * [`Vars::cli_arg`] / [`Vars::cli`]: the `key:value` tokens, parsed for you.
+/// * [`Vars::args`]: every token, verbatim and in order. Feed it to `clap`, or
+///   use it as a file list (`cargo loco task import *.csv`).
+///
+/// A token such as `C:\data.csv` contains a colon, so it shows up in `cli` as
+/// well as in `args()`. Tasks that take free-form arguments should read only
+/// `args()`.
 #[derive(Default, Debug)]
+#[non_exhaustive]
 pub struct Vars {
-    /// A list of cli arguments.
+    /// The `key:value` cli arguments.
     pub cli: BTreeMap<String, String>,
+    args: Vec<String>,
 }
 
 impl Vars {
@@ -34,8 +46,50 @@ impl Vars {
     #[must_use]
     pub fn from_cli_args(args: Vec<(String, String)>) -> Self {
         Self {
+            args: args.iter().map(|(k, v)| format!("{k}:{v}")).collect(),
             cli: args.into_iter().collect(),
         }
+    }
+
+    /// Create [`Vars`] from the raw tokens given after the task name.
+    ///
+    /// Every token is kept verbatim for [`Vars::args`]. Tokens of the form
+    /// `key:value` are additionally available through [`Vars::cli_arg`];
+    /// anything else (a glob result, a flag, a path) is not an error.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use loco_rs::task::Vars;
+    ///
+    /// let vars = Vars::from_args(vec!["a.txt".to_string(), "mode:fast".to_string()]);
+    /// assert_eq!(vars.args(), ["a.txt", "mode:fast"]);
+    /// assert_eq!(vars.cli_arg("mode").unwrap(), "fast");
+    /// ```
+    #[must_use]
+    pub fn from_args(args: Vec<String>) -> Self {
+        let cli = args
+            .iter()
+            .filter_map(|a| a.split_once(':'))
+            .filter(|(k, _)| !k.is_empty())
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
+        Self { cli, args }
+    }
+
+    /// Every argument given after the task name, verbatim and in order.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use loco_rs::task::Vars;
+    ///
+    /// let vars = Vars::from_args(vec!["--dry-run".to_string(), "a.txt".to_string()]);
+    /// assert_eq!(vars.args(), ["--dry-run", "a.txt"]);
+    /// ```
+    #[must_use]
+    pub fn args(&self) -> &[String] {
+        &self.args
     }
 
     /// Retrieves the value associated with the given key from the `cli` list.
@@ -140,6 +194,27 @@ mod tests {
         assert_eq!(vars.cli.len(), 2);
         assert_eq!(vars.cli.get("key1"), Some(&"value1".to_string()));
         assert_eq!(vars.cli.get("key2"), Some(&"value2".to_string()));
+    }
+
+    #[test]
+    fn from_args_is_lenient_and_keeps_everything() {
+        let vars = Vars::from_args(
+            ["a.txt", "--force", "k:v", "url:http://x:80", ":x"]
+                .map(String::from)
+                .to_vec(),
+        );
+        assert_eq!(vars.args().len(), 5);
+        assert_eq!(vars.args()[1], "--force");
+        assert_eq!(vars.cli.len(), 2);
+        assert_eq!(vars.cli_arg("k").unwrap(), "v");
+        assert_eq!(vars.cli_arg("url").unwrap(), "http://x:80");
+        assert!(vars.cli_arg("a.txt").is_err());
+    }
+
+    #[test]
+    fn from_cli_args_populates_args() {
+        let vars = Vars::from_cli_args(vec![("k".into(), "v".into())]);
+        assert_eq!(vars.args(), ["k:v"]);
     }
 
     #[tokio::test]

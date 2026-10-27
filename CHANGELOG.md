@@ -26,6 +26,9 @@ subcommand.
   is run directly, so there is no shell expansion, and `run` is split into
   arguments with POSIX quoting (backslashes in Windows paths must be
   quoted). A line with unbalanced quotes is an error at scheduler start.
+- **`task::Vars` is `#[non_exhaustive]`.** It gained a private field for the
+  raw arguments, so build it with `Vars::from_cli_args`, `Vars::from_args` or
+  `Vars::default()` rather than a struct literal. `Task::run` is unchanged.
 - **Compression builds gzip only by default.** The `compression` middleware
   used to speak brotli, deflate, gzip and zstd. Enable `compression-full` to
   keep all four.
@@ -81,6 +84,16 @@ subcommand.
   - New how-to, "Run SQLite in production": the defaults, the single-writer
     caveat and backups with Litestream.
 
+- **Task arguments are passed through raw.** `cargo loco task import *.csv
+  --dry-run` no longer fails on tokens that are not `key:value`. Every token
+  reaches the task through `Vars::args()` (feed it to `clap`, or use it as a
+  file list); `key:value` tokens still fill `vars.cli` and `cli_arg`.
+  (#1730, @pweaver)
+- **`.or_err("message")` in the prelude.** Turns a `Result` with any
+  `std::error::Error` into a `loco_rs::Result` with your message, keeping the
+  original as `source()`, and does the same for `Option`; `.or_err_with(||
+  ...)` builds the message lazily. Named so it never clashes with
+  `anyhow::Context`. (#1751)
 - **`db-postgres`, `compression` and `generators` features**, on by
   default, plus `compression-full`, so apps built with
   `default-features = false` can leave out dependencies they never use. The
