@@ -637,6 +637,16 @@ impl DeploymentKind {
 }
 
 #[cfg(feature = "worker")]
+/// What `jobs purge` deletes without `--status`: finished jobs only. Queued
+/// and processing jobs are deleted only when named explicitly.
+fn default_purge_statuses() -> Vec<JobStatus> {
+    vec![
+        JobStatus::Failed,
+        JobStatus::Cancelled,
+        JobStatus::Completed,
+    ]
+}
+
 #[derive(Subcommand)]
 enum JobsCommands {
     /// Cancels jobs with the specified names, setting their status to
@@ -650,12 +660,12 @@ enum JobsCommands {
     Tidy {},
     /// Deletes jobs based on their age in days.
     Purge {
-        /// Deletes jobs with errors or cancelled, older than the specified
-        /// maximum age in days.
+        /// Deletes jobs older than the specified maximum age in days.
         #[arg(long, default_value_t = 90)]
         max_age: i64,
-        /// Limits the jobs being saved to those with specific criteria like
-        /// completed or queued.
+        /// Statuses to delete, comma separated. Defaults to the finished
+        /// ones (completed, failed, cancelled); queued and processing jobs
+        /// are only deleted when named here.
         #[arg(long, use_value_delimiter = true)]
         status: Option<Vec<JobStatus>>,
         /// Saves the details of jobs into a file before deleting them.
@@ -664,8 +674,9 @@ enum JobsCommands {
     },
     /// Saves the details of all jobs to files in the specified folder.
     Dump {
-        /// Limits the jobs being saved to those with specific criteria like
-        /// completed or queued.
+        /// Statuses to delete, comma separated. Defaults to the finished
+        /// ones (completed, failed, cancelled); queued and processing jobs
+        /// are only deleted when named here.
         #[arg(long, use_value_delimiter = true)]
         status: Option<Vec<JobStatus>>,
         /// Folder to save the job files (default: current directory).
@@ -1040,17 +1051,7 @@ async fn handle_job_command(command: JobsCommands, app_context: &AppContext) -> 
             status,
             dump,
         } => {
-            let status = status.as_ref().map_or_else(
-                || {
-                    vec![
-                        JobStatus::Failed,
-                        JobStatus::Cancelled,
-                        JobStatus::Queued,
-                        JobStatus::Completed,
-                    ]
-                },
-                std::clone::Clone::clone,
-            );
+            let status = status.clone().unwrap_or_else(default_purge_statuses);
 
             if let Some(path) = dump {
                 let dump_path = queue
@@ -1187,6 +1188,14 @@ mod tests {
     fn command_tree_is_well_formed() {
         Cli::command().debug_assert();
         Playground::command().debug_assert();
+    }
+
+    #[test]
+    fn purge_without_status_never_targets_unfinished_jobs() {
+        let statuses = default_purge_statuses();
+        assert!(!statuses.contains(&JobStatus::Queued));
+        assert!(!statuses.contains(&JobStatus::Processing));
+        assert_eq!(statuses.len(), 3);
     }
 
     #[rstest]
