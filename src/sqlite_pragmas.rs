@@ -11,7 +11,7 @@ use sqlx::sqlite::SqliteConnectOptions;
 
 /// The PRAGMAs Loco sets unless the config overrides them. Same values Rails 8
 /// uses for `SQLite`.
-pub(crate) const DEFAULTS: [(&str, &str); 7] = [
+pub const DEFAULTS: [(&str, &str); 7] = [
     ("journal_mode", "WAL"),
     ("synchronous", "NORMAL"),
     ("busy_timeout", "5000"),
@@ -30,7 +30,7 @@ fn is_in_memory(uri: &str) -> bool {
 /// # Errors
 ///
 /// On the first invalid name.
-pub(crate) fn validate(overrides: &BTreeMap<String, String>) -> crate::Result<()> {
+pub fn validate(overrides: &BTreeMap<String, String>) -> crate::Result<()> {
     for name in overrides.keys() {
         if name.is_empty() || !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
             return Err(crate::Error::string(&format!(
@@ -43,7 +43,7 @@ pub(crate) fn validate(overrides: &BTreeMap<String, String>) -> crate::Result<()
 
 /// Applies the defaults, then `overrides`, to `opts`. WAL is skipped for
 /// in-memory databases, where it does nothing. Call [`validate`] first.
-pub(crate) fn apply(
+pub fn apply(
     mut opts: SqliteConnectOptions,
     uri: &str,
     overrides: &BTreeMap<String, String>,

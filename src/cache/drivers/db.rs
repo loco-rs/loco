@@ -9,6 +9,7 @@
 //! past its `expires_at` counts as missing, and every `sweep_every` writes the
 //! driver deletes a batch of expired rows.
 use std::{
+    fmt::Write as _,
     sync::atomic::{AtomicBool, AtomicU64, Ordering},
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
@@ -84,7 +85,7 @@ impl Database {
             for c in sql.chars() {
                 if c == '?' {
                     n += 1;
-                    out.push_str(&format!("${n}"));
+                    let _ = write!(out, "${n}");
                 } else {
                     out.push(c);
                 }
