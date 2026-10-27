@@ -1215,11 +1215,11 @@ since they restate the trait's own API.
 
 ### `Job`
 
-- `fn` **prepare_command**`(self: &Self, binary_path: &Path, default_output: &Output, environment: &Environment) -> JobDescription` — Prepares the command for execution based on the job's configuration
+- `fn` **prepare_command**`(self: &Self, binary_path: &Path, default_output: &Output, environment: &Environment) -> JobDescription` — Prepares a command description based on the job's configuration
 
 ### `JobDescription`
 
-- `fn` **run**`(self: &Self) -> Result<Output>` — Executes the job command and returns the output
+- `fn` **run**`(self: &Self) -> Result<Output>` — Executes this command string through the platform shell
 
 ### `Output`
 
