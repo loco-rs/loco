@@ -1,4 +1,4 @@
-use super::utils::APP_ROUTS;
+use super::utils::{APP_ROUTS, ROUTES_RS};
 use insta::assert_snapshot;
 use loco_gen::RRgen;
 use loco_gen::{collect_messages, generate, AppInfo, Component};
@@ -186,5 +186,62 @@ fn actions_are_wired_to_the_verb_their_name_implies() {
     assert!(
         test.contains("request.delete(\"/api/movies/delete\")"),
         "the generated test should DELETE a DELETE route:\n{test}"
+    );
+}
+
+/// With a Rails-style `src/routes.rs` in the app, the generator emits only the
+/// handlers and writes the route block into that file. 
+/// The controller carries no `routes()` and `app.rs` is left alone -- otherwise every generate has to
+/// be undone by hand.
+#[test]
+fn a_routes_file_takes_the_route_block_instead_of_the_controller() {
+    let mut settings = insta::Settings::clone_current();
+    settings.set_prepend_module_to_snapshot(false);
+    settings.set_snapshot_suffix("Api_controller_routes_file");
+    let _guard = settings.bind_to_scope();
+
+    let tree_fs = tree_fs::TreeBuilder::default()
+        .drop(true)
+        .add_empty("src/controllers/mod.rs")
+        .add_empty("tests/requests/mod.rs")
+        .add("src/app.rs", APP_ROUTS)
+        .add("src/routes.rs", ROUTES_RS)
+        .create()
+        .unwrap();
+
+    let rrgen = RRgen::with_working_dir(&tree_fs.root);
+
+    generate(
+        &rrgen,
+        Component::Controller {
+            name: "movie".to_string(),
+            actions: vec!["list".to_string(), "create".to_string()],
+            auth: false,
+        },
+        &AppInfo {
+            app_name: "tester".to_string(),
+            working_dir: tree_fs.root.clone(),
+        },
+    )
+    .expect("Generation failed");
+
+    let controller = fs::read_to_string(tree_fs.root.join("src/controllers/movie.rs"))
+        .expect("controller file missing");
+    assert!(
+        !controller.contains("pub fn routes()"),
+        "the controller must not carry a `routes()` when `src/routes.rs` owns the \
+         table:\n{controller}"
+    );
+    assert_snapshot!("generate[controller_file]", controller);
+
+    assert_snapshot!(
+        "inject[routes_rs]",
+        fs::read_to_string(tree_fs.root.join("src/routes.rs")).expect("routes.rs injection failed")
+    );
+
+    assert_eq!(
+        fs::read_to_string(tree_fs.root.join("src/app.rs")).expect("app.rs missing"),
+        APP_ROUTS,
+        "app.rs must be left untouched when the route block goes to `src/routes.rs`"
     );
 }
