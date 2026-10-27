@@ -21,7 +21,7 @@ use axum::{
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use loco_rs::{
     auth::oauth::{self, Identity, OAuthHandler, SignIn},
-    config::{Auth, OAuthConfig, OAuthProviderConfig, SessionConfig},
+    config::{Auth, OAuthConfig, OAuthProviderConfig, SessionConfig, SessionStoreKind},
     controller::AppRoutes,
     prelude::*,
     tests_cfg::db::AppHook,
@@ -175,6 +175,10 @@ struct App {
 }
 
 async fn app(configure: impl FnOnce(&mut OAuthConfig)) -> App {
+    app_with(SessionStoreKind::Cookie, configure).await
+}
+
+async fn app_with(store: SessionStoreKind, configure: impl FnOnce(&mut OAuthConfig)) -> App {
     let (fake_url, fake) = start_fake().await;
     let mut ctx = loco_rs::tests_cfg::app::get_app_context().await;
     let mut oauth = OAuthConfig {
@@ -196,6 +200,7 @@ async fn app(configure: impl FnOnce(&mut OAuthConfig)) -> App {
         session: Some(SessionConfig {
             secret: Some("an-integration-test-secret-that-is-long-enough".to_string()),
             sign_in_path: Some("/login".to_string()),
+            store,
             ..Default::default()
         }),
         oauth: Some(oauth),
@@ -429,4 +434,41 @@ async fn pkce_can_be_turned_off() {
     let res = server.get(&visit_provider(&authorize).await).await;
     assert_eq!(location!(res), "/welcome");
     assert!(!fake.lock().unwrap().token_requests[0].contains_key("code_verifier"));
+}
+
+#[tokio::test]
+async fn signs_in_and_out_on_the_database_store_with_remember_me() {
+    let App { mut server, .. } = app_with(SessionStoreKind::Database, |_| {}).await;
+
+    // `?remember=1` on the sign-in link carries through the provider.
+    let authorize = location!(server.get("/auth/github?remember=1").await);
+    let res = server.get(&visit_provider(&authorize).await).await;
+    res.assert_status(StatusCode::SEE_OTHER);
+    let session = res.cookie("loco_session");
+    let remember = res.cookie("loco_remember");
+    assert!(
+        !session.value().contains("github"),
+        "the cookie is an opaque id"
+    );
+    server
+        .get("/me")
+        .await
+        .assert_text("github:583231:octocat@example.com");
+
+    // Closing the browser keeps only the remember cookie.
+    server.clear_cookies();
+    server.add_cookie(remember);
+    server
+        .get("/me")
+        .await
+        .assert_text("github:583231:octocat@example.com");
+
+    server.get("/auth/sign_out").await;
+    server.get("/me").await.assert_status_unauthorized();
+
+    // Without `remember` there is no remember cookie.
+    server.clear_cookies();
+    let authorize = location!(server.get("/auth/github").await);
+    let res = server.get(&visit_provider(&authorize).await).await;
+    assert!(res.maybe_cookie("loco_remember").is_none());
 }

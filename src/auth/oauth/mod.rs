@@ -78,6 +78,10 @@ pub struct SignIn {
     /// for a new account). Defaults to `auth.oauth.after_sign_in_path`, then
     /// `/`.
     pub redirect_to: Option<String>,
+    /// Remember this sign-in across browser restarts (see
+    /// [`Session::remember`]). Also switched on by `?remember=1` on the
+    /// `/auth/{provider}` link. Needs a server-side session store.
+    pub remember: bool,
 }
 
 impl SignIn {
@@ -87,7 +91,15 @@ impl SignIn {
         Self {
             user_id: user_id.into(),
             redirect_to: None,
+            remember: false,
         }
+    }
+
+    /// Remember this sign-in, whatever the sign-in link asked for.
+    #[must_use]
+    pub const fn remember(mut self) -> Self {
+        self.remember = true;
+        self
     }
 
     /// Land on `path` unless the flow carried a `return_to`.
@@ -242,6 +254,8 @@ fn redirect_uri(ctx: &AppContext, provider: &Provider, callback_path: &str) -> S
 pub struct StartParams {
     /// Where to land after sign-in. Same-site paths only.
     pub return_to: Option<String>,
+    /// `remember=1` (or `true`, `on`) asks for a remember-me sign-in.
+    pub remember: Option<String>,
 }
 
 /// Query of `/auth/{provider}/callback`.
@@ -265,7 +279,8 @@ async fn start(
     jar: SignedCookies,
 ) -> Result<Response> {
     let provider = resolve(&ctx, &name)?;
-    let flow = FlowState::new(provider.pkce, params.return_to.as_deref());
+    let mut flow = FlowState::new(provider.pkce, params.return_to.as_deref());
+    flow.remember = matches!(params.remember.as_deref(), Some("1" | "true" | "on"));
     let callback_path = format!("{}/callback", uri.path().trim_end_matches('/'));
     let location = provider
         .authorize_url(
@@ -291,13 +306,14 @@ async fn callback<H: OAuthHandler>(
     OriginalUri(uri): OriginalUri,
     Query(params): Query<CallbackParams>,
     jar: SignedCookies,
+    session: Session,
 ) -> Result<Response> {
     let cookie_name = state::cookie_name(&name);
     let flow = jar
         .get(&cookie_name)
         .and_then(|c| cookies::unseal::<FlowState>(c.value()));
     // The state is single-use: clear it whatever happens next.
-    let jar = jar.remove(&cookie_name);
+    let session = session.map_jar(|jar| jar.remove(&cookie_name));
     let retry_path = uri
         .path()
         .strip_suffix("/callback")
@@ -312,14 +328,15 @@ async fn callback<H: OAuthHandler>(
 
     let outcome = complete::<H>(&ctx, &name, uri.path(), params, flow, &fail).await;
     let response = match outcome {
-        Ok((sign_in, return_to)) => {
+        Ok((sign_in, return_to, remember)) => {
             let target = return_to
                 .or(sign_in.redirect_to)
                 .or_else(|| oauth_config(&ctx).and_then(|c| c.after_sign_in_path.clone()))
                 .unwrap_or_else(|| "/".to_string());
-            let session = Session::from_jar(jar, Session::cookie_name(&ctx))
-                .renew()
-                .set_user_id(sign_in.user_id);
+            let mut session = session.renew().set_user_id(sign_in.user_id);
+            if remember || sign_in.remember {
+                session = session.remember();
+            }
             return Ok((session, format::redirect(&target)?).into_response());
         }
         Err(Outcome::Failed(failure)) => {
@@ -333,7 +350,7 @@ async fn callback<H: OAuthHandler>(
         }
         Err(Outcome::Error(err)) => return Err(err),
     };
-    Ok((jar, response).into_response())
+    Ok((session, response).into_response())
 }
 
 enum Outcome {
@@ -348,7 +365,7 @@ async fn complete<H: OAuthHandler>(
     params: CallbackParams,
     flow: Option<FlowState>,
     fail: &(impl Fn(FailureKind, Option<String>) -> OAuthFailure + Sync),
-) -> std::result::Result<(SignIn, Option<String>), Outcome> {
+) -> std::result::Result<(SignIn, Option<String>, bool), Outcome> {
     let failed = |kind, detail| Outcome::Failed(fail(kind, detail));
     if let Some(error) = params.error {
         let kind = if error == "access_denied" {
@@ -387,7 +404,7 @@ async fn complete<H: OAuthHandler>(
         .await
         .map_err(|e| failed(FailureKind::Profile, Some(e)))?;
     match H::on_sign_in(ctx, &identity).await {
-        Ok(sign_in) => Ok((sign_in, flow.return_to)),
+        Ok(sign_in) => Ok((sign_in, flow.return_to, flow.remember)),
         Err(Error::Unauthorized(reason)) => Err(failed(FailureKind::Denied, Some(reason))),
         Err(err) => Err(Outcome::Error(err)),
     }

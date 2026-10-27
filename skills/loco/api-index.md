@@ -165,8 +165,8 @@ since they restate the trait's own API.
 - `enum` **FailureKind** — Why a sign-in did not complete
 - `struct` **OAuthFailure**` { provider: String, kind: FailureKind, detail: Option<String>, retry_path: String }` — A failed sign-in, handed to [`OAuthHandler::on_failure`]
 - `trait` **OAuthHandler** — The app side of the sign-in flow
-- `struct` **SignIn**` { user_id: String, redirect_to: Option<String> }` — What [`OAuthHandler::on_sign_in`] decided
-- `struct` **StartParams**` { return_to: Option<String> }` — Query of `/auth/{provider}`
+- `struct` **SignIn**` { user_id: String, redirect_to: Option<String>, remember: bool }` — What [`OAuthHandler::on_sign_in`] decided
+- `struct` **StartParams**` { return_to: Option<String>, remember: Option<String> }` — Query of `/auth/{provider}`
 - `fn` **default_failure**`(ctx: &AppContext, failure: &OAuthFailure) -> Result<Response>` — [`OAuthHandler::on_failure`]'s default
 - `fn` **routes**`() -> Routes` — The routes for handler `H`, under `/auth`. Add your own with `.add(..)` or
 
@@ -193,6 +193,7 @@ since they restate the trait's own API.
 
 - `fn` **new**`(user_id: impl Trait) -> Self` — Sign in the user with session id `user_id`
 - `fn` **redirect_to**`(self: Self, path: impl Trait) -> Self` — Land on `path` unless the flow carried a `return_to`
+- `fn` **remember**`(self: Self) -> Self` — Remember this sign-in, whatever the sign-in link asked for
 ## `auth::oauth::provider`
 
 - `struct` **Identity**` { provider: String, uid: String, login: Option<String>, name: Option<String>, email: Option<String>, email_verified: Option<bool>, avatar_url: Option<String>, access_token: String, refresh_token: Option<String>, expires_at: Option<DateTime<Utc>>, scope: Option<String>, raw: Value }` — A user as an OAuth provider describes them, normalized across providers
@@ -209,7 +210,7 @@ since they restate the trait's own API.
 - `fn` **resolve**`(name: &str, config: &OAuthProviderConfig) -> Result<Self, String>` — Resolves `config` for the provider called `name`
 ## `auth::oauth::state`
 
-- `struct` **FlowState**` { state: String, verifier: Option<String>, return_to: Option<String> }` — What the start of the flow leaves for the callback
+- `struct` **FlowState**` { state: String, verifier: Option<String>, return_to: Option<String>, remember: bool }` — What the start of the flow leaves for the callback
 - `const` **STATE_TTL_SECONDS** — How long a user has to finish at the provider: 10 minutes
 - `fn` **cookie_name**`(provider: &str) -> String` — The state cookie for `provider`. One per provider, so two tabs signing in
 - `fn` **pkce_challenge**`(verifier: &str) -> String` — `BASE64URL(SHA256(verifier))` (RFC 7636 S256)
@@ -225,29 +226,50 @@ since they restate the trait's own API.
 
 - `struct` **CurrentUser** — The signed-in user; rejects signed-out requests
 - `struct` **MaybeCurrentUser** — The signed-in user, or `None`. Never rejects for being signed out
-- `struct` **Session** — The cookie session. See the [module docs](self)
+- `struct` **Session** — The session. See the [module docs](self)
 - `trait` **SessionUser** — How [`CurrentUser`] loads the signed-in user from the id in the session
 - `const` **USER_ID_KEY** — The session key holding the signed-in user's id
 - `fn` **encode**`(value: &str) -> String` — Percent-encodes `value` for a query string
 
 ### `Session`
 
-- `fn` **clear**`(self: Self) -> Self` — Empties the session and deletes its cookie
+- `fn` **clear**`(self: Self) -> Self` — Ends the session: empties it and deletes its cookie. On a server-side
 - `fn` **cookie_name**`(ctx: &AppContext) -> String` — The session cookie name configured for `ctx`
-- `fn` **from_jar**`(jar: SignedCookies, name: impl Trait) -> Self` — Reads the session from a signed jar
+- `fn` **from_jar**`(jar: SignedCookies, name: impl Trait) -> Self` — Reads a cookie-store session from a signed jar
 - `fn` **from_parts**`(parts: &Parts, ctx: &AppContext) -> Result<Self>` — The session for a request, outside an extractor
 - `fn` **get**`(self: &Self, key: &str) -> Option<T>` — The value at `key`, if present and of type `T`
 - `fn` **insert**`(self: Self, key: impl Trait, value: &T) -> Result<Self>` — Stores `value` at `key`
 - `fn` **into_jar**`(self: Self) -> Result<SignedCookies>` — Hands back the signed jar, with this session's changes written to it
 - `fn` **is_empty**`(self: &Self) -> bool` — Whether the session holds no values
+- `fn` **map_jar**`(self: Self, f: impl Trait) -> Self` — Applies a change to the jar this session writes (e.g. removing a
+- `fn` **remember**`(self: Self) -> Self` — Remember this sign-in across browser restarts, Devise's `remember_me`:
+- `fn` **remember_cookie_name**`(ctx: &AppContext) -> String` — The remember-me cookie name configured for `ctx`
 - `fn` **remove**`(self: Self, key: &str) -> Self` — Removes `key`
-- `fn` **renew**`(self: Self) -> Self` — Empties the session, keeping the cookie, so a sign-in starts from a
+- `fn` **renew**`(self: Self) -> Self` — Empties the session so a sign-in starts from a fresh one rather than
 - `fn` **set_user_id**`(self: Self, id: impl Trait) -> Self` — Signs `id` in
 - `fn` **user_id**`(self: &Self) -> Option<String>` — The signed-in user's id
 
 ### `SessionUser`
 
 - `fn` **find_by_session_id**`(ctx: &AppContext, id: &str) -> Pin<Box<dyn Future + Send>>` — Loads the user whose session id is `id`
+## `auth::session_store`
+
+- `const` **DEFAULT_REMEMBER_COOKIE** — Default remember-me cookie name
+- `const` **DEFAULT_REMEMBER_FOR** — Remember-me lifetime when `auth.session.remember_for` is unset: 14 days
+- `struct` **SessionStore** — The configured server-side store
+- `fn` **init**`(ctx: &AppContext) -> Result<()>` — Boot-time checks and eager store creation (so a missing table or an
+- `fn` **of**`(ctx: &AppContext) -> Result<Arc<SessionStore>>` — The store `ctx` is configured with, built on first use
+- `fn` **random_token**`() -> String` — A fresh 256-bit random value, base64url. `rand::rng()` is a CSPRNG seeded
+- `fn` **sign_out_everywhere**`(ctx: &AppContext, user_id: &str) -> Result<u64>` — Ends every session and remember-me token of `user_id`: "sign out of all
+- `fn` **validate**`(config: &Config) -> Result<()>` — Rejects configurations that cannot work
+
+### `SessionStore`
+
+- `fn` **kind**`(self: &Self) -> SessionStoreKind` — Which store this is
+- `fn` **max_age**`(self: &Self) -> u64` — Seconds a session lives, renewed on each save
+- `fn` **purge_expired**`(self: &Self) -> Result<u64>` — Deletes expired rows now (a no-op for Redis, which expires keys
+- `fn` **remember_for**`(self: &Self) -> u64` — Seconds a remember-me series lives
+- `fn` **revoke_user**`(self: &Self, user: &str) -> Result<u64>` — Ends every session and remember-me series of `user`
 ## `bgworker`
 
 - `trait` **BackgroundWorker**
@@ -577,7 +599,8 @@ since they restate the trait's own API.
 - `struct` **RedisQueueConfig**` { uri: String, dangerously_flush: bool, queues: Option<Vec<String>>, num_workers: u32, reaper: Option<ReaperConfig> }`
 - `struct` **RetentionConfig**` { completed_days: Option<i64>, cancelled_days: Option<i64>, failed_days: Option<i64>, interval_seconds: u64 }` — Configuration for opt-in retention of finished jobs
 - `struct` **Server**` { binding: String, port: i32, host: String, ident: Option<String>, middlewares: Config }` — Server configuration structure
-- `struct` **SessionConfig**` { secret: Option<String>, cookie_name: Option<String>, max_age: Option<u64>, secure: Option<bool>, sign_in_path: Option<String> }` — Signed cookies and the cookie session, Rails' `secret_key_base` plus its
+- `struct` **SessionConfig**` { secret: Option<String>, cookie_name: Option<String>, max_age: Option<u64>, secure: Option<bool>, sign_in_path: Option<String>, store: SessionStoreKind, remember_for: Option<u64>, remember_cookie_name: Option<String>, redis_uri: Option<String> }` — Signed cookies and the cookie session, Rails' `secret_key_base` plus its
+- `enum` **SessionStoreKind** — Where [`SessionConfig::store`] keeps the session
 - `struct` **SmtpMailer**` { enable: bool, host: String, port: u16, secure: bool, tls: Option<MailerTls>, auth: Option<MailerAuth>, hello_name: Option<String> }` — SMTP mailer configuration structure
 - `struct` **SqliteConfig**` { pragmas: BTreeMap<String, String> }` — `SQLite` settings shared by the database and the `SQLite` queue
 - `struct` **SqliteQueueConfig**` { uri: String, dangerously_flush: bool, enable_logging: bool, max_connections: u32, min_connections: u32, connect_timeout: u64, idle_timeout: u64, poll_interval_sec: u32, num_workers: u32, reaper: Option<ReaperConfig>, retention: Option<RetentionConfig>, pragmas: BTreeMap<String, String> }`
@@ -645,6 +668,17 @@ since they restate the trait's own API.
 ### `Server`
 
 - `fn` **full_url**`(self: &Self) -> String`
+
+### `SessionConfig`
+
+- `field` **store** — Where the session data lives. Default [`SessionStoreKind::Cookie`]
+
+### `SessionStoreKind`
+
+- `variant` **Cookie** — The whole session in one signed cookie. Stateless; cannot be revoked
+- `variant` **Database** — A `loco_sessions` table in the app database (`with-db`)
+- `variant` **Redis** — Redis keys with a TTL (`cache_redis` feature)
+- `fn` **is_server_side**`(self: Self) -> bool` — Whether the session data lives on the server
 
 ### `SmtpMailer`
 
@@ -788,6 +822,13 @@ since they restate the trait's own API.
 - `fn` **insert_after**`(self: &mut Self, name: &str, middleware: Box<dyn MiddlewareLayer>) -> &mut Self` — Insert `middleware` immediately after the first middleware named `name`
 - `fn` **insert_before**`(self: &mut Self, name: &str, middleware: Box<dyn MiddlewareLayer>) -> &mut Self` — Insert `middleware` immediately before the first middleware named `name`
 - `fn` **replace**`(self: &mut Self, name: &str, middleware: Box<dyn MiddlewareLayer>) -> &mut Self` — Replace the first middleware named `name` with `middleware`
+## `controller::middleware::auth_session`
+
+- `struct` **AuthSession**` { enable: bool }` — The `auth_session` middleware
+
+### `AuthSession`
+
+- `fn` **new**`(ctx: &AppContext) -> Self` — Enabled when the configured session store is server-side
 ## `controller::middleware::catch_panic`
 
 - `struct` **CatchPanic**` { enable: bool }`

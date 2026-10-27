@@ -135,6 +135,10 @@ fn session_stanza(env: &str) -> Vec<String> {
         "  # Signs the session cookie. Production reads it from SESSION_SECRET;".to_string(),
         "  # generate one with `openssl rand -base64 64`.".to_string(),
         format!("  secret: {secret}"),
+        "  # Where sessions live: `cookie` (the cookie holds the data), or `database` /"
+            .to_string(),
+        "  # `redis` for server-side sessions you can revoke, with remember-me.".to_string(),
+        "  store: cookie".to_string(),
     ]
 }
 

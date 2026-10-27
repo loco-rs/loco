@@ -440,6 +440,11 @@ pub async fn create_context<H: Hooks>(
         shared_store: Arc::new(crate::app::SharedStore::default()),
     };
 
+    // Refuse a session configuration that cannot work, and open the
+    // server-side session store, before serving anything.
+    #[cfg(feature = "auth_session")]
+    crate::auth::session_store::init(&ctx).await?;
+
     H::after_context(ctx).await
 }
 

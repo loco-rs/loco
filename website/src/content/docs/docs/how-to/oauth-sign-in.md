@@ -247,6 +247,52 @@ async fn sign_out(session: Session) -> Result<impl IntoResponse> {
 
 The session is a JSON map in one signed cookie. The browser can read it but not change it, so keep it to identifiers. It carries its own expiry, which the server enforces whatever the browser does with `Max-Age`. A session that would outgrow a cookie (about 3.8 KB) is an error, not a silent sign-out. Return the `Session` from the handler for changes to reach the browser. An unchanged session writes no cookie.
 
+## Server-side sessions and remember me
+
+A cookie session cannot be revoked: whoever holds the cookie is signed in until it expires. For apps that need "sign out everywhere", or a "remember me" box, keep the session on the server:
+
+```yaml
+auth:
+  session:
+    secret: <%= get_env(name="SESSION_SECRET") %>
+    store: database      # or redis
+    remember_for: 1209600  # optional, seconds (default 14 days)
+```
+
+Nothing in your handlers changes. `Session`, `CurrentUser` and the OAuth routes work the same; the cookie now holds only a signed random id (256 bits), and the data, its expiry and the user id live in the store.
+
+- **`database`** creates `loco_sessions` and `loco_remember_tokens` at boot if they are missing (Postgres and SQLite). Only the SHA-256 of the session id is stored, so a leaked table cannot be replayed. Expired rows read as absent and are deleted in batches as sessions are saved; call `SessionStore::purge_expired` from a task to sweep on a schedule.
+- **`redis`** stores one key per session with a TTL, plus a set per user. It uses `auth.session.redis_uri`, or the `cache` Redis when that is unset.
+- Signing in with `session.renew()` gives the user a new id, so an id planted before sign-in is dead. `session.clear()` deletes the record.
+- Sign a user out of every device (sessions and remember-me tokens):
+
+```rust
+use loco_rs::{auth::session_store, prelude::*};
+
+async fn sign_out_everywhere(
+    State(ctx): State<AppContext>,
+    CurrentUser(pid): CurrentUser<String>,
+    session: Session,
+) -> Result<impl IntoResponse> {
+    session_store::sign_out_everywhere(&ctx, &pid).await?;
+    Ok((session.clear(), format::redirect("/")?))
+}
+```
+
+### Remember me
+
+Call `.remember()` on the session when the user ticks the box, or on the OAuth `SignIn`. The `/auth/{provider}` link also takes `?remember=1`:
+
+```rust
+let session = session.renew().set_user_id(pid).remember();
+```
+
+A second cookie (`loco_remember`, `HttpOnly`, same `Secure` and `SameSite` as the session) carries a series id and a token. The store keeps a hash of the token. When a request has no live session but a valid remember cookie, the session is re-created and the token rotates. If a known series shows up with a token that is not the current one, the cookie was copied, so that series is revoked. A request that arrives within ten seconds with the token just replaced (two tabs loading at once) is accepted without rotating again.
+
+Remember me needs a server-side store. Setting `auth.session.remember_for` with `store: cookie` stops the app at boot with a message saying so.
+
+Server-side stores rely on the `auth_session` middleware to write the session before the response goes out. It is in the default stack; an app that builds its own `Hooks::middlewares` must keep it. If the store write fails, the client gets a `500` and no session cookie.
+
 For single cookies use `SignedCookies` (tamper-evident) or `EncryptedCookies` (also unreadable; feature `auth_session_encrypted`). Both are keyed off the same `auth.session.secret`:
 
 ```rust

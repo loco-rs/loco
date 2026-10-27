@@ -94,6 +94,8 @@ auth:
     max_age: 2592000            # optional, seconds
     secure: true                # optional, default: server.host is https://
     sign_in_path: /login        # optional
+    store: cookie               # cookie | database | redis
+    remember_for: 1209600       # optional, seconds; needs database or redis
   oauth:
     base_url: https://app.example.com
     after_sign_in_path: /
@@ -112,6 +114,10 @@ auth:
 | `auth.session.max_age` | `Option<u64>` | optional, default 30 days | Cookie `Max-Age` and the server-enforced expiry inside the signed value |
 | `auth.session.secure` | `Option<bool>` | optional | Default: on when `server.host` starts with `https://` |
 | `auth.session.sign_in_path` | `Option<String>` | optional | Where `CurrentUser` redirects signed-out HTML requests (`?return_to=` appended); without it they get `401` |
+| `auth.session.store` | `cookie` \| `database` \| `redis` | optional, default `cookie` | `cookie`: the signed cookie holds the session. `database`: a `loco_sessions` table (Postgres and SQLite, created at boot); `redis`: keys with a TTL. Both server-side stores put only a random id in the cookie. See [Server-side sessions and remember me](/docs/how-to/oauth-sign-in#server-side-sessions-and-remember-me) |
+| `auth.session.remember_for` | `Option<u64>` | optional, default 14 days | Lifetime of a remember-me series, in seconds. Setting it with `store: cookie` is a boot error |
+| `auth.session.remember_cookie_name` | `Option<String>` | optional, default `loco_remember` | |
+| `auth.session.redis_uri` | `Option<String>` | optional | Redis for `store: redis`; default is the `cache` Redis URI |
 | `auth.oauth.base_url` | `Option<String>` | optional | Public origin for callback URLs; default `server.full_url()` |
 | `auth.oauth.after_sign_in_path` | `Option<String>` | optional, default `/` | Used when neither `return_to` nor `SignIn::redirect_to` is set |
 | `auth.oauth.after_sign_out_path` | `Option<String>` | optional, default `/` | |
