@@ -59,6 +59,24 @@ subcommand.
 
 ### Added
 
+- **SQLite in production, the Rails 8 way** (#1832).
+  - The SQLite PRAGMAs now apply to every pooled connection, for the app
+    database and for the SQLite queue's own pool. Before, they ran once on
+    whichever connection the pool handed out, so `busy_timeout`,
+    `synchronous` and `foreign_keys` were missing on the rest. The defaults
+    are `journal_mode=WAL` (skipped for `:memory:`), `synchronous=NORMAL`,
+    `busy_timeout=5000`, `foreign_keys=ON`, `journal_size_limit`, `mmap_size`
+    and `cache_size`.
+  - `database.sqlite.pragmas` and `queue.pragmas` override or add PRAGMAs.
+    `database.run_on_start` still runs, after the defaults, but no longer
+    replaces them.
+  - **`cache.kind: Database`**, a cache in the app database (Postgres or
+    SQLite) with TTLs and batched sweeping of expired rows, in a `loco_cache`
+    table Loco creates itself. With the SQL queue it means a one-server app
+    needs no Redis.
+  - New how-to, "Run SQLite in production": the defaults, the single-writer
+    caveat and backups with Litestream.
+
 - **`db-postgres`, `compression` and `generators` features**, on by
   default, plus `compression-full`, so apps built with
   `default-features = false` can leave out dependencies they never use. The

@@ -165,7 +165,7 @@ impl Database {
             return Ok(());
         }
         let writes = self.writes.fetch_add(1, Ordering::Relaxed) + 1;
-        if writes % self.sweep_every == 0 {
+        if writes.is_multiple_of(self.sweep_every) {
             self.sweep().await?;
         }
         Ok(())

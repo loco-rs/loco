@@ -37,9 +37,25 @@ cache:
   uri: <%= get_env(name="REDIS_URL", default="redis://127.0.0.1") %>
 ```
 
-Use `InMem` in development and test. Use `Redis` in production as soon as there
-is more than one process — an in-memory cache is per-process, so two web workers
-have two different caches and neither sees the other's entries.
+Or keep the cache in the app's own database, with no Redis and no feature to
+enable (`with-db` is a default feature). This is the Solid Cache equivalent:
+
+```yaml
+cache:
+  kind: Database          # Postgres or SQLite
+  sweep_every: 100        # optional: delete expired rows every N writes (0 = never)
+  sweep_batch: 1000       # optional: at most N rows per sweep
+```
+
+Entries live in a `loco_cache` table that Loco creates itself on first use — do
+not write a migration for it. An expired entry reads as missing at once; the
+rows are deleted later, in batches. A read is a query, so keep `InMem` for
+values read on every request.
+
+Use `InMem` in development and test. In production, as soon as there is more
+than one process — an in-memory cache is per-process, so two web workers have
+two different caches and neither sees the other's entries — use `Database` (one
+less service) or `Redis`.
 
 ---
 

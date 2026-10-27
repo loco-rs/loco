@@ -178,6 +178,9 @@ database:
   dangerously_truncate: false# optional, default false
   dangerously_recreate: false# optional, default false
   run_on_start: <sql/pragma> # optional
+  sqlite:                    # optional, SQLite only
+    pragmas:
+      synchronous: FULL      # PRAGMA name: value, merged over the defaults
 ```
 
 | Key | Type | Required? | Notes |
@@ -192,7 +195,8 @@ database:
 | `database.auto_migrate` | `bool` | optional — `#[serde(default)]` | `database.rs:51-52`. Runs pending migrations on boot; recommended for development, discouraged in production |
 | `database.dangerously_truncate` | `bool` | optional — `#[serde(default)]` | `database.rs:56-57`. Deletes row data on boot; typically used in `test` |
 | `database.dangerously_recreate` | `bool` | optional — `#[serde(default)]` | `database.rs:63-64`. Drops and recreates schema on boot |
-| `database.run_on_start` | `Option<String>` | optional | `database.rs:83`. Arbitrary SQL/PRAGMA statements executed once the connection is established. For SQLite, if unset, Loco applies its own PRAGMA defaults (`foreign_keys=ON`, `journal_mode=WAL`, `synchronous=NORMAL`, `mmap_size=134217728`, `journal_size_limit=67108864`, `cache_size=2000`, `busy_timeout=5000`) |
+| `database.run_on_start` | `Option<String>` | optional | `database.rs`. Arbitrary SQL statements executed once, on one connection, after the pool is up. Not a way to set per-connection SQLite PRAGMAs; use `database.sqlite.pragmas` |
+| `database.sqlite.pragmas` | `Map<String, String>` | optional, default empty | SQLite only. Merged over Loco's defaults and applied to **every** connection of the pool: `journal_mode=WAL` (not for `:memory:`), `synchronous=NORMAL`, `busy_timeout=5000`, `foreign_keys=ON`, `journal_size_limit=67108864`, `mmap_size=134217728`, `cache_size=2000`. Names must be plain identifiers. See [Run SQLite in production](/docs/how-to/run-sqlite-in-production) |
 
 Note: the `db_min_conn()=1` / `db_max_conn()=20` / `db_connect_timeout()=500` / `db_idle_timeout()=500` helper functions in `database.rs:86-100` are **not** defaults for `Database` itself (whose numeric fields have no `#[serde(default)]` and are required) — they are reused as the `#[serde(default = ...)]` values for the Postgres/Sqlite [`queue`](#queue) configs below.
 
@@ -347,7 +351,8 @@ queue:
 | `queue.reaper` | `Option<ReaperConfig>` | optional, default `None` (disabled) | `queue.rs:57-59`. See below |
 | `queue.retention` | `Option<RetentionConfig>` | optional, default `None` (disabled) | Postgres and Sqlite only. See below |
 | **Sqlite** (`SqliteQueueConfig`, `queue.rs:59-86`) | | | |
-| — | identical fields to Postgres, including `queue.reaper` and `queue.retention` | | `poll_interval_sec` defaults via its own `sqlt_poll_interval()=1` (`queue.rs:81-82,92-94`); all other defaults are shared with Postgres via the same `db_*` helper functions |
+| `queue.pragmas` | `Map<String, String>` | optional, default empty | SQLite PRAGMAs merged over the same defaults as `database.sqlite.pragmas`, on every connection of the queue's own pool |
+| — | otherwise identical fields to Postgres, including `queue.reaper` and `queue.retention` | | `poll_interval_sec` defaults via its own `sqlt_poll_interval()=1` (`queue.rs:81-82,92-94`); all other defaults are shared with Postgres via the same `db_*` helper functions |
 | **`ReaperConfig`** (`queue.rs`, all three backends) | | | Opt-in visibility-timeout reaper: when set, the queue provider spawns a background task that periodically requeues jobs stuck in `processing` (e.g. after a worker crash), reusing the same logic as `cargo loco jobs requeue`. Leaving it unset keeps the previous behavior — no automatic requeue. |
 | `queue.reaper.age_minutes` | `i64` | required (only if `reaper` is set) | Requeue jobs that have been `processing` for longer than this many minutes |
 | `queue.reaper.interval_seconds` | `u64` | optional, default `60` (`default_reaper_interval_seconds()`) | How often the reaper sweeps for stale jobs |
@@ -380,12 +385,15 @@ cache:
 
 | Key | Type | Required? | Notes |
 |---|---|---|---|
-| `cache.kind` | tag: `InMem` \| `Redis` \| `"Null"` | required if `cache` present | `cache.rs:6-16`. `Null` must be written quoted: unquoted, YAML resolves it to null and the tagged enum fails to deserialize |
+| `cache.kind` | tag: `InMem` \| `Database` \| `Redis` \| `"Null"` | required if `cache` present | `cache.rs:6-16`. `Null` must be written quoted: unquoted, YAML resolves it to null and the tagged enum fails to deserialize |
 | **InMem** (`InMemCacheConfig`, `cache.rs:18-22`) — feature-gated on `cache_inmem` | | | |
 | `cache.max_capacity` | `u64` | optional, default `33554432` (`32 * 1024 * 1024`, `cache_in_mem_max_capacity()`). Counts entries; when full, the least recently used entry is evicted | `cache.rs:20-21,24-26` |
 | **Redis** (`RedisCacheConfig`, `cache.rs:28-33`) — feature-gated on `cache_redis` | | | |
 | `cache.uri` | `String` | required | `cache.rs:30` |
 | `cache.max_size` | `u32` | required — max pool connections | `cache.rs:32` |
+| **Database** (`DatabaseCacheConfig`, `cache.rs`) — feature-gated on `with-db` | | | Entries live in the `loco_cache` table of the app database (Postgres or SQLite), created on first use |
+| `cache.sweep_every` | `u64` | optional, default `100` | Delete expired rows after this many writes. `0` turns the sweep off |
+| `cache.sweep_batch` | `u64` | optional, default `1000` | The most expired rows one sweep deletes |
 | **Null** | (no fields) | — | default no-op cache |
 
 If the corresponding feature (`cache_inmem` / `cache_redis`) is not compiled in, that `kind` value will fail to deserialize.
