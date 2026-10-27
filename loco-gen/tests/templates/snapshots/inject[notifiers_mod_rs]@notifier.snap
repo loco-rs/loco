@@ -1,0 +1,7 @@
+---
+source: loco-gen/tests/templates/notifier.rs
+expression: "read(&tree, \"src/notifiers/mod.rs\")"
+---
+//! Notifiers: `cargo loco generate notifier <name>`.
+
+pub mod queue_paused;

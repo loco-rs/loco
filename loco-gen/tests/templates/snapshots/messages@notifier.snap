@@ -1,0 +1,6 @@
+---
+source: loco-gen/tests/templates/notifier.rs
+expression: messages
+---
+* A notifier `QueuePaused` was added successfully. Send it with `QueuePaused { .. }.deliver_later(&ctx).await`.
+* Set SLACK_WEBHOOK_URL to a Slack incoming-webhook URL, or edit `notifications:` in config/*.yaml. Unconfigured channels are skipped.

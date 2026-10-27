@@ -70,6 +70,10 @@ auth_session_encrypted = ["auth_session", "axum-extra/cookie-private"]
 # `Identity`. Brings an HTTP client (reqwest 0.12 on rustls + ring, so still no
 # C toolchain) for the token exchange and profile fetch.
 auth_oauth = ["auth_session", "dep:reqwest"]
+# Notifiers delivered in the background to Slack incoming webhooks, signed
+# JSON webhooks and (with `mailer`) email. Brings the same reqwest 0.12 on
+# rustls + ring as `auth_oauth`, and RustCrypto HMAC for webhook signatures.
+notifications = ["dep:reqwest", "dep:hmac", "dep:sha2"]
 cli = ["dep:clap"]
 testing = ["testing-core", "testing-html"]
 # Request, mailer and DB test helpers, without the HTML selector assertions.

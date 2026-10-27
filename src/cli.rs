@@ -356,6 +356,12 @@ After running the migration, follow these steps to complete the process:
         /// Name of the thing to generate
         name: String,
     },
+    /// Generate a notifier: one notification delivered in the background to
+    /// Slack, webhooks and email
+    Notifier {
+        /// Name of the thing to generate
+        name: String,
+    },
     /// Generate data loader
     Data {
         /// Name of the thing to generate
@@ -495,6 +501,7 @@ impl ComponentArg {
             Self::Scheduler {} => Ok(loco_gen::Component::Scheduler {}),
             Self::Worker { name } => Ok(loco_gen::Component::Worker { name }),
             Self::Mailer { name } => Ok(loco_gen::Component::Mailer { name }),
+            Self::Notifier { name } => Ok(loco_gen::Component::Notifier { name }),
             Self::Data { name } => Ok(loco_gen::Component::Data { name }),
             Self::Oauth { provider } => Ok(loco_gen::Component::OAuth { provider }),
             Self::Deployment { kind } => Ok(kind.to_generator_component(config)),
