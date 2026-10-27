@@ -103,10 +103,8 @@ struct Server {
     store: Arc<SessionStore>,
     /// The live session's id.
     id: Option<String>,
-    /// Mint a new id on save (session fixation defence).
-    rotate: bool,
     /// [`Session::clear`] was called: the sign-in ended, whatever is written
-    /// afterwards. Sticky.
+    /// afterwards, and the id is replaced (session fixation defence). Sticky.
     cleared: bool,
     /// The user id the session was loaded with; a different one rotates the id.
     loaded_uid: Option<Value>,
@@ -291,33 +289,48 @@ impl Session {
                 series = Some(presented_series);
             } else {
                 match store.restore(&presented_series, &token).await? {
-                    Restored::Ok { user, token } => {
+                    Restored::Ok {
+                        user,
+                        token,
+                        expires_at,
+                    } => {
                         let new_id = session_store::random_token();
-                        data = BTreeMap::from([(USER_ID_KEY.to_string(), Value::String(user))]);
-                        store
-                            .apply(vec![Op::Insert {
-                                id: new_id.clone(),
-                                record: store.record(data.clone()),
-                            }])
-                            .await?;
-                        jar = jar.add(
-                            options.cookie(name.clone(), cookies::seal(&new_id, SERVER_SEAL_TTL)?),
-                        );
-                        if let Some(token) = token {
-                            let value = format!("{presented_series}.{token}");
+                        let restored_data =
+                            BTreeMap::from([(USER_ID_KEY.to_string(), Value::String(user))]);
+                        // Stored only while the series still exists, so a
+                        // revoke that raced this restore wins.
+                        if store
+                            .insert_restored(
+                                &new_id,
+                                store.record(restored_data.clone()),
+                                &presented_series,
+                            )
+                            .await?
+                        {
+                            data = restored_data;
                             jar = jar.add(
                                 options
-                                    .clone()
-                                    .with_max_age(Some(store.remember_for()))
-                                    .cookie(
-                                        remember_name.clone(),
-                                        cookies::seal(&value, store.remember_for())?,
-                                    ),
+                                    .cookie(name.clone(), cookies::seal(&new_id, SERVER_SEAL_TTL)?),
                             );
+                            if let Some(token) = token {
+                                // The series keeps its sign-in's lifetime:
+                                // the cookie lasts what is left of it.
+                                let left =
+                                    u64::try_from((expires_at - session_store::now()).max(1))
+                                        .unwrap_or(1);
+                                let value = format!("{presented_series}.{token}");
+                                jar =
+                                    jar.add(options.clone().with_max_age(Some(left)).cookie(
+                                        remember_name.clone(),
+                                        cookies::seal(&value, left)?,
+                                    ));
+                            }
+                            id = Some(new_id);
+                            series = Some(presented_series);
+                            restored = true;
+                        } else {
+                            jar = jar.remove(&remember_name);
                         }
-                        id = Some(new_id);
-                        series = Some(presented_series);
-                        restored = true;
                     }
                     Restored::Rejected => jar = jar.remove(&remember_name),
                 }
@@ -335,7 +348,6 @@ impl Session {
             server: Some(Server {
                 store,
                 id,
-                rotate: false,
                 cleared: false,
                 loaded_uid,
                 series,
@@ -391,7 +403,6 @@ impl Session {
         self.dirty = true;
         if let Some(server) = &mut self.server {
             server.cleared = true;
-            server.rotate = true;
         }
         self
     }
@@ -525,7 +536,7 @@ impl Session {
         // `renew()`: whoever planted the old id must not inherit the sign-in.
         let changed_user =
             server.id.is_some() && data.get(USER_ID_KEY) != server.loaded_uid.as_ref();
-        let rotating = server.rotate || changed_user;
+        let rotating = server.cleared || changed_user;
 
         // The remember series belongs to the sign-in that asked for it. When
         // the id rotates or the session was cleared, that sign-in is over.

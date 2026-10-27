@@ -19,8 +19,15 @@
 //! [`SessionStore::restore`]). On a request with no live session, a valid
 //! remember cookie re-establishes the session and rotates the token by
 //! bumping the generation, with a compare-and-swap so parallel requests agree
-//! on one winner. A token that is neither the current nor the just-replaced
-//! one means a stolen cookie was replayed, so the whole series is revoked.
+//! on one winner. The series has a fixed lifetime (`remember_for` from the
+//! sign-in that asked for it): using it never extends it. A token that is
+//! neither the current nor the just-replaced one means a stolen cookie was
+//! replayed, so everything the user has is revoked: every session, every
+//! series.
+//!
+//! The Redis store runs Lua scripts that reach keys derived from their
+//! arguments (revoking a user deletes each session the user's index names), so
+//! it needs a single Redis node; Redis Cluster is not supported.
 //!
 //! You rarely touch this module directly: [`Session`](super::session::Session)
 //! reads and writes through it, and [`sign_out_everywhere`] revokes a user.
@@ -61,6 +68,10 @@ pub const DEFAULT_REMEMBER_COOKIE: &str = "loco_remember";
 /// slower ones would look like a replayed, stolen cookie.
 const ROTATION_GRACE: i64 = 10;
 
+/// Browsers cap a cookie's lifetime at 400 days; a longer `remember_for` would
+/// only be a promise they do not keep.
+pub const MAX_REMEMBER_FOR: u64 = 400 * 24 * 60 * 60;
+
 /// One in this many session writes also deletes a batch of expired rows.
 const PURGE_ONE_IN: u32 = 64;
 
@@ -93,6 +104,10 @@ pub(crate) trait Backend: Send + Sync + fmt::Debug {
     /// Rewrites an existing session. `false` when it is gone (signed out,
     /// revoked or expired in the meantime): it is never recreated.
     async fn update(&self, sid: &str, record: &Record) -> Result<bool>;
+    /// Stores the session a remember-me restore minted, but only while
+    /// `series` still exists, in one step: a revoke that lands in between must
+    /// not leave a live session behind. `false` when the series is gone.
+    async fn insert_restored(&self, sid: &str, record: &Record, series: &str) -> Result<bool>;
     async fn delete(&self, sid: &str) -> Result<()>;
     /// Deletes every session and remember series of `user`, atomically.
     async fn revoke_user(&self, user: &str) -> Result<u64>;
@@ -175,8 +190,13 @@ impl fmt::Debug for SessionStore {
 
 /// The outcome of presenting a remember-me cookie.
 pub(crate) enum Restored {
-    /// Sign the user back in. `token` is the token to put in the cookie.
-    Ok { user: String, token: Option<String> },
+    /// Sign the user back in. `token` is the token to put in the cookie,
+    /// `expires_at` (unix seconds) when the series ends.
+    Ok {
+        user: String,
+        token: Option<String>,
+        expires_at: i64,
+    },
     /// Unknown, expired or replayed: drop the cookie.
     Rejected,
 }
@@ -204,6 +224,19 @@ impl SessionStore {
     pub(crate) async fn load(&self, id: &str) -> Result<Option<Record>> {
         let record = self.backend.load(&hash(id)).await?;
         Ok(record.filter(|r| r.expires_at > now()))
+    }
+
+    /// The session a remember-me restore mints, stored only while its series
+    /// still exists. `false` when it was revoked meanwhile.
+    pub(crate) async fn insert_restored(
+        &self,
+        id: &str,
+        record: Record,
+        series: &str,
+    ) -> Result<bool> {
+        self.backend
+            .insert_restored(&hash(id), &record, series)
+            .await
     }
 
     /// Applies `ops` in order (atomically where the store can).
@@ -284,7 +317,8 @@ impl SessionStore {
     /// cookie works. Rotation is a compare-and-swap on the generation, so
     /// parallel requests with the same token produce one rotation and the
     /// rest take the grace path. Anything else on a known series is a copied
-    /// cookie and revokes the series.
+    /// cookie: like Devise, that signs the user out everywhere, because the
+    /// sessions the thief already minted would otherwise live on.
     pub(crate) async fn restore(&self, series: &str, token: &str) -> Result<Restored> {
         // A few lost races at most; each loss means someone else rotated.
         for _ in 0..3 {
@@ -304,11 +338,12 @@ impl SessionStore {
             let is_previous = previous.as_deref().is_some_and(|p| ct_eq(token, p));
 
             if is_current {
+                // The lifetime is fixed at sign-in: rotating never extends it.
                 let rotated = Remember {
                     user: stored.user.clone(),
                     generation: generation + 1,
                     rotated_at: at,
-                    expires_at: at.saturating_add(to_i64(self.remember_for)),
+                    expires_at: stored.expires_at,
                 };
                 if self
                     .backend
@@ -318,6 +353,7 @@ impl SessionStore {
                     return Ok(Restored::Ok {
                         user: stored.user,
                         token: Some(self.token(series, generation + 1)),
+                        expires_at: stored.expires_at,
                     });
                 }
                 continue;
@@ -326,14 +362,15 @@ impl SessionStore {
                 return Ok(Restored::Ok {
                     user: stored.user,
                     token: Some(current),
+                    expires_at: stored.expires_at,
                 });
             }
             // A known series with the wrong token: the cookie was copied.
             tracing::warn!(
-                series = %series,
-                "remember-me token mismatch on a known series; revoking it"
+                series = %log_id(series),
+                "remember-me token mismatch on a known series; revoking everything the user has"
             );
-            self.backend.remember_delete(series).await?;
+            self.backend.revoke_user(&stored.user).await?;
             return Ok(Restored::Rejected);
         }
         Ok(Restored::Rejected)
@@ -401,35 +438,71 @@ pub fn is_server_side(ctx: &AppContext) -> bool {
     session_config(&ctx.config).is_some_and(|s| s.store.is_server_side())
 }
 
-/// Rejects configurations that cannot work. Checked at boot; the store
-/// itself is only built (and its tables created) on first use, so commands
-/// that never touch a session do not need the database or Redis for it.
+/// Rejects configurations that cannot work.
+///
+/// Checked at boot; the store itself is only built (and its tables created) on
+/// first use, so commands that never touch a session do not need the database
+/// or Redis for it.
 ///
 /// # Errors
 ///
-/// When remember-me is configured with the `cookie` store, or would expire
-/// before the session it is meant to outlive.
+/// When `ttl` is zero; remember-me is configured with the `cookie` store, or
+/// would expire before the session it is meant to outlive (counting the
+/// default `remember_for` of a server-side store), or outlast what browsers
+/// keep; or the session and remember-me cookies share a name.
 pub fn validate(config: &Config) -> Result<()> {
     let Some(session) = session_config(config) else {
         return Ok(());
     };
-    let Some(remember_for) = session.remember_for else {
-        return Ok(());
-    };
+    let bad = |msg: String| Err(Error::Message(msg));
+    if session.ttl == Some(0) {
+        return bad("auth.session.ttl must be at least 1 second".to_string());
+    }
+    if let Some(remember_for) = session.remember_for {
+        if !session.store.is_server_side() {
+            return bad(
+                "auth.session.remember_for is set, but remember-me needs a server-side \
+                 session store to hold its series. Set auth.session.store to `database` or \
+                 `redis`, or remove remember_for."
+                    .to_string(),
+            );
+        }
+        if remember_for > MAX_REMEMBER_FOR {
+            return bad(format!(
+                "auth.session.remember_for ({remember_for}s) is over 400 days, the longest a \
+                 browser keeps a cookie"
+            ));
+        }
+    }
     if !session.store.is_server_side() {
-        return Err(Error::Message(
-            "auth.session.remember_for is set, but remember-me needs a server-side session \
-             store to hold its series. Set auth.session.store to `database` or `redis`, or \
-             remove remember_for."
-                .to_string(),
-        ));
+        return Ok(());
     }
     let ttl = session.ttl.unwrap_or(DEFAULT_TTL);
+    let remember_for = session.remember_for.unwrap_or(DEFAULT_REMEMBER_FOR);
     if remember_for <= ttl {
-        return Err(Error::Message(format!(
-            "auth.session.remember_for ({remember_for}s) must be longer than auth.session.ttl \
-             ({ttl}s): a remember-me cookie that expires with the session never restores one"
-        )));
+        return bad(format!(
+            "auth.session.remember_for ({remember_for}s{}) must be longer than auth.session.ttl \
+             ({ttl}s): a remember-me cookie that expires with the session never restores one",
+            if session.remember_for.is_none() {
+                ", the default"
+            } else {
+                ""
+            }
+        ));
+    }
+    let session_cookie = session
+        .cookie_name
+        .as_deref()
+        .unwrap_or(super::cookies::DEFAULT_SESSION_COOKIE);
+    let remember_cookie = session
+        .remember_cookie_name
+        .as_deref()
+        .unwrap_or(DEFAULT_REMEMBER_COOKIE);
+    if session_cookie == remember_cookie {
+        return bad(format!(
+            "auth.session.cookie_name and remember_cookie_name are both `{session_cookie}`: the \
+             two cookies would overwrite each other"
+        ));
     }
     Ok(())
 }
@@ -480,7 +553,7 @@ async fn build(ctx: &AppContext) -> Result<SessionStore> {
                             .to_string(),
                     )
                 })?;
-            Arc::new(redis::Redis::connect(&uri, ttl.max(remember_for)).await?)
+            Arc::new(redis::Redis::connect(&uri).await?)
         }
         #[cfg(not(feature = "cache_redis"))]
         SessionStoreKind::Redis => {
@@ -506,6 +579,12 @@ pub fn random_token() -> String {
     let mut bytes = [0u8; 32];
     rand::rng().fill_bytes(&mut bytes);
     URL_SAFE_NO_PAD.encode(bytes)
+}
+
+/// What logs call a remember-me series: a hash, so a log line cannot be turned
+/// back into a cookie.
+pub(crate) fn log_id(series: &str) -> String {
+    hash(series).chars().take(12).collect()
 }
 
 /// The key a session id is stored under.

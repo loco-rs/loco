@@ -117,7 +117,11 @@ subcommand.
   sign-out, and a new user id rotates the session id by itself.
   `Session::remember()?` and `auth.session.remember_for` add Devise-style
   remember me: a rotating token with theft detection that tolerates parallel
-  requests and a lost response. Remember me with the `cookie` store is a boot
+  requests and a lost response; the series keeps the lifetime it was
+  created with, and a replayed token revokes every session and series the
+  user has. The `redis` store needs a single node (no Cluster). `ttl: 0`,
+  a `remember_for` over 400 days or not longer than `ttl` (default included)
+  and equal cookie names are boot errors. Remember me with the `cookie` store is a boot
   error (and `remember()` returns an error; `?remember=1` is ignored).
   `Session`, `CurrentUser` and OAuth sign-in work unchanged on every store;
   `?remember=1` on `/auth/{provider}` and `SignIn::remember()` opt in. A

@@ -12,7 +12,9 @@ use axum::{
     body::Body,
     extract::Request,
     http::{
-        header::{CACHE_CONTROL, CONTENT_LOCATION, DATE, ETAG, EXPIRES, IF_NONE_MATCH, VARY},
+        header::{
+            CACHE_CONTROL, CONTENT_LOCATION, DATE, ETAG, EXPIRES, IF_NONE_MATCH, SET_COOKIE, VARY,
+        },
         StatusCode,
     },
     response::Response,
@@ -104,6 +106,12 @@ where
                         if let Some(value) = response.headers().get(&name) {
                             headers.insert(name, value.clone());
                         }
+                    }
+                    // Cookies are not part of the representation: a session or
+                    // remember-me rotation rides on this response too, and losing
+                    // it would leave the browser holding a stale token.
+                    for value in response.headers().get_all(SET_COOKIE) {
+                        headers.append(SET_COOKIE, value.clone());
                     }
                 }
                 return Ok(builder.body(Body::empty()).unwrap());

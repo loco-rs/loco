@@ -103,7 +103,7 @@ async fn exercise(store: SessionStore) {
     let (op, cookie) = store.new_remember("carol");
     store.apply(vec![op]).await.unwrap();
     let (series, first) = cookie.split_once('.').unwrap();
-    let Restored::Ok { user, token } = store.restore(series, first).await.unwrap() else {
+    let Restored::Ok { user, token, .. } = store.restore(series, first).await.unwrap() else {
         panic!("valid token rejected");
     };
     assert_eq!(user, "carol");
@@ -186,6 +186,9 @@ fn the_store_debug_output_has_no_key_material() {
         async fn insert(&self, _: &str, _: &Record) -> Result<()> {
             Ok(())
         }
+        async fn insert_restored(&self, _: &str, _: &Record, _: &str) -> Result<bool> {
+            Ok(false)
+        }
         async fn update(&self, _: &str, _: &Record) -> Result<bool> {
             Ok(false)
         }
@@ -228,7 +231,7 @@ async fn parallel_restores_never_look_like_theft(store: SessionStore) {
     let mut issued = Vec::new();
     for result in results {
         match result.unwrap() {
-            Restored::Ok { user, token } => {
+            Restored::Ok { user, token, .. } => {
                 assert_eq!(user, "erin");
                 issued.push(token.expect("every answer carries a token"));
             }
@@ -349,14 +352,18 @@ async fn database_store_on_postgres() {
     let (url, _container) = crate::tests_cfg::postgres::setup_postgres_database().await;
     let db = sea_orm::Database::connect(&url).await.unwrap();
     let backend = db::Database::init(db).await.unwrap();
-    exercise(store(Arc::new(backend), SessionStoreKind::Database)).await;
+    let store = store(Arc::new(backend), SessionStoreKind::Database);
+    exercise(store.clone()).await;
+    theft_ends_everything_the_user_has(store.clone()).await;
+    rotation_keeps_the_series_expiry(store.clone()).await;
+    a_restored_session_needs_its_series(store).await;
 }
 
 #[cfg(feature = "cache_redis")]
 #[tokio::test]
 async fn redis_store() {
     let (url, _container) = crate::tests_cfg::redis::setup_redis_container().await;
-    let backend = redis::Redis::connect(&url, 3600).await.unwrap();
+    let backend = redis::Redis::connect(&url).await.unwrap();
     exercise(store(Arc::new(backend), SessionStoreKind::Redis)).await;
 }
 
@@ -364,28 +371,69 @@ async fn redis_store() {
 #[tokio::test]
 async fn parallel_restores_on_the_redis_store() {
     let (url, _container) = crate::tests_cfg::redis::setup_redis_container().await;
-    let backend = redis::Redis::connect(&url, 3600).await.unwrap();
+    let backend = redis::Redis::connect(&url).await.unwrap();
     parallel_restores_never_look_like_theft(store(Arc::new(backend), SessionStoreKind::Redis))
         .await;
 }
 
 #[cfg(feature = "cache_redis")]
 #[tokio::test]
-async fn redis_user_sets_do_not_collect_dead_members() {
+async fn redis_indexes_are_scored_by_expiry_and_hold_no_dead_members() {
     let (url, _container) = crate::tests_cfg::redis::setup_redis_container().await;
     let store = store(
-        Arc::new(redis::Redis::connect(&url, 3600).await.unwrap()),
+        Arc::new(redis::Redis::connect(&url).await.unwrap()),
         SessionStoreKind::Redis,
     );
     let client = ::redis::Client::open(url.as_str()).unwrap();
     let mut conn = client.get_multiplexed_async_connection().await.unwrap();
 
+    // A short-lived session is indexed under its expiry ...
+    let mut short = store.record(data("gina"));
+    short.expires_at = now() + 1;
+    insert(&store, "short", short.clone()).await;
+    let score: f64 = ::redis::cmd("ZSCORE")
+        .arg("loco:session:u:gina")
+        .arg(hash("short"))
+        .query_async(&mut conn)
+        .await
+        .unwrap();
+    assert!((score - short.expires_at as f64).abs() < f64::EPSILON);
+
+    // ... and the next write for the user sweeps it once it is dead, so the
+    // index cannot grow without bound.
+    tokio::time::sleep(std::time::Duration::from_millis(2100)).await;
+    put(&store, "long", "gina").await;
+    let n: i64 = ::redis::cmd("ZCARD")
+        .arg("loco:session:u:gina")
+        .query_async(&mut conn)
+        .await
+        .unwrap();
+    assert_eq!(n, 1);
+
+    // The key lives exactly as long as its latest member.
+    let ttl: i64 = ::redis::cmd("TTL")
+        .arg("loco:session:u:gina")
+        .query_async(&mut conn)
+        .await
+        .unwrap();
+    assert!((3590..=3600).contains(&ttl), "ttl {ttl}");
+
+    // Sliding the session moves its score and the key's expiry with it.
+    let mut later = store.record(data("gina"));
+    later.expires_at = now() + 9000;
+    update(&store, "long", later).await;
+    let ttl: i64 = ::redis::cmd("TTL")
+        .arg("loco:session:u:gina")
+        .query_async(&mut conn)
+        .await
+        .unwrap();
+    assert!((8990..=9000).contains(&ttl), "ttl {ttl}");
+
     // A rotation (delete old id, insert new) leaves one member, not two.
-    put(&store, "old", "gina").await;
     store
         .apply(vec![
             Op::Delete {
-                id: "old".to_string(),
+                id: "long".to_string(),
             },
             Op::Insert {
                 id: "new".to_string(),
@@ -394,38 +442,65 @@ async fn redis_user_sets_do_not_collect_dead_members() {
         ])
         .await
         .unwrap();
-    let n: i64 = ::redis::cmd("SCARD")
+    let n: i64 = ::redis::cmd("ZCARD")
         .arg("loco:session:u:gina")
         .query_async(&mut conn)
         .await
         .unwrap();
     assert_eq!(n, 1);
 
-    // A sign-out empties the set.
+    // A sign-out empties the index, and the key goes with it.
     store
         .apply(vec![Op::Delete {
             id: "new".to_string(),
         }])
         .await
         .unwrap();
-    let n: i64 = ::redis::cmd("SCARD")
+    let n: i64 = ::redis::cmd("EXISTS")
         .arg("loco:session:u:gina")
         .query_async(&mut conn)
         .await
         .unwrap();
     assert_eq!(n, 0);
 
-    // A deleted remember series leaves its set too.
+    // The series index is scored by the series' fixed expiry, and rotating the
+    // token does not move it: revoke-all can always find a live series.
     let (op, cookie) = store.new_remember("gina");
     store.apply(vec![op]).await.unwrap();
-    let (series, _) = cookie.split_once('.').unwrap();
+    let (series, first) = cookie.split_once('.').unwrap();
+    let expires = store
+        .backend
+        .remember_get(series)
+        .await
+        .unwrap()
+        .unwrap()
+        .expires_at;
+    assert!(matches!(
+        store.restore(series, first).await.unwrap(),
+        Restored::Ok { .. }
+    ));
+    let score: f64 = ::redis::cmd("ZSCORE")
+        .arg("loco:session:ur:gina")
+        .arg(series)
+        .query_async(&mut conn)
+        .await
+        .unwrap();
+    assert!((score - expires as f64).abs() < f64::EPSILON);
+    let ttl: i64 = ::redis::cmd("TTL")
+        .arg("loco:session:ur:gina")
+        .query_async(&mut conn)
+        .await
+        .unwrap();
+    assert!((7190..=7200).contains(&ttl), "ttl {ttl}");
+
+    // A deleted series leaves its index too.
     store
         .apply(vec![Op::RememberDelete {
             series: series.to_string(),
         }])
         .await
         .unwrap();
-    let n: i64 = ::redis::cmd("SCARD")
+    let n: i64 = ::redis::cmd("EXISTS")
         .arg("loco:session:ur:gina")
         .query_async(&mut conn)
         .await
@@ -438,7 +513,7 @@ async fn redis_user_sets_do_not_collect_dead_members() {
 async fn revoking_a_user_takes_every_session_and_series_in_one_step() {
     let (url, _container) = crate::tests_cfg::redis::setup_redis_container().await;
     let store = store(
-        Arc::new(redis::Redis::connect(&url, 3600).await.unwrap()),
+        Arc::new(redis::Redis::connect(&url).await.unwrap()),
         SessionStoreKind::Redis,
     );
     for n in 0..5 {
@@ -460,4 +535,220 @@ async fn revoking_a_user_takes_every_session_and_series_in_one_step() {
     for n in 0..10 {
         assert!(store.load(&format!("s{n}")).await.unwrap().is_none());
     }
+}
+
+// ---- behaviour every store shares ------------------------------------------
+
+/// A copied remember cookie is replayed: the user's sessions minted so far and
+/// every one of their series go, not just the series that was replayed.
+async fn theft_ends_everything_the_user_has(store: SessionStore) {
+    put(&store, "t1", "ivy").await;
+    put(&store, "t2", "ivy").await;
+    put(&store, "t3", "jack").await;
+    let (op1, first) = store.new_remember("ivy");
+    let (op2, second) = store.new_remember("ivy");
+    let (op3, other) = store.new_remember("jack");
+    store.apply(vec![op1, op2, op3]).await.unwrap();
+    let (stolen, _) = first.split_once('.').unwrap();
+    let (series2, token2) = second.split_once('.').unwrap();
+    let (series3, token3) = other.split_once('.').unwrap();
+
+    assert!(matches!(
+        store.restore(stolen, "not-the-token").await.unwrap(),
+        Restored::Rejected
+    ));
+    assert!(store.load("t1").await.unwrap().is_none());
+    assert!(store.load("t2").await.unwrap().is_none());
+    assert!(
+        matches!(
+            store.restore(series2, token2).await.unwrap(),
+            Restored::Rejected
+        ),
+        "the user's other series is revoked too"
+    );
+    assert!(store.load("t3").await.unwrap().is_some(), "others stay");
+    assert!(matches!(
+        store.restore(series3, token3).await.unwrap(),
+        Restored::Ok { .. }
+    ));
+}
+
+/// Remember-me is a lifetime fixed at sign-in (`remember_for`), not an idle
+/// timeout: using it never extends it.
+async fn rotation_keeps_the_series_expiry(store: SessionStore) {
+    let (op, cookie) = store.new_remember("kim");
+    store.apply(vec![op]).await.unwrap();
+    let (series, first) = cookie.split_once('.').unwrap();
+    let before = store.backend.remember_get(series).await.unwrap().unwrap();
+
+    tokio::time::sleep(std::time::Duration::from_millis(1100)).await;
+    let Restored::Ok {
+        token: Some(second),
+        ..
+    } = store.restore(series, first).await.unwrap()
+    else {
+        panic!("valid token rejected");
+    };
+    let Restored::Ok { .. } = store.restore(series, &second).await.unwrap() else {
+        panic!("rotated token rejected");
+    };
+    let after = store.backend.remember_get(series).await.unwrap().unwrap();
+    assert_eq!(after.generation, 2);
+    assert_eq!(after.expires_at, before.expires_at, "no sliding");
+}
+
+/// A revoke that lands while a restore is in flight must not leave the
+/// restored session alive: its insert depends on the series still existing.
+async fn a_restored_session_needs_its_series(store: SessionStore) {
+    let (op, cookie) = store.new_remember("lee");
+    store.apply(vec![op]).await.unwrap();
+    let (series, _) = cookie.split_once('.').unwrap();
+
+    assert!(store
+        .insert_restored("r1", store.record(data("lee")), series)
+        .await
+        .unwrap());
+    assert!(store.load("r1").await.unwrap().is_some());
+
+    store.revoke_user("lee").await.unwrap();
+    assert!(!store
+        .insert_restored("r2", store.record(data("lee")), series)
+        .await
+        .unwrap());
+    assert!(store.load("r2").await.unwrap().is_none());
+}
+
+macro_rules! on_every_store {
+    ($($check:ident),+ $(,)?) => {$(
+        mod $check {
+            use super::*;
+
+            #[cfg(feature = "with-db")]
+            #[tokio::test]
+            async fn database() {
+                let backend = db::Database::init(sqlite().await).await.unwrap();
+                super::$check(store(Arc::new(backend), SessionStoreKind::Database)).await;
+            }
+
+            #[cfg(feature = "cache_redis")]
+            #[tokio::test]
+            async fn redis() {
+                let (url, _container) = crate::tests_cfg::redis::setup_redis_container().await;
+                let backend = redis::Redis::connect(&url).await.unwrap();
+                super::$check(store(Arc::new(backend), SessionStoreKind::Redis)).await;
+            }
+        }
+    )+};
+}
+
+on_every_store!(
+    theft_ends_everything_the_user_has,
+    rotation_keeps_the_series_expiry,
+    a_restored_session_needs_its_series,
+);
+
+#[cfg(feature = "with-db")]
+#[tokio::test]
+async fn user_keys_longer_than_255_characters_fit_on_postgres() {
+    let (url, _container) = crate::tests_cfg::postgres::setup_postgres_database().await;
+    let db = sea_orm::Database::connect(&url).await.unwrap();
+    let store = store(
+        Arc::new(db::Database::init(db).await.unwrap()),
+        SessionStoreKind::Database,
+    );
+    let user = "u".repeat(400);
+    put(&store, "long-user", &user).await;
+    let (op, _) = store.new_remember(&user);
+    store.apply(vec![op]).await.unwrap();
+    assert_eq!(
+        store
+            .load("long-user")
+            .await
+            .unwrap()
+            .unwrap()
+            .user
+            .as_deref(),
+        Some(user.as_str())
+    );
+    assert_eq!(store.revoke_user(&user).await.unwrap(), 2);
+}
+
+#[test]
+fn logs_name_a_series_by_its_hash_never_its_value() {
+    let series = random_token();
+    let label = log_id(&series);
+    assert!(!label.contains(&series));
+    assert_eq!(label, log_id(&series), "stable, so entries can be matched");
+    assert_ne!(label, log_id(&random_token()));
+}
+
+// ---- configuration ----------------------------------------------------------
+
+fn configured(f: impl FnOnce(&mut SessionConfig)) -> Config {
+    let mut session = SessionConfig {
+        store: SessionStoreKind::Database,
+        ..Default::default()
+    };
+    f(&mut session);
+    let mut config = crate::tests_cfg::config::test_config();
+    config.auth = Some(Auth {
+        session: Some(session),
+        ..Default::default()
+    });
+    config
+}
+
+#[test]
+fn a_zero_ttl_is_rejected() {
+    let err = validate(&configured(|s| s.ttl = Some(0)))
+        .unwrap_err()
+        .to_string();
+    assert!(err.contains("auth.session.ttl"), "{err}");
+}
+
+#[test]
+fn a_long_ttl_needs_a_longer_remember_for_even_when_it_is_left_at_the_default() {
+    let err = validate(&configured(|s| s.ttl = Some(DEFAULT_REMEMBER_FOR)))
+        .unwrap_err()
+        .to_string();
+    assert!(err.contains("remember_for"), "{err}");
+    validate(&configured(|s| s.ttl = Some(DEFAULT_REMEMBER_FOR - 1))).unwrap();
+    validate(&configured(|s| {
+        s.ttl = Some(DEFAULT_REMEMBER_FOR);
+        s.remember_for = Some(DEFAULT_REMEMBER_FOR + 1);
+    }))
+    .unwrap();
+    // The cookie store has no server-side ttl to compare.
+    validate(&configured(|s| {
+        s.store = SessionStoreKind::Cookie;
+        s.ttl = Some(DEFAULT_REMEMBER_FOR);
+    }))
+    .unwrap();
+}
+
+#[test]
+fn the_session_and_remember_cookies_need_different_names() {
+    let err = validate(&configured(|s| {
+        s.cookie_name = Some("sid".to_string());
+        s.remember_cookie_name = Some("sid".to_string());
+    }))
+    .unwrap_err()
+    .to_string();
+    assert!(err.contains("cookie_name"), "{err}");
+    let err = validate(&configured(|s| {
+        s.remember_cookie_name = Some(crate::auth::cookies::DEFAULT_SESSION_COOKIE.to_string());
+    }))
+    .unwrap_err()
+    .to_string();
+    assert!(err.contains("cookie_name"), "{err}");
+}
+
+#[test]
+fn remember_for_is_capped_at_what_browsers_keep() {
+    const CAP: u64 = 400 * 24 * 60 * 60;
+    validate(&configured(|s| s.remember_for = Some(CAP))).unwrap();
+    let err = validate(&configured(|s| s.remember_for = Some(CAP + 1)))
+        .unwrap_err()
+        .to_string();
+    assert!(err.contains("400 days"), "{err}");
 }

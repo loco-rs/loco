@@ -81,6 +81,48 @@ async fn etag(#[case] enable: bool) {
     handle.abort();
 }
 
+/// A 304 is still a response to a request that may carry a rotated session or
+/// remember-me cookie; dropping `Set-Cookie` there loses the rotation.
+#[tokio::test]
+async fn etag_not_modified_keeps_set_cookie() {
+    async fn action() -> Result<Response> {
+        let mut res = format::render().etag("loco-etag")?.text("content")?;
+        res.headers_mut().append(
+            axum::http::header::SET_COOKIE,
+            "a=1; Path=/".parse().unwrap(),
+        );
+        res.headers_mut().append(
+            axum::http::header::SET_COOKIE,
+            "b=2; Path=/".parse().unwrap(),
+        );
+        Ok(res)
+    }
+
+    let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
+    ctx.config.server.middlewares.etag = Some(middleware::etag::Etag { enable: true });
+
+    let port = get_available_port().await;
+    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
+
+    let res = reqwest::Client::new()
+        .get(get_base_url_port(port))
+        .header("if-none-match", "loco-etag")
+        .send()
+        .await
+        .expect("response");
+
+    assert_eq!(res.status(), StatusCode::NOT_MODIFIED);
+    let cookies: Vec<_> = res
+        .headers()
+        .get_all("set-cookie")
+        .iter()
+        .map(|v| v.to_str().unwrap().to_string())
+        .collect();
+    assert_eq!(cookies, ["a=1; Path=/", "b=2; Path=/"]);
+
+    handle.abort();
+}
+
 #[rstest]
 // Enabled with the default `RightmostXForwardedFor` source: the rightmost
 // (last) value of `X-Forwarded-For` is taken verbatim, with **no**

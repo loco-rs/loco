@@ -2,6 +2,8 @@
 //! idempotently on first use (the way the Postgres and `SQLite` queues create
 //! theirs), on Postgres and `SQLite`.
 
+use std::fmt::Write as _;
+
 use async_trait::async_trait;
 use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, Statement, TransactionTrait, Value};
 
@@ -11,7 +13,7 @@ use crate::{Error, Result};
 /// Rows deleted per purge.
 const PURGE_BATCH: u32 = 500;
 
-/// Serialises concurrent first-use DDL on Postgres ("loco_ses").
+/// Serialises concurrent first-use DDL on Postgres (the bytes of `loco_ses`).
 const DDL_LOCK: i64 = 0x6c6f_636f_5f73_6573;
 
 #[derive(Debug)]
@@ -28,7 +30,7 @@ fn statement(backend: DbBackend, sql: &str, values: Vec<Value>) -> Statement {
         for c in sql.chars() {
             if c == '?' {
                 n += 1;
-                out.push_str(&format!("${n}"));
+                let _ = write!(out, "${n}");
             } else {
                 out.push(c);
             }
@@ -79,12 +81,12 @@ impl Database {
         }
         for ddl in [
             "CREATE TABLE IF NOT EXISTS loco_sessions (id_hash VARCHAR(64) PRIMARY KEY, user_key \
-             VARCHAR(255), data TEXT NOT NULL, expires_at BIGINT NOT NULL)",
+             TEXT, data TEXT NOT NULL, expires_at BIGINT NOT NULL)",
             "CREATE INDEX IF NOT EXISTS loco_sessions_user_key_idx ON loco_sessions (user_key)",
             "CREATE INDEX IF NOT EXISTS loco_sessions_expires_at_idx ON loco_sessions \
              (expires_at)",
             "CREATE TABLE IF NOT EXISTS loco_remember_tokens (series VARCHAR(64) PRIMARY KEY, \
-             user_key VARCHAR(255) NOT NULL, generation BIGINT NOT NULL, rotated_at BIGINT NOT \
+             user_key TEXT NOT NULL, generation BIGINT NOT NULL, rotated_at BIGINT NOT \
              NULL, expires_at BIGINT NOT NULL)",
             "CREATE INDEX IF NOT EXISTS loco_remember_tokens_user_key_idx ON \
              loco_remember_tokens (user_key)",
@@ -198,6 +200,26 @@ impl Backend for Database {
             },
         )
         .await
+    }
+
+    async fn insert_restored(&self, sid: &str, record: &Record, series: &str) -> Result<bool> {
+        // One statement: the row exists only if the series still did when it
+        // ran, so a revoke cannot slip in between a check and the insert.
+        Ok(exec(
+            &self.db,
+            self.backend,
+            "INSERT INTO loco_sessions (id_hash, user_key, data, expires_at) SELECT ?, ?, ?, ? \
+             WHERE EXISTS (SELECT 1 FROM loco_remember_tokens WHERE series = ?)",
+            vec![
+                sid.into(),
+                record.user.clone().into(),
+                json(record)?.into(),
+                record.expires_at.into(),
+                series.into(),
+            ],
+        )
+        .await?
+            > 0)
     }
 
     async fn update(&self, sid: &str, record: &Record) -> Result<bool> {

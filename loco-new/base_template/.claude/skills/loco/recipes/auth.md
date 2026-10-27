@@ -140,7 +140,7 @@ Ok((session.clear(), format::redirect("/")?))
 loco_rs::auth::session_store::sign_out_everywhere(&ctx, &pid).await?;
 ```
 
-- `remember_for` (seconds) with `store: cookie` is a boot error: remember-me needs the server to hold the series. So is a `remember_for` that is not longer than `ttl` (server-side idle timeout, default 1 day; the session cookie has no `Max-Age`, `max_age` is cookie-store only). `.remember()?` errors on the cookie store.
+- `remember_for` (seconds) with `store: cookie` is a boot error: remember-me needs the server to hold the series. So is a `remember_for` that is not longer than `ttl` (server-side idle timeout, default 1 day; the session cookie has no `Max-Age`, `max_age` is cookie-store only). `.remember()?` errors on the cookie store. Also boot errors: `ttl: 0`, `remember_for` over 400 days, `remember_cookie_name` equal to `cookie_name`. The series has a fixed lifetime (rotation never extends it) and a replayed old token signs the user out everywhere. The `redis` store needs a single node (no Cluster).
 - `store: database` needs `with-db`; `redis` needs `cache_redis`. Tables are created on first use.
 - Server-side stores need the `auth_session` middleware: keep it if you override `Hooks::middlewares`.
 

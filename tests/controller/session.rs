@@ -478,6 +478,66 @@ async fn reading_a_session_late_in_its_life_slides_the_idle_timeout() {
     assert!(left > 900, "expected about 1000s left, got {left}");
 }
 
+#[tokio::test]
+async fn theft_signs_the_user_out_of_every_device() {
+    let App { mut server, ctx } = app(|_| {}).await;
+    let laptop = server.get("/login?user=alice").await.cookie("loco_session");
+    server.clear_cookies();
+    let stolen = server
+        .get("/login?user=alice&remember=true")
+        .await
+        .cookie("loco_remember");
+    server.clear_cookies();
+    server.add_cookie(stolen.clone());
+    // The thief's first use works and mints a session of its own ...
+    let res = server.get("/me").await;
+    res.assert_text("alice");
+    let minted = res.cookie("loco_session");
+
+    // ... until the owner's rotation makes the copy stale and it is replayed.
+    ctx.db
+        .execute_unprepared("UPDATE loco_remember_tokens SET rotated_at = rotated_at - 600")
+        .await
+        .unwrap();
+    server.clear_cookies();
+    server.add_cookie(stolen);
+    server.get("/me").await.assert_status_unauthorized();
+
+    for cookie in [laptop, minted] {
+        server.clear_cookies();
+        server.add_cookie(cookie);
+        server.get("/me").await.assert_status_unauthorized();
+    }
+    assert_eq!(scalar(&ctx, "SELECT count(*) FROM loco_sessions").await, 0);
+}
+
+#[tokio::test]
+async fn the_remember_cookie_does_not_slide_when_it_rotates() {
+    let App { mut server, ctx } = app(|s| s.remember_for = Some(100_000)).await;
+    let first = server
+        .get("/login?user=alice&remember=true")
+        .await
+        .cookie("loco_remember");
+    let fixed = scalar(&ctx, "SELECT expires_at FROM loco_remember_tokens").await;
+
+    tokio::time::sleep(std::time::Duration::from_millis(1100)).await;
+    server.clear_cookies();
+    server.add_cookie(first.clone());
+    let res = server.get("/me").await;
+    res.assert_text("alice");
+    let rotated = res.cookie("loco_remember");
+
+    assert_eq!(
+        scalar(&ctx, "SELECT expires_at FROM loco_remember_tokens").await,
+        fixed,
+        "the series keeps the lifetime it was given at sign-in"
+    );
+    assert!(
+        rotated.max_age().unwrap() < first.max_age().unwrap(),
+        "the cookie counts down with it"
+    );
+}
+
 // ---- the redis store through a router --------------------------------------
 
 #[cfg(feature = "cache_redis")]
@@ -565,6 +625,29 @@ mod on_redis {
             server.add_cookie(cookie);
             server.get("/me").await.assert_status_unauthorized();
         }
+    }
+
+    #[tokio::test]
+    async fn revoking_a_user_reaches_a_series_that_has_rotated() {
+        let (url, _container) = container().await;
+        let App { mut server, .. } = redis_app(&url).await;
+
+        let t0 = server
+            .get("/login?user=alice&remember=true")
+            .await
+            .cookie("loco_remember");
+        let mut latest = t0;
+        for _ in 0..3 {
+            server.clear_cookies();
+            server.add_cookie(latest.clone());
+            latest = server.get("/me").await.cookie("loco_remember");
+        }
+        server.get("/revoke?user=alice").await;
+        assert_eq!(count_keys(&url, "loco:session:*").await, 0);
+
+        server.clear_cookies();
+        server.add_cookie(latest);
+        server.get("/me").await.assert_status_unauthorized();
     }
 
     #[tokio::test]

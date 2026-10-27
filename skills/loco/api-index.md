@@ -257,12 +257,13 @@ since they restate the trait's own API.
 - `const` **DEFAULT_REMEMBER_COOKIE** — Default remember-me cookie name
 - `const` **DEFAULT_REMEMBER_FOR** — Remember-me lifetime when `auth.session.remember_for` is unset: 14 days
 - `const` **DEFAULT_TTL** — Idle lifetime of a server-side session when `auth.session.ttl` is unset: a
+- `const` **MAX_REMEMBER_FOR** — Browsers cap a cookie's lifetime at 400 days; a longer `remember_for` would
 - `struct` **SessionStore** — The configured server-side store
 - `fn` **is_server_side**`(ctx: &AppContext) -> bool` — Whether `ctx` is configured with a server-side session store
 - `fn` **of**`(ctx: &AppContext) -> Result<Arc<SessionStore>>` — The store `ctx` is configured with, built on first use
 - `fn` **random_token**`() -> String` — A fresh 256-bit random value, base64url. `rand::rng()` is a CSPRNG seeded
 - `fn` **sign_out_everywhere**`(ctx: &AppContext, user_id: &str) -> Result<u64>` — Ends every session and remember-me token of `user_id`: "sign out of all
-- `fn` **validate**`(config: &Config) -> Result<()>` — Rejects configurations that cannot work. Checked at boot; the store
+- `fn` **validate**`(config: &Config) -> Result<()>` — Rejects configurations that cannot work
 
 ### `SessionStore`
 
