@@ -11,7 +11,7 @@ since they restate the trait's own API.
 
 `use loco_rs::prelude::*;` brings these into scope. They are already available — importing them again is redundant.
 
-`ActiveModelBehavior`, `ActiveModelTrait`, `ActiveValue`, `AppContext`, `Authenticable`, `BackgroundWorker`, `ColumnTrait`, `Condition`, `ConnectionTrait`, `CurrentUser`, `DatabaseConnection`, `Date`, `DateTime`, `DateTimeUtc`, `DateTimeWithTimeZone`, `DbErr`, `Decimal`, `Dir`, `EncryptedCookies`, `EntityTrait`, `Error`, `Expr`, `Form`, `Format`, `Identity`, `Initializer`, `IntoActiveModel`, `IntoResponse`, `Json`, `JsonValidate`, `JsonValidateWithMessage`, `Mailer`, `MaybeCurrentUser`, `MiddlewareStackExt`, `ModelError`, `ModelResult`, `ModelTrait`, `Multipart`, `OAuthFailure`, `OAuthHandler`, `Order`, `Pager`, `PagerMeta`, `PaginatorTrait`, `Path`, `Query`, `QueryFilter`, `QueryOrder`, `QuerySelect`, `Queue`, `RemoteIP`, `RespondTo`, `Response`, `Result`, `Routes`, `Session`, `SessionUser`, `Set`, `SharedStore`, `SignIn`, `SignedCookies`, `State`, `Task`, `TaskInfo`, `TenantActiveModelExt`, `TenantEntity`, `TenantQueryExt`, `TeraView`, `TransactionTrait`, `Uuid`, `Validatable`, `Validate`, `ValidatorTrait`, `ViewEngine`, `ViewRenderer`, `async_trait`, `auth`, `bad_request`, `cookie`, `data`, `debug_handler`, `delete`, `format`, `get`, `head`, `include_dir`, `mailer`, `not_found`, `options`, `patch`, `post`, `prelude`, `put`, `query`, `task`, `trace`, `unauthorized`, `validation`
+`ActiveModelBehavior`, `ActiveModelTrait`, `ActiveValue`, `AppContext`, `Authenticable`, `BackgroundWorker`, `ColumnTrait`, `Condition`, `ConnectionTrait`, `CurrentUser`, `DatabaseConnection`, `Date`, `DateTime`, `DateTimeUtc`, `DateTimeWithTimeZone`, `DbErr`, `Decimal`, `Dir`, `EncryptedCookies`, `EntityTrait`, `Error`, `Expr`, `Form`, `Format`, `Identity`, `Initializer`, `IntoActiveModel`, `IntoResponse`, `Json`, `JsonValidate`, `JsonValidateWithMessage`, `Mailer`, `MaybeCurrentUser`, `MiddlewareStackExt`, `ModelError`, `ModelResult`, `ModelTrait`, `Multipart`, `OAuthFailure`, `OAuthHandler`, `OrErr`, `Order`, `Pager`, `PagerMeta`, `PaginatorTrait`, `Path`, `Query`, `QueryFilter`, `QueryOrder`, `QuerySelect`, `Queue`, `RemoteIP`, `RespondTo`, `Response`, `Result`, `Routes`, `Session`, `SessionUser`, `Set`, `SharedStore`, `SignIn`, `SignedCookies`, `State`, `Task`, `TaskInfo`, `TenantActiveModelExt`, `TenantEntity`, `TenantQueryExt`, `TeraView`, `TransactionTrait`, `Uuid`, `Validatable`, `Validate`, `ValidatorTrait`, `ViewEngine`, `ViewRenderer`, `async_trait`, `auth`, `bad_request`, `cookie`, `data`, `debug_handler`, `delete`, `format`, `get`, `head`, `include_dir`, `mailer`, `not_found`, `options`, `patch`, `post`, `prelude`, `put`, `query`, `task`, `trace`, `unauthorized`, `validation`
 
 ## `loco_rs::testing::prelude`
 
@@ -973,6 +973,7 @@ since they restate the trait's own API.
 ## `errors`
 
 - `enum` **Error** — Application-wide error type
+- `trait` **OrErr** — Turn a foreign `Result` or `Option` into a [`crate::Result`] with a message
 
 ### `Error`
 
@@ -1015,6 +1016,11 @@ since they restate the trait's own API.
 - `fn` **msg**`(err: impl Trait) -> Self`
 - `fn` **string**`(s: &str) -> Self`
 - `fn` **wrap**`(err: impl Trait) -> Self`
+
+### `OrErr`
+
+- `fn` **or_err**`(self: Self, msg: impl Trait) -> Result<T>` — # Errors
+- `fn` **or_err_with**`(self: Self, f: impl Trait) -> Result<T>` — Like [`OrErr::or_err`], but the message is built only on failure
 ## `hash`
 
 - `fn` **hash_password**`(pass: &str) -> Result<String>` — Hashes a plain text password and returns the hashed result

@@ -88,6 +88,15 @@ let parsed: MyType = serde_json::from_str(&raw).map_err(Error::wrap)?;
 
 Reach for `Error::string("...")` when you have a plain `&str`/message and no source error to wrap.
 
+To add a message of your own, use `.or_err("...")` from the prelude. It works on any `Result` whose error is a `std::error::Error + Send + Sync + 'static`, and on `Option`, and it keeps the original error as the `source()` of the new one:
+
+```rust
+let url = AuthUrl::new(cfg.auth_url.clone()).or_err("invalid auth URL")?;
+let user = users.first().or_err("no users loaded")?;
+```
+
+`.or_err_with(|| format!(...))` builds the message only on failure. The result is `Error::Any`, so it responds with a 500 like the rest of this section. The method is deliberately not called `context`, so it never clashes with `anyhow::Context` if you use both.
+
 ## 5. Content-type-aware error handling
 
 If an endpoint needs to render errors differently for HTML vs. JSON clients, match on both the fallible call's `Result` and the negotiated format in one place — see [Respond with different formats](/docs/how-to/respond-formats#4-combine-format-negotiation-with-error-handling).
