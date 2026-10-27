@@ -74,11 +74,16 @@ async fn run(mut req: Request, next: Next) -> Response {
     req.extensions_mut().insert(runtime.clone());
     let mut res = next.run(req).await;
 
-    if let Some(Pending { store, ops }) = res.extensions_mut().remove::<Pending>()
-        && let Err(err) = store.apply(ops).await
-    {
-        tracing::error!(error = %err, "could not write the session; dropping its cookies");
-        return Error::Message("session store unavailable".to_string()).into_response();
+    if let Some(Pending { store, ops }) = res.extensions_mut().remove::<Pending>() {
+        if let Err(err) = store.apply(ops).await {
+            tracing::error!(error = %err, "could not write the session; dropping its cookies");
+            return Error::Message("session store unavailable".to_string()).into_response();
+        }
+    } else if let Some((store, op)) = runtime.refresh() {
+        // A read-only request still slides the idle timeout. Best effort.
+        if let Err(err) = store.apply(vec![op]).await {
+            tracing::warn!(error = %err, "could not extend the session");
+        }
     }
 
     // A session re-established from a remember-me cookie needs its new

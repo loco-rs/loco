@@ -1,20 +1,59 @@
 //! The `database` store: `loco_sessions` and `loco_remember_tokens`, created
-//! idempotently at startup (the way the Postgres and `SQLite` queues create
+//! idempotently on first use (the way the Postgres and `SQLite` queues create
 //! theirs), on Postgres and `SQLite`.
 
 use async_trait::async_trait;
-use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, Statement, Value};
+use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, Statement, TransactionTrait, Value};
 
-use super::{Backend, Record, Remember};
+use super::{Backend, Op, Record, Remember};
 use crate::{Error, Result};
 
 /// Rows deleted per purge.
 const PURGE_BATCH: u32 = 500;
 
+/// Serialises concurrent first-use DDL on Postgres ("loco_ses").
+const DDL_LOCK: i64 = 0x6c6f_636f_5f73_6573;
+
 #[derive(Debug)]
 pub(super) struct Database {
     db: DatabaseConnection,
     backend: DbBackend,
+}
+
+/// Statements are written with `?`; Postgres wants `$1, $2, ...`.
+fn statement(backend: DbBackend, sql: &str, values: Vec<Value>) -> Statement {
+    let sql = if matches!(backend, DbBackend::Postgres) {
+        let mut n = 0;
+        let mut out = String::with_capacity(sql.len() + 8);
+        for c in sql.chars() {
+            if c == '?' {
+                n += 1;
+                out.push_str(&format!("${n}"));
+            } else {
+                out.push(c);
+            }
+        }
+        out
+    } else {
+        sql.to_string()
+    };
+    Statement::from_sql_and_values(backend, sql, values)
+}
+
+async fn exec<C: ConnectionTrait>(
+    conn: &C,
+    backend: DbBackend,
+    sql: &str,
+    values: Vec<Value>,
+) -> Result<u64> {
+    Ok(conn
+        .execute_raw(statement(backend, sql, values))
+        .await?
+        .rows_affected())
+}
+
+fn json(record: &Record) -> Result<String> {
+    Ok(serde_json::to_string(&record.data)?)
 }
 
 impl Database {
@@ -25,7 +64,19 @@ impl Database {
                 "auth.session.store `database` supports Postgres and SQLite".to_string(),
             ));
         }
-        let this = Self { db, backend };
+        // One transaction, and on Postgres one at a time: two processes
+        // booting together would otherwise race on `CREATE TABLE IF NOT
+        // EXISTS` (it is not atomic there) and one would fail.
+        let txn = db.begin().await?;
+        if matches!(backend, DbBackend::Postgres) {
+            exec(
+                &txn,
+                backend,
+                &format!("SELECT pg_advisory_xact_lock({DDL_LOCK})"),
+                vec![],
+            )
+            .await?;
+        }
         for ddl in [
             "CREATE TABLE IF NOT EXISTS loco_sessions (id_hash VARCHAR(64) PRIMARY KEY, user_key \
              VARCHAR(255), data TEXT NOT NULL, expires_at BIGINT NOT NULL)",
@@ -33,42 +84,88 @@ impl Database {
             "CREATE INDEX IF NOT EXISTS loco_sessions_expires_at_idx ON loco_sessions \
              (expires_at)",
             "CREATE TABLE IF NOT EXISTS loco_remember_tokens (series VARCHAR(64) PRIMARY KEY, \
-             user_key VARCHAR(255) NOT NULL, token_hash VARCHAR(64) NOT NULL, prev_hash \
-             VARCHAR(64), rotated_at BIGINT NOT NULL, expires_at BIGINT NOT NULL)",
+             user_key VARCHAR(255) NOT NULL, generation BIGINT NOT NULL, rotated_at BIGINT NOT \
+             NULL, expires_at BIGINT NOT NULL)",
             "CREATE INDEX IF NOT EXISTS loco_remember_tokens_user_key_idx ON \
              loco_remember_tokens (user_key)",
         ] {
-            this.exec(ddl, vec![]).await?;
+            exec(&txn, backend, ddl, vec![]).await?;
         }
-        Ok(this)
+        txn.commit().await?;
+        Ok(Self { db, backend })
     }
 
-    /// Statements are written with `?`; Postgres wants `$1, $2, ...`.
-    fn statement(&self, sql: &str, values: Vec<Value>) -> Statement {
-        let sql = if matches!(self.backend, DbBackend::Postgres) {
-            let mut n = 0;
-            let mut out = String::with_capacity(sql.len() + 8);
-            for c in sql.chars() {
-                if c == '?' {
-                    n += 1;
-                    out.push_str(&format!("${n}"));
-                } else {
-                    out.push(c);
-                }
+    async fn run<C: ConnectionTrait>(&self, conn: &C, op: &Op) -> Result<()> {
+        let b = self.backend;
+        match op {
+            Op::Insert { id, record } => {
+                exec(
+                    conn,
+                    b,
+                    "INSERT INTO loco_sessions (id_hash, user_key, data, expires_at) VALUES (?, \
+                     ?, ?, ?)",
+                    vec![
+                        id.as_str().into(),
+                        record.user.clone().into(),
+                        json(record)?.into(),
+                        record.expires_at.into(),
+                    ],
+                )
+                .await?;
             }
-            out
-        } else {
-            sql.to_string()
-        };
-        Statement::from_sql_and_values(self.backend, sql, values)
-    }
-
-    async fn exec(&self, sql: &str, values: Vec<Value>) -> Result<u64> {
-        Ok(self
-            .db
-            .execute_raw(self.statement(sql, values))
-            .await?
-            .rows_affected())
+            Op::Update { id, record } => {
+                // Only a row that is still there: a session ended while this
+                // request was in flight stays ended.
+                exec(
+                    conn,
+                    b,
+                    "UPDATE loco_sessions SET user_key = ?, data = ?, expires_at = ? WHERE \
+                     id_hash = ?",
+                    vec![
+                        record.user.clone().into(),
+                        json(record)?.into(),
+                        record.expires_at.into(),
+                        id.as_str().into(),
+                    ],
+                )
+                .await?;
+            }
+            Op::Delete { id } => {
+                exec(
+                    conn,
+                    b,
+                    "DELETE FROM loco_sessions WHERE id_hash = ?",
+                    vec![id.as_str().into()],
+                )
+                .await?;
+            }
+            Op::RememberInsert { series, remember } => {
+                exec(
+                    conn,
+                    b,
+                    "INSERT INTO loco_remember_tokens (series, user_key, generation, rotated_at, \
+                     expires_at) VALUES (?, ?, ?, ?, ?)",
+                    vec![
+                        series.as_str().into(),
+                        remember.user.clone().into(),
+                        remember.generation.into(),
+                        remember.rotated_at.into(),
+                        remember.expires_at.into(),
+                    ],
+                )
+                .await?;
+            }
+            Op::RememberDelete { series } => {
+                exec(
+                    conn,
+                    b,
+                    "DELETE FROM loco_remember_tokens WHERE series = ?",
+                    vec![series.as_str().into()],
+                )
+                .await?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -77,7 +174,8 @@ impl Backend for Database {
     async fn load(&self, sid: &str) -> Result<Option<Record>> {
         let row = self
             .db
-            .query_one_raw(self.statement(
+            .query_one_raw(statement(
+                self.backend,
                 "SELECT user_key, data, expires_at FROM loco_sessions WHERE id_hash = ?",
                 vec![sid.into()],
             ))
@@ -91,93 +189,124 @@ impl Backend for Database {
         }))
     }
 
-    async fn save(&self, sid: &str, record: &Record) -> Result<()> {
-        self.exec(
-            "INSERT INTO loco_sessions (id_hash, user_key, data, expires_at) VALUES (?, ?, ?, ?) \
-             ON CONFLICT (id_hash) DO UPDATE SET user_key = excluded.user_key, data = \
-             excluded.data, expires_at = excluded.expires_at",
+    async fn insert(&self, sid: &str, record: &Record) -> Result<()> {
+        self.run(
+            &self.db,
+            &Op::Insert {
+                id: sid.to_string(),
+                record: record.clone(),
+            },
+        )
+        .await
+    }
+
+    async fn update(&self, sid: &str, record: &Record) -> Result<bool> {
+        Ok(exec(
+            &self.db,
+            self.backend,
+            "UPDATE loco_sessions SET user_key = ?, data = ?, expires_at = ? WHERE id_hash = ?",
             vec![
-                sid.into(),
                 record.user.clone().into(),
-                serde_json::to_string(&record.data)?.into(),
+                json(record)?.into(),
                 record.expires_at.into(),
+                sid.into(),
             ],
         )
-        .await?;
-        Ok(())
+        .await?
+            > 0)
     }
 
     async fn delete(&self, sid: &str) -> Result<()> {
-        self.exec(
-            "DELETE FROM loco_sessions WHERE id_hash = ?",
-            vec![sid.into()],
+        self.run(
+            &self.db,
+            &Op::Delete {
+                id: sid.to_string(),
+            },
         )
-        .await?;
-        Ok(())
+        .await
     }
 
     async fn revoke_user(&self, user: &str) -> Result<u64> {
-        let sessions = self
-            .exec(
-                "DELETE FROM loco_sessions WHERE user_key = ?",
-                vec![user.into()],
-            )
-            .await?;
-        let remember = self
-            .exec(
-                "DELETE FROM loco_remember_tokens WHERE user_key = ?",
-                vec![user.into()],
-            )
-            .await?;
+        let txn = self.db.begin().await?;
+        let sessions = exec(
+            &txn,
+            self.backend,
+            "DELETE FROM loco_sessions WHERE user_key = ?",
+            vec![user.into()],
+        )
+        .await?;
+        let remember = exec(
+            &txn,
+            self.backend,
+            "DELETE FROM loco_remember_tokens WHERE user_key = ?",
+            vec![user.into()],
+        )
+        .await?;
+        txn.commit().await?;
         Ok(sessions + remember)
     }
 
     async fn remember_get(&self, series: &str) -> Result<Option<Remember>> {
         let row = self
             .db
-            .query_one_raw(self.statement(
-                "SELECT user_key, token_hash, prev_hash, rotated_at, expires_at FROM \
-                 loco_remember_tokens WHERE series = ?",
+            .query_one_raw(statement(
+                self.backend,
+                "SELECT user_key, generation, rotated_at, expires_at FROM loco_remember_tokens \
+                 WHERE series = ?",
                 vec![series.into()],
             ))
             .await?;
         let Some(row) = row else { return Ok(None) };
         Ok(Some(Remember {
             user: row.try_get("", "user_key")?,
-            token_hash: row.try_get("", "token_hash")?,
-            prev_hash: row.try_get("", "prev_hash")?,
+            generation: row.try_get("", "generation")?,
             rotated_at: row.try_get("", "rotated_at")?,
             expires_at: row.try_get("", "expires_at")?,
         }))
     }
 
-    async fn remember_put(&self, series: &str, r: &Remember) -> Result<()> {
-        self.exec(
-            "INSERT INTO loco_remember_tokens (series, user_key, token_hash, prev_hash, \
-             rotated_at, expires_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (series) DO UPDATE SET \
-             user_key = excluded.user_key, token_hash = excluded.token_hash, prev_hash = \
-             excluded.prev_hash, rotated_at = excluded.rotated_at, expires_at = \
-             excluded.expires_at",
+    async fn remember_insert(&self, series: &str, remember: &Remember) -> Result<()> {
+        self.run(
+            &self.db,
+            &Op::RememberInsert {
+                series: series.to_string(),
+                remember: remember.clone(),
+            },
+        )
+        .await
+    }
+
+    async fn remember_cas(
+        &self,
+        series: &str,
+        expected_generation: i64,
+        r: &Remember,
+    ) -> Result<bool> {
+        Ok(exec(
+            &self.db,
+            self.backend,
+            "UPDATE loco_remember_tokens SET generation = ?, rotated_at = ?, expires_at = ? \
+             WHERE series = ? AND generation = ?",
             vec![
-                series.into(),
-                r.user.clone().into(),
-                r.token_hash.clone().into(),
-                r.prev_hash.clone().into(),
+                r.generation.into(),
                 r.rotated_at.into(),
                 r.expires_at.into(),
+                series.into(),
+                expected_generation.into(),
             ],
         )
-        .await?;
-        Ok(())
+        .await?
+            > 0)
     }
 
     async fn remember_delete(&self, series: &str) -> Result<()> {
-        self.exec(
-            "DELETE FROM loco_remember_tokens WHERE series = ?",
-            vec![series.into()],
+        self.run(
+            &self.db,
+            &Op::RememberDelete {
+                series: series.to_string(),
+            },
         )
-        .await?;
-        Ok(())
+        .await
     }
 
     async fn purge_expired(&self, now: i64) -> Result<u64> {
@@ -186,16 +315,28 @@ impl Backend for Database {
             ("loco_sessions", "id_hash"),
             ("loco_remember_tokens", "series"),
         ] {
-            deleted += self
-                .exec(
-                    &format!(
-                        "DELETE FROM {table} WHERE {key} IN (SELECT {key} FROM {table} WHERE \
-                         expires_at < ? LIMIT {PURGE_BATCH})"
-                    ),
-                    vec![now.into()],
-                )
-                .await?;
+            deleted += exec(
+                &self.db,
+                self.backend,
+                &format!(
+                    "DELETE FROM {table} WHERE {key} IN (SELECT {key} FROM {table} WHERE \
+                     expires_at < ? LIMIT {PURGE_BATCH})"
+                ),
+                vec![now.into()],
+            )
+            .await?;
         }
         Ok(deleted)
+    }
+
+    /// All or nothing: a sign-out never leaves the remember series alive
+    /// while the session is gone, or the other way round.
+    async fn apply(&self, ops: &[Op]) -> Result<()> {
+        let txn = self.db.begin().await?;
+        for op in ops {
+            self.run(&txn, op).await?;
+        }
+        txn.commit().await?;
+        Ok(())
     }
 }

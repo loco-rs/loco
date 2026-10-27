@@ -132,16 +132,16 @@ yourself.
 Feature `auth_session` gives `Session`, `CurrentUser<U>` and `MaybeCurrentUser<U>`; `auth_oauth` adds `/auth/{provider}` routes (`cargo loco generate oauth github`). `auth.session.store` is `cookie` (default), `database` or `redis`, and handler code is identical on all three. Pick a server-side store when sessions must be revocable.
 
 ```rust
-// sign in: renew() rotates the id (fixation); remember() sets the long-lived cookie
-Ok((session.renew().set_user_id(pid).remember(), format::redirect("/")?))
+// sign in: renew() rotates the id (fixation); remember()? sets the long-lived cookie
+Ok((session.renew().set_user_id(pid).remember()?, format::redirect("/")?))
 // sign out
 Ok((session.clear(), format::redirect("/")?))
 // every device, sessions and remember tokens
 loco_rs::auth::session_store::sign_out_everywhere(&ctx, &pid).await?;
 ```
 
-- `remember_for` (seconds) with `store: cookie` is a boot error: remember-me needs the server to hold the token hash.
-- `store: database` needs `with-db`; `redis` needs `cache_redis`. Tables are created at boot.
+- `remember_for` (seconds) with `store: cookie` is a boot error: remember-me needs the server to hold the series. So is a `remember_for` that is not longer than `ttl` (server-side idle timeout, default 1 day; the session cookie has no `Max-Age`, `max_age` is cookie-store only). `.remember()?` errors on the cookie store.
+- `store: database` needs `with-db`; `redis` needs `cache_redis`. Tables are created on first use.
 - Server-side stores need the `auth_session` middleware: keep it if you override `Hooks::middlewares`.
 
 ## Scaffold the whole thing

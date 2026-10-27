@@ -472,3 +472,16 @@ async fn signs_in_and_out_on_the_database_store_with_remember_me() {
     let res = server.get(&visit_provider(&authorize).await).await;
     assert!(res.maybe_cookie("loco_remember").is_none());
 }
+
+#[tokio::test]
+async fn remember_on_the_cookie_store_is_ignored_not_a_500() {
+    let App { server, .. } = app(|_| {}).await;
+    let authorize = location!(server.get("/auth/github?remember=1").await);
+    let res = server.get(&visit_provider(&authorize).await).await;
+    res.assert_status(StatusCode::SEE_OTHER);
+    assert!(res.maybe_cookie("loco_remember").is_none());
+    server
+        .get("/me")
+        .await
+        .assert_text("github:583231:octocat@example.com");
+}

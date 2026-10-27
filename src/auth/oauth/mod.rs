@@ -335,7 +335,12 @@ async fn callback<H: OAuthHandler>(
                 .unwrap_or_else(|| "/".to_string());
             let mut session = session.renew().set_user_id(sign_in.user_id);
             if remember || sign_in.remember {
-                session = session.remember();
+                if super::session_store::is_server_side(&ctx) {
+                    session = session.remember()?;
+                } else {
+                    // Nothing to remember with: sign in for this session only.
+                    tracing::debug!("remember-me asked for, but auth.session.store is cookie");
+                }
             }
             return Ok((session, format::redirect(&target)?).into_response());
         }

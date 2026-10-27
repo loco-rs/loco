@@ -38,10 +38,15 @@
 //! [`default_middleware_stack`](crate::controller::middleware::default_middleware_stack)
 //! includes.
 //!
-//! [`Session::remember`] on a sign-in sets a second, long-lived cookie
-//! (`auth.session.remember_for`, default 14 days) that brings the session back
-//! after the browser was closed, and rotates on every use. Server-side stores
-//! only.
+//! On a server-side store the session lives `auth.session.ttl` (default one
+//! day, sliding) and its cookie ends with the browser. [`Session::remember`]
+//! on a sign-in sets a second, long-lived cookie (`auth.session.remember_for`,
+//! default 14 days) that brings the session back after that, and rotates on
+//! every use. Server-side stores only.
+//!
+//! Setting a different user id ([`set_user_id`](Session::set_user_id)) mints a
+//! new session id by itself, so a session id planted before sign-in is worth
+//! nothing after it.
 
 use std::{
     collections::BTreeMap,
@@ -65,6 +70,10 @@ use crate::{app::AppContext, Error, Result};
 
 /// The session key holding the signed-in user's id.
 pub const USER_ID_KEY: &str = "_uid";
+
+/// A server-side session cookie carries a signed expiry too; the server's
+/// `ttl` is what ends the session, so this is just "very long".
+const SERVER_SEAL_TTL: u64 = 60 * 60 * 24 * 365 * 10;
 
 /// Browsers drop cookies over 4096 bytes (name, value and attributes); stay
 /// well under so a full session is an error here, not a silent sign-out.
@@ -96,13 +105,18 @@ struct Server {
     id: Option<String>,
     /// Mint a new id on save (session fixation defence).
     rotate: bool,
-    /// Delete the session and its cookies.
-    destroy: bool,
+    /// [`Session::clear`] was called: the sign-in ended, whatever is written
+    /// afterwards. Sticky.
+    cleared: bool,
+    /// The user id the session was loaded with; a different one rotates the id.
+    loaded_uid: Option<Value>,
     /// The remember-me series this browser presented.
     series: Option<String>,
     remember_name: String,
     /// The session was re-established from a remember-me cookie.
     restored: bool,
+    /// Less than half the ttl is left: extend it even if nothing changed.
+    refresh: bool,
 }
 
 // Never prints ids, tokens or values: logs are not a place for them.
@@ -150,6 +164,15 @@ impl Runtime {
     pub(crate) fn restored(&self) -> Option<Session> {
         self.cached()
             .filter(|s| s.server.as_ref().is_some_and(|s| s.restored))
+    }
+
+    /// The write that slides the expiry of a session this request only read.
+    pub(crate) fn refresh(&self) -> Option<(Arc<SessionStore>, Op)> {
+        let session = self.cached()?;
+        let server = session.server.as_ref()?;
+        let id = server.id.clone().filter(|_| server.refresh)?;
+        let record = server.store.record(session.data.clone());
+        Some((server.store.clone(), Op::Update { id, record }))
     }
 }
 
@@ -235,18 +258,21 @@ impl Session {
 
     async fn load_server(ctx: &AppContext, jar: SignedCookies, name: String) -> Result<Self> {
         let store = session_store::of(ctx).await?;
-        let options = jar.options().clone();
+        let options = jar.options().clone().with_max_age(None);
         let max_age = options.max_age.unwrap_or(cookies::DEFAULT_SESSION_MAX_AGE);
         let remember_name = Self::remember_cookie_name(ctx);
         let mut jar = jar;
 
         let mut id = None;
         let mut data = BTreeMap::new();
+        let mut refresh = false;
         if let Some(presented) = jar
             .get(&name)
             .and_then(|c| cookies::unseal::<String>(c.value()))
             && let Some(record) = store.load(&presented).await?
         {
+            refresh =
+                record.expires_at - session_store::now() < session_store::to_i64(store.ttl()) / 2;
             data = record.data;
             id = Some(presented);
         }
@@ -269,13 +295,14 @@ impl Session {
                         let new_id = session_store::random_token();
                         data = BTreeMap::from([(USER_ID_KEY.to_string(), Value::String(user))]);
                         store
-                            .apply(vec![Op::Save {
+                            .apply(vec![Op::Insert {
                                 id: new_id.clone(),
                                 record: store.record(data.clone()),
                             }])
                             .await?;
-                        jar =
-                            jar.add(options.cookie(name.clone(), cookies::seal(&new_id, max_age)?));
+                        jar = jar.add(
+                            options.cookie(name.clone(), cookies::seal(&new_id, SERVER_SEAL_TTL)?),
+                        );
                         if let Some(token) = token {
                             let value = format!("{presented_series}.{token}");
                             jar = jar.add(
@@ -297,6 +324,7 @@ impl Session {
             }
         }
 
+        let loaded_uid = data.get(USER_ID_KEY).cloned();
         Ok(Self {
             data,
             jar,
@@ -308,10 +336,12 @@ impl Session {
                 store,
                 id,
                 rotate: false,
-                destroy: false,
+                cleared: false,
+                loaded_uid,
                 series,
                 remember_name,
                 restored,
+                refresh,
             }),
         })
     }
@@ -360,7 +390,7 @@ impl Session {
         self.data.clear();
         self.dirty = true;
         if let Some(server) = &mut self.server {
-            server.destroy = true;
+            server.cleared = true;
             server.rotate = true;
         }
         self
@@ -396,12 +426,23 @@ impl Session {
     /// together with [`set_user_id`](Self::set_user_id), only when the user
     /// asked for it.
     ///
-    /// Needs a server-side store; with `store: cookie` the response fails.
-    #[must_use]
-    pub fn remember(mut self) -> Self {
+    /// Needs a server-side store.
+    ///
+    /// # Errors
+    ///
+    /// With `auth.session.store: cookie`, which cannot hold the token's
+    /// server-side half. Decide before sending a response, not after.
+    pub fn remember(mut self) -> Result<Self> {
+        if self.server.is_none() {
+            return Err(Error::Message(
+                "Session::remember needs a server-side session store: set auth.session.store to \
+                 `database` or `redis`"
+                    .to_string(),
+            ));
+        }
         self.remember = true;
         self.touch();
-        self
+        Ok(self)
     }
 
     /// Whether the session holds no values.
@@ -412,9 +453,6 @@ impl Session {
 
     fn touch(&mut self) {
         self.dirty = true;
-        if let Some(server) = &mut self.server {
-            server.destroy = false;
-        }
     }
 
     /// Hands back the signed jar, with this session's changes written to it.
@@ -448,13 +486,6 @@ impl Session {
             server,
         } = self;
         let Some(server) = server else {
-            if remember {
-                return Err(Error::Message(
-                    "Session::remember needs a server-side session store: set \
-                     auth.session.store to `database` or `redis`"
-                        .to_string(),
-                ));
-            }
             if !dirty {
                 return Ok((jar, None));
             }
@@ -470,47 +501,80 @@ impl Session {
         }
 
         let store = server.store.clone();
-        let mut ops = Vec::new();
         let mut jar = jar;
-        if server.destroy || data.is_empty() {
+        // Remember-me removals go first, then the session, then additions: a
+        // failure part-way never leaves a live remember series behind a
+        // session that was meant to end.
+        let mut before = Vec::new();
+        let mut after = Vec::new();
+
+        if data.is_empty() {
             if let Some(id) = server.id {
-                ops.push(Op::Delete { id });
+                after.push(Op::Delete { id });
             }
             jar = jar.remove(&name);
             if let Some(series) = server.series {
-                ops.push(Op::RememberDelete { series });
+                before.push(Op::RememberDelete { series });
                 jar = jar.remove(&server.remember_name);
             }
-            return Ok((jar, Some(Pending { store, ops })));
+            before.extend(after);
+            return Ok((jar, Some(Pending { store, ops: before })));
         }
 
-        let id = match server.id {
-            Some(id) if !server.rotate => id,
+        // A different user id gets a new session id even if the app forgot
+        // `renew()`: whoever planted the old id must not inherit the sign-in.
+        let changed_user =
+            server.id.is_some() && data.get(USER_ID_KEY) != server.loaded_uid.as_ref();
+        let rotating = server.rotate || changed_user;
+
+        // The remember series belongs to the sign-in that asked for it. When
+        // the id rotates or the session was cleared, that sign-in is over.
+        let mut series = server.series;
+        if (rotating || server.cleared || remember)
+            && let Some(old) = series.take()
+        {
+            before.push(Op::RememberDelete { series: old });
+            if !remember {
+                jar = jar.remove(&server.remember_name);
+            }
+        }
+
+        let mut ops = Vec::new();
+        let (id, fresh) = match server.id {
+            Some(id) if !rotating => (id, false),
             old => {
                 if let Some(old) = old {
                     ops.push(Op::Delete { id: old });
                 }
-                session_store::random_token()
+                (session_store::random_token(), true)
             }
         };
         let record = store.record(data);
         let user = record.user.clone();
-        ops.push(Op::Save {
-            id: id.clone(),
-            record,
+        ops.push(if fresh {
+            Op::Insert {
+                id: id.clone(),
+                record,
+            }
+        } else {
+            Op::Update {
+                id: id.clone(),
+                record,
+            }
         });
-        let cookie = jar.options().cookie(name, cookies::seal(&id, max_age)?);
+        let cookie = jar
+            .options()
+            .clone()
+            .with_max_age(None)
+            .cookie(name, cookies::seal(&id, SERVER_SEAL_TTL)?);
         jar = jar.add(cookie);
 
         if remember {
             let user = user.ok_or_else(|| {
                 Error::Message("Session::remember needs a signed-in user".to_string())
             })?;
-            if let Some(old) = server.series {
-                ops.push(Op::RememberDelete { series: old });
-            }
             let (put, value) = store.new_remember(&user);
-            ops.push(put);
+            after.push(put);
             let cookie = jar
                 .options()
                 .clone()
@@ -521,7 +585,9 @@ impl Session {
                 );
             jar = jar.add(cookie);
         }
-        Ok((jar, Some(Pending { store, ops })))
+        before.extend(ops);
+        before.extend(after);
+        Ok((jar, Some(Pending { store, ops: before })))
     }
 
     /// Applies a change to the jar this session writes (e.g. removing a

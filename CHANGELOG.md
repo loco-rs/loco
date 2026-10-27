@@ -109,10 +109,16 @@ subcommand.
   cookie, so `session.clear()` really ends a session and
   `auth::session_store::sign_out_everywhere` ends all of a user's. The
   `database` store creates `loco_sessions` and `loco_remember_tokens` itself
-  and stores only a SHA-256 of the id (`with-db`; Postgres and SQLite);
-  `redis` needs `cache_redis`. `Session::remember()` and
-  `auth.session.remember_for` add Devise-style remember me: a rotating token
-  with theft detection. Remember me with the `cookie` store is a boot error.
+  on first use and stores only a SHA-256 of the id (`with-db`; Postgres and
+  SQLite); `redis` needs `cache_redis`. A server-side session lives
+  `auth.session.ttl` (default one day, sliding) and its cookie has no
+  `Max-Age`; `max_age` applies to the cookie store only. Writes to an
+  existing session never recreate it, so a request in flight cannot undo a
+  sign-out, and a new user id rotates the session id by itself.
+  `Session::remember()?` and `auth.session.remember_for` add Devise-style
+  remember me: a rotating token with theft detection that tolerates parallel
+  requests and a lost response. Remember me with the `cookie` store is a boot
+  error (and `remember()` returns an error; `?remember=1` is ignored).
   `Session`, `CurrentUser` and OAuth sign-in work unchanged on every store;
   `?remember=1` on `/auth/{provider}` and `SignIn::remember()` opt in. A
   server-side store needs the new `auth_session` middleware, which the

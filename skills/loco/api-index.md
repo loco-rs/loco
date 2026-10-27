@@ -242,7 +242,7 @@ since they restate the trait's own API.
 - `fn` **into_jar**`(self: Self) -> Result<SignedCookies>` — Hands back the signed jar, with this session's changes written to it
 - `fn` **is_empty**`(self: &Self) -> bool` — Whether the session holds no values
 - `fn` **map_jar**`(self: Self, f: impl Trait) -> Self` — Applies a change to the jar this session writes (e.g. removing a
-- `fn` **remember**`(self: Self) -> Self` — Remember this sign-in across browser restarts, Devise's `remember_me`:
+- `fn` **remember**`(self: Self) -> Result<Self>` — Remember this sign-in across browser restarts, Devise's `remember_me`:
 - `fn` **remember_cookie_name**`(ctx: &AppContext) -> String` — The remember-me cookie name configured for `ctx`
 - `fn` **remove**`(self: Self, key: &str) -> Self` — Removes `key`
 - `fn` **renew**`(self: Self) -> Self` — Empties the session so a sign-in starts from a fresh one rather than
@@ -256,20 +256,21 @@ since they restate the trait's own API.
 
 - `const` **DEFAULT_REMEMBER_COOKIE** — Default remember-me cookie name
 - `const` **DEFAULT_REMEMBER_FOR** — Remember-me lifetime when `auth.session.remember_for` is unset: 14 days
+- `const` **DEFAULT_TTL** — Idle lifetime of a server-side session when `auth.session.ttl` is unset: a
 - `struct` **SessionStore** — The configured server-side store
-- `fn` **init**`(ctx: &AppContext) -> Result<()>` — Boot-time checks and eager store creation (so a missing table or an
+- `fn` **is_server_side**`(ctx: &AppContext) -> bool` — Whether `ctx` is configured with a server-side session store
 - `fn` **of**`(ctx: &AppContext) -> Result<Arc<SessionStore>>` — The store `ctx` is configured with, built on first use
 - `fn` **random_token**`() -> String` — A fresh 256-bit random value, base64url. `rand::rng()` is a CSPRNG seeded
 - `fn` **sign_out_everywhere**`(ctx: &AppContext, user_id: &str) -> Result<u64>` — Ends every session and remember-me token of `user_id`: "sign out of all
-- `fn` **validate**`(config: &Config) -> Result<()>` — Rejects configurations that cannot work
+- `fn` **validate**`(config: &Config) -> Result<()>` — Rejects configurations that cannot work. Checked at boot; the store
 
 ### `SessionStore`
 
 - `fn` **kind**`(self: &Self) -> SessionStoreKind` — Which store this is
-- `fn` **max_age**`(self: &Self) -> u64` — Seconds a session lives, renewed on each save
 - `fn` **purge_expired**`(self: &Self) -> Result<u64>` — Deletes expired rows now (a no-op for Redis, which expires keys
 - `fn` **remember_for**`(self: &Self) -> u64` — Seconds a remember-me series lives
 - `fn` **revoke_user**`(self: &Self, user: &str) -> Result<u64>` — Ends every session and remember-me series of `user`
+- `fn` **ttl**`(self: &Self) -> u64` — Seconds an idle session lives; it slides on use
 ## `bgworker`
 
 - `trait` **BackgroundWorker**
@@ -599,7 +600,7 @@ since they restate the trait's own API.
 - `struct` **RedisQueueConfig**` { uri: String, dangerously_flush: bool, queues: Option<Vec<String>>, num_workers: u32, reaper: Option<ReaperConfig> }`
 - `struct` **RetentionConfig**` { completed_days: Option<i64>, cancelled_days: Option<i64>, failed_days: Option<i64>, interval_seconds: u64 }` — Configuration for opt-in retention of finished jobs
 - `struct` **Server**` { binding: String, port: i32, host: String, ident: Option<String>, middlewares: Config }` — Server configuration structure
-- `struct` **SessionConfig**` { secret: Option<String>, cookie_name: Option<String>, max_age: Option<u64>, secure: Option<bool>, sign_in_path: Option<String>, store: SessionStoreKind, remember_for: Option<u64>, remember_cookie_name: Option<String>, redis_uri: Option<String> }` — Signed cookies and the cookie session, Rails' `secret_key_base` plus its
+- `struct` **SessionConfig**` { secret: Option<String>, cookie_name: Option<String>, max_age: Option<u64>, secure: Option<bool>, sign_in_path: Option<String>, store: SessionStoreKind, ttl: Option<u64>, remember_for: Option<u64>, remember_cookie_name: Option<String>, redis_uri: Option<String> }` — Signed cookies and the cookie session, Rails' `secret_key_base` plus its
 - `enum` **SessionStoreKind** — Where [`SessionConfig::store`] keeps the session
 - `struct` **SmtpMailer**` { enable: bool, host: String, port: u16, secure: bool, tls: Option<MailerTls>, auth: Option<MailerAuth>, hello_name: Option<String> }` — SMTP mailer configuration structure
 - `struct` **SqliteConfig**` { pragmas: BTreeMap<String, String> }` — `SQLite` settings shared by the database and the `SQLite` queue
@@ -671,7 +672,9 @@ since they restate the trait's own API.
 
 ### `SessionConfig`
 
+- `field` **remember_for** — Lifetime of the remember-me cookie and its server-side token, in
 - `field` **store** — Where the session data lives. Default [`SessionStoreKind::Cookie`]
+- `field` **ttl** — How long an idle server-side session lives, in seconds; each use
 
 ### `SessionStoreKind`
 
