@@ -39,6 +39,15 @@ pub use sea_orm::sea_query::Expr;
 // sugar for controller views to use `data!({"item": ..})` instead of `json!`
 pub use serde_json::json as data;
 
+#[cfg(feature = "auth_session_encrypted")]
+pub use crate::auth::cookies::EncryptedCookies;
+#[cfg(feature = "auth_oauth")]
+pub use crate::auth::oauth::{Identity, OAuthFailure, OAuthHandler, SignIn};
+#[cfg(feature = "auth_session")]
+pub use crate::auth::{
+    cookies::SignedCookies,
+    session::{CurrentUser, MaybeCurrentUser, Session, SessionUser},
+};
 #[cfg(feature = "auth")]
 pub use crate::controller::extractor::auth;
 pub use crate::controller::extractor::{

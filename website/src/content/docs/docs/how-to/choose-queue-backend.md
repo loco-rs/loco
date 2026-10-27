@@ -112,7 +112,7 @@ Once `worker` (Postgres/SQLite) or `worker_redis` (Redis) is enabled, `cargo loc
 ```sh
 cargo loco jobs cancel --name <NAME>
 cargo loco jobs tidy                 # delete completed/cancelled jobs
-cargo loco jobs purge --max-age 90    # delete old failed/cancelled jobs
+cargo loco jobs purge --max-age 90    # delete old completed/failed/cancelled jobs (add --status queued to include unfinished ones)
 cargo loco jobs dump -f <folder>
 cargo loco jobs import -f <file>
 cargo loco jobs requeue --from-age 0  # move stuck "processing" jobs back to "queued"
@@ -135,6 +135,23 @@ queue:
 ```
 
 Leaving `reaper` unset (the default) keeps prior behavior unchanged — no background sweep runs, and stranded jobs stay in `processing` until you run `cargo loco jobs requeue` yourself.
+
+### Automatic cleanup (retention)
+
+The Postgres and SQLite queues keep finished jobs forever, so the table grows with every job. To have the running worker process delete them, opt in with a `retention` block. Each status is optional, and one you leave out is kept; `queued` and `processing` jobs are never deleted:
+
+```yaml
+queue:
+  kind: Postgres
+  # ...
+  retention:
+    completed_days: 7 # delete completed jobs 7 days after they finished
+    cancelled_days: 7
+    failed_days: 30 # keep failures longer, you may want `jobs retry`
+    interval_seconds: 3600 # optional, default 3600
+```
+
+Leaving `retention` unset (the default) deletes nothing. Redis does not need it.
 
 ## Choosing between the three
 

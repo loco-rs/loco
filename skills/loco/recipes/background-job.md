@@ -135,6 +135,20 @@ fn retry_backoff() -> std::time::Duration { // default 5s; doubles per retry, ca
 Postgres and SQLite queues only, in `BackgroundQueue` mode. Registering a worker
 with `max_retries() > 0` on Redis is an error.
 
+## Finished jobs pile up
+
+Postgres and SQLite queues keep finished jobs forever. Set `retention` to
+delete them; each status is optional and `queued`/`processing` are never
+touched:
+
+```yaml
+queue:
+  kind: Postgres
+  retention:
+    completed_days: 7
+    failed_days: 30
+```
+
 ## Long jobs and the reaper
 
 With a `reaper` on the queue config, jobs stuck in `processing` longer than

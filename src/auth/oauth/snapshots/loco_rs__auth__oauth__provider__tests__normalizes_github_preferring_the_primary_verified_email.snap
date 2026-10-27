@@ -1,0 +1,40 @@
+---
+source: src/auth/oauth/provider.rs
+expression: "normalize(&p, profile, Some(&emails), tokens(), now()).unwrap()"
+---
+Identity {
+    provider: "github",
+    uid: "583231",
+    login: Some(
+        "octocat",
+    ),
+    name: Some(
+        "The Octocat",
+    ),
+    email: Some(
+        "octo@example.com",
+    ),
+    email_verified: Some(
+        true,
+    ),
+    avatar_url: Some(
+        "https://avatars.githubusercontent.com/u/583231",
+    ),
+    access_token: "[redacted]",
+    refresh_token: Some(
+        "[redacted]",
+    ),
+    expires_at: Some(
+        2026-01-01T01:00:00Z,
+    ),
+    scope: Some(
+        "read:user,user:email",
+    ),
+    raw: Object {
+        "avatar_url": String("https://avatars.githubusercontent.com/u/583231"),
+        "email": String("public@example.com"),
+        "id": Number(583231),
+        "login": String("octocat"),
+        "name": String("The Octocat"),
+    },
+}

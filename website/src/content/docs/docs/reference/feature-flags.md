@@ -23,6 +23,9 @@ A plain `loco-rs = "..."` dependency (no `default-features = false`) pulls in JW
 | Flag | Default | Enables (deps / sub-features) | Purpose |
 |---|---|---|---|
 | `auth` | **ON** | `dep:hmac`, `dep:sha2`, `dep:base64`, `dep:argon2` | JWT authentication (HS256/HS384/HS512) and `hash::hash_password` / `hash::verify_password`. Pure Rust, so the flag stays self-contained and needs no C toolchain, even when enabled alone with `default-features = false`. |
+| `auth_session` | off | `auth`, `axum-extra/cookie-signed`, `dep:cookie` | Signed cookies (`SignedCookies`), the cookie-backed `Session`, and the `CurrentUser<U>` / `MaybeCurrentUser<U>` extractors, all keyed off `auth.session.secret`. Adds no crypto beyond what `auth` already compiles. See [Sign in with GitHub, Google or OAuth2](/docs/how-to/oauth-sign-in). |
+| `auth_session_encrypted` | off | `auth_session`, `axum-extra/cookie-private` | `EncryptedCookies`: AES-256-GCM cookies the browser can neither read nor change. Adds `aes-gcm`. |
+| `auth_oauth` | off | `auth_session`, `dep:reqwest` (rustls) | OAuth2 / OpenID Connect sign-in: `/auth/{provider}` routes, `OAuthHandler`, `Identity`, GitHub and Google presets plus generic providers, and `cargo loco generate oauth <provider>`. |
 | `cli` | **ON** | `dep:clap` | Enables the `cargo loco` runtime CLI (`src/cli.rs`). |
 | `with-db` | **ON** | `dep:sea-orm`, `dep:sea-orm-migration`, `dep:sqlx`, `loco-gen?/with-db` | Sea-ORM 2.0 database support. Gates the `db` CLI subcommand and the DB-dependent generators (`model`, `migration`, `scaffold`). Needs a driver: `db-postgres`, `db-sqlite`, or both. |
 | `db-sqlite` | **ON** | `sea-orm?/sqlx-sqlite`, `sea-orm-migration?/sqlx-sqlite`, `sqlx?/sqlite` | SQLite SeaORM/sqlx drivers and the SQLite queue worker backend. Disable with `default-features = false` on Postgres-only apps to skip `libsqlite3-sys` compile cost. |
