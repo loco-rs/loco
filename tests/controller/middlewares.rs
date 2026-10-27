@@ -123,6 +123,49 @@ async fn etag_not_modified_keeps_set_cookie() {
     handle.abort();
 }
 
+/// A 304 that sets a cookie is private; an existing `private`/`no-store` stays.
+#[rstest]
+#[case(None, "private")]
+#[case(Some("max-age=60"), "max-age=60, private")]
+#[case(Some("no-store"), "no-store")]
+#[case(Some("private, max-age=5"), "private, max-age=5")]
+#[tokio::test]
+async fn etag_not_modified_with_a_cookie_is_private(
+    #[case] cache_control: Option<&'static str>,
+    #[case] expected: &str,
+) {
+    let action = move || async move {
+        let mut res = format::render().etag("loco-etag")?.text("content")?;
+        res.headers_mut().append(
+            axum::http::header::SET_COOKIE,
+            "a=1; Path=/".parse().unwrap(),
+        );
+        if let Some(v) = cache_control {
+            res.headers_mut()
+                .insert(axum::http::header::CACHE_CONTROL, v.parse().unwrap());
+        }
+        Ok::<_, loco_rs::Error>(res)
+    };
+
+    let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
+    ctx.config.server.middlewares.etag = Some(middleware::etag::Etag { enable: true });
+
+    let port = get_available_port().await;
+    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
+
+    let res = reqwest::Client::new()
+        .get(get_base_url_port(port))
+        .header("if-none-match", "loco-etag")
+        .send()
+        .await
+        .expect("response");
+
+    assert_eq!(res.status(), StatusCode::NOT_MODIFIED);
+    assert_eq!(res.headers()["cache-control"], expected);
+
+    handle.abort();
+}
+
 #[rstest]
 // Enabled with the default `RightmostXForwardedFor` source: the rightmost
 // (last) value of `X-Forwarded-For` is taken verbatim, with **no**

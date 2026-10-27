@@ -120,7 +120,7 @@ subcommand.
   requests and a lost response; the series keeps the lifetime it was
   created with, and a replayed token revokes every session and series the
   user has. The `redis` store needs a single node (no Cluster). `ttl: 0`,
-  a `remember_for` over 400 days or not longer than `ttl` (default included)
+  a `remember_for` over 400 days or not longer than `ttl`
   and equal cookie names are boot errors. Remember me with the `cookie` store is a boot
   error (and `remember()` returns an error; `?remember=1` is ignored).
   `Session`, `CurrentUser` and OAuth sign-in work unchanged on every store;

@@ -707,12 +707,27 @@ fn a_zero_ttl_is_rejected() {
 }
 
 #[test]
-fn a_long_ttl_needs_a_longer_remember_for_even_when_it_is_left_at_the_default() {
-    let err = validate(&configured(|s| s.ttl = Some(DEFAULT_REMEMBER_FOR)))
-        .unwrap_err()
-        .to_string();
+fn a_long_ttl_with_no_remember_for_boots_and_gets_a_longer_default() {
+    let day = 60 * 60 * 24;
+    let config = configured(|s| s.ttl = Some(30 * day));
+    validate(&config).unwrap();
+    let session = config.auth.as_ref().unwrap().session.as_ref().unwrap();
+    assert_eq!(effective_remember_for(session), 31 * day);
+    // Short ttls keep the 14 day default.
+    let config = configured(|s| s.ttl = Some(day));
+    let session = config.auth.as_ref().unwrap().session.as_ref().unwrap();
+    assert_eq!(effective_remember_for(session), DEFAULT_REMEMBER_FOR);
+}
+
+#[test]
+fn an_explicit_remember_for_must_outlast_ttl() {
+    let err = validate(&configured(|s| {
+        s.ttl = Some(DEFAULT_REMEMBER_FOR);
+        s.remember_for = Some(DEFAULT_REMEMBER_FOR);
+    }))
+    .unwrap_err()
+    .to_string();
     assert!(err.contains("remember_for"), "{err}");
-    validate(&configured(|s| s.ttl = Some(DEFAULT_REMEMBER_FOR - 1))).unwrap();
     validate(&configured(|s| {
         s.ttl = Some(DEFAULT_REMEMBER_FOR);
         s.remember_for = Some(DEFAULT_REMEMBER_FOR + 1);

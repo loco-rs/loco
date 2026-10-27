@@ -117,7 +117,7 @@ auth:
 | `auth.session.secure` | `Option<bool>` | optional | Default: on when `server.host` starts with `https://` |
 | `auth.session.sign_in_path` | `Option<String>` | optional | Where `CurrentUser` redirects signed-out HTML requests (`?return_to=` appended); without it they get `401` |
 | `auth.session.store` | `cookie` \| `database` \| `redis` | optional, default `cookie` | `cookie`: the signed cookie holds the session. `database`: a `loco_sessions` table (Postgres and SQLite, created on first use); `redis`: keys with a TTL. Both server-side stores put only a random id in the cookie. See [Server-side sessions and remember me](/docs/how-to/oauth-sign-in#server-side-sessions-and-remember-me) |
-| `auth.session.remember_for` | `Option<u64>` | optional, default 14 days | Lifetime of a remember-me series, in seconds. Fixed from the sign-in; rotation does not extend it. Setting it with `store: cookie`, to no more than `ttl` (the 14 day default included), or over 400 days is a boot error |
+| `auth.session.remember_for` | `Option<u64>` | optional, default 14 days | Lifetime of a remember-me series, in seconds. Fixed from the sign-in; rotation does not extend it. Unset, it is 14 days, or `ttl` plus one day when `ttl` is 13 days or more. Setting it with `store: cookie`, to no more than `ttl`, or over 400 days is a boot error |
 | `auth.session.remember_cookie_name` | `Option<String>` | optional, default `loco_remember` | Must differ from `cookie_name` |
 | `auth.session.redis_uri` | `Option<String>` | optional | Redis for `store: redis`; default is the `cache` Redis URI |
 | `auth.oauth.base_url` | `Option<String>` | optional | Public origin for callback URLs; default `server.full_url()` |

@@ -113,6 +113,23 @@ where
                     for value in response.headers().get_all(SET_COOKIE) {
                         headers.append(SET_COOKIE, value.clone());
                     }
+                    // A 304 that sets a cookie must not sit in a shared cache.
+                    if headers.contains_key(SET_COOKIE) {
+                        let kept = headers
+                            .get(CACHE_CONTROL)
+                            .and_then(|v| v.to_str().ok())
+                            .map(str::to_ascii_lowercase);
+                        let private = kept
+                            .as_deref()
+                            .is_some_and(|v| v.contains("private") || v.contains("no-store"));
+                        if !private {
+                            let value = kept
+                                .map_or_else(|| "private".to_string(), |v| format!("{v}, private"));
+                            if let Ok(value) = value.parse() {
+                                headers.insert(CACHE_CONTROL, value);
+                            }
+                        }
+                    }
                 }
                 return Ok(builder.body(Body::empty()).unwrap());
             }

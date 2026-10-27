@@ -25,6 +25,10 @@
 //! replayed, so everything the user has is revoked: every session, every
 //! series.
 //!
+//! A rotated token that never reached the browser because the request panicked
+//! or the write failed looks like a replayed one once the grace period passes,
+//! and signs that user out everywhere. That is by design.
+//!
 //! The Redis store runs Lua scripts that reach keys derived from their
 //! arguments (revoking a user deletes each session the user's index names), so
 //! it needs a single Redis node; Redis Cluster is not supported.
@@ -60,6 +64,9 @@ mod tests;
 pub const DEFAULT_TTL: u64 = 60 * 60 * 24;
 /// Remember-me lifetime when `auth.session.remember_for` is unset: 14 days.
 pub const DEFAULT_REMEMBER_FOR: u64 = 60 * 60 * 24 * 14;
+
+/// How far past `ttl` an unset `remember_for` reaches when 14 days would not.
+const REMEMBER_MARGIN: u64 = 60 * 60 * 24;
 /// Default remember-me cookie name.
 pub const DEFAULT_REMEMBER_COOKIE: &str = "loco_remember";
 
@@ -447,8 +454,8 @@ pub fn is_server_side(ctx: &AppContext) -> bool {
 /// # Errors
 ///
 /// When `ttl` is zero; remember-me is configured with the `cookie` store, or
-/// would expire before the session it is meant to outlive (counting the
-/// default `remember_for` of a server-side store), or outlast what browsers
+/// would expire before the session it is meant to outlive (when set
+/// explicitly), or outlast what browsers
 /// keep; or the session and remember-me cookies share a name.
 pub fn validate(config: &Config) -> Result<()> {
     let Some(session) = session_config(config) else {
@@ -478,16 +485,13 @@ pub fn validate(config: &Config) -> Result<()> {
         return Ok(());
     }
     let ttl = session.ttl.unwrap_or(DEFAULT_TTL);
-    let remember_for = session.remember_for.unwrap_or(DEFAULT_REMEMBER_FOR);
-    if remember_for <= ttl {
+    // Only an explicit value can be wrong: the default follows `ttl`.
+    if let Some(remember_for) = session.remember_for
+        && remember_for <= ttl
+    {
         return bad(format!(
-            "auth.session.remember_for ({remember_for}s{}) must be longer than auth.session.ttl \
-             ({ttl}s): a remember-me cookie that expires with the session never restores one",
-            if session.remember_for.is_none() {
-                ", the default"
-            } else {
-                ""
-            }
+            "auth.session.remember_for ({remember_for}s) must be longer than auth.session.ttl \
+             ({ttl}s): a remember-me cookie that expires with the session never restores one"
         ));
     }
     let session_cookie = session
@@ -507,6 +511,15 @@ pub fn validate(config: &Config) -> Result<()> {
     Ok(())
 }
 
+/// `remember_for` as configured, or by default 14 days, or a day beyond `ttl`
+/// when that is longer.
+pub(crate) fn effective_remember_for(session: &crate::config::SessionConfig) -> u64 {
+    session.remember_for.unwrap_or_else(|| {
+        let ttl = session.ttl.unwrap_or(DEFAULT_TTL);
+        DEFAULT_REMEMBER_FOR.max(ttl.saturating_add(REMEMBER_MARGIN))
+    })
+}
+
 fn session_config(config: &Config) -> Option<&crate::config::SessionConfig> {
     config.auth.as_ref().and_then(|a| a.session.as_ref())
 }
@@ -519,7 +532,7 @@ async fn build(ctx: &AppContext) -> Result<SessionStore> {
     validate(&ctx.config)?;
     let session = session_config(&ctx.config).cloned().unwrap_or_default();
     let ttl = session.ttl.unwrap_or(DEFAULT_TTL);
-    let remember_for = session.remember_for.unwrap_or(DEFAULT_REMEMBER_FOR);
+    let remember_for = effective_remember_for(&session);
     let backend: Arc<dyn Backend> = match session.store {
         SessionStoreKind::Cookie => {
             return Err(Error::Message(
