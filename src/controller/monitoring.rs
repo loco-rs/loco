@@ -3,7 +3,7 @@
 //! application and its dependencies.
 
 use super::{format, routes::Routes};
-#[cfg(any(feature = "cache_inmem", feature = "cache_redis"))]
+#[cfg(any(feature = "cache_inmem", feature = "cache_redis", feature = "with-db"))]
 use crate::config;
 use crate::{app::AppContext, Result};
 use axum::{
