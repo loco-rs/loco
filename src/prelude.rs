@@ -72,7 +72,7 @@ pub use crate::{
         views::{engines::TeraView, ViewEngine, ViewRenderer},
         Json, Routes,
     },
-    errors::Error,
+    errors::{Error, OrErr},
     task::{self, Task, TaskInfo},
     validation::{self, Validatable, ValidatorTrait},
     Result,

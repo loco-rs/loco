@@ -70,6 +70,8 @@ The body is always wrapped in the crate's own `Json<T>` type (`src/controller/mo
 | `Error::string` | `string(s: &str) -> Self` (`:162`) | Builds `Error::Message(s.to_string())` directly from a string slice. `#[must_use]`. |
 | `Error::bt` | `bt(self) -> Self` (`:166`) | Captures `std::backtrace::Backtrace::capture()`. If the backtrace status is `Disabled` or `Unsupported` (i.e. `RUST_BACKTRACE` is unset), returns `self` unchanged — no allocation, no wrapping. Otherwise wraps `self` in `Error::WithBacktrace`. `#[must_use]`. |
 
+`OrErr` (in the prelude) adds `.or_err(msg)` / `.or_err_with(|| msg)` on `Result<T, E: std::error::Error + Send + Sync + 'static>` and on `Option<T>`. It produces `Error::Any` whose displayed message is yours and whose `source()` is the original error (none for `Option`). It is not called `context` so it cannot collide with `anyhow::Context`.
+
 Both `wrap`/`msg` are cheap-conversion helpers for turning a foreign `std::error::Error` into the crate's `Error` at a call site (e.g. inside a handler using `.map_err(Error::wrap)`); `bt` is the opt-in backtrace wrapper used internally (e.g. the hand-written `From<serde_json::Error>` impl at `src/errors.rs:24-28` does `Self::JSON(val).bt()`).
 
 ## Controller helper functions

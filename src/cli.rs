@@ -112,9 +112,11 @@ enum Commands {
     Task {
         /// Task name (identifier)
         name: Option<String>,
-        /// Task params (e.g. <`my_task`> foo:bar baz:qux)
-        #[clap(value_parser = parse_key_val::<String,String>)]
-        params: Vec<(String, String)>,
+        /// Task args, passed through verbatim (e.g. <`my_task`> foo:bar
+        /// file.txt --flag). `key:value` tokens are also readable with
+        /// `Vars::cli_arg`.
+        #[clap(trailing_var_arg = true, allow_hyphen_values = true)]
+        params: Vec<String>,
     },
     #[cfg(feature = "worker")]
     /// Managing jobs queue.
@@ -697,6 +699,7 @@ enum JobsCommands {
 }
 
 /// Parse a single key-value pair
+#[cfg(all(debug_assertions, feature = "generators"))]
 fn parse_key_val<T, U>(
     s: &str,
 ) -> std::result::Result<(T, U), Box<dyn std::error::Error + Send + Sync>>
@@ -856,7 +859,7 @@ async fn dispatch_common<H: Hooks>(
             }
         }
         Commands::Task { name, params } => {
-            let vars = task::Vars::from_cli_args(params);
+            let vars = task::Vars::from_args(params);
             run_task::<H>(&app_context, name.as_ref(), &vars).await?;
         }
         #[cfg(feature = "worker")]
@@ -1215,6 +1218,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "generators")]
     #[test]
     fn key_value_pairs_split_on_the_first_colon() {
         assert_eq!(
@@ -1283,5 +1287,34 @@ mod tests {
                 parsed.err()
             );
         }
+    }
+
+    #[test]
+    fn task_takes_raw_trailing_args() {
+        let cli = Cli::try_parse_from([
+            "loco",
+            "task",
+            "import",
+            "a.txt",
+            "b.txt",
+            "mode:fast",
+            "--dry-run",
+            "-x",
+        ])
+        .expect("raw args parse");
+        let Commands::Task { name, params } = cli.command else {
+            panic!("expected task command")
+        };
+        assert_eq!(name.as_deref(), Some("import"));
+        assert_eq!(params, ["a.txt", "b.txt", "mode:fast", "--dry-run", "-x"]);
+    }
+
+    #[test]
+    fn task_without_args_still_parses() {
+        let cli = Cli::try_parse_from(["loco", "task", "seed_data"]).unwrap();
+        let Commands::Task { params, .. } = cli.command else {
+            panic!("expected task command")
+        };
+        assert!(params.is_empty());
     }
 }

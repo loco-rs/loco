@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+Cuts what a generated app compiles. On a SQLite app with auth, workers and
+mail, a clean `cargo build` does 31% less compiler work (rustc instructions,
+1550 → 1072 billion), the first `cargo test` after it 34% less, the graph
+drops from 460 to 333 crates and `target/` from 2.7 GB to 1.9 GB. The
+no-database starter does 44% less on a clean build (1039 → 580) and goes
+from 336 to 210 crates. Six dependencies are replaced by
+small native code, each run side by side with the crate it replaces on a
+generated corpus before the crate went.
+
 **Upgrading:** nothing to do if you use `loco-rs`'s default features. If your
 `Cargo.toml` sets `default-features = false`, add whichever of the new
 features below your app uses: `db-postgres` if it talks to Postgres (database
@@ -22,6 +31,9 @@ subcommand.
 
 ### Breaking
 
+- **`task::Vars` is `#[non_exhaustive]`.** It gained a private field for the
+  raw arguments, so build it with `Vars::from_cli_args`, `Vars::from_args` or
+  `Vars::default()` rather than a struct literal. `Task::run` is unchanged.
 - **Compression builds gzip only by default.** The `compression` middleware
   used to speak brotli, deflate, gzip and zstd. Enable `compression-full` to
   keep all four.
@@ -52,6 +64,16 @@ subcommand.
 
 ### Added
 
+- **Task arguments are passed through raw.** `cargo loco task import *.csv
+  --dry-run` no longer fails on tokens that are not `key:value`. Every token
+  reaches the task through `Vars::args()` (feed it to `clap`, or use it as a
+  file list); `key:value` tokens still fill `vars.cli` and `cli_arg`.
+  (#1730, @pweaver)
+- **`.or_err("message")` in the prelude.** Turns a `Result` with any
+  `std::error::Error` into a `loco_rs::Result` with your message, keeping the
+  original as `source()`, and does the same for `Option`; `.or_err_with(||
+  ...)` builds the message lazily. Named so it never clashes with
+  `anyhow::Context`. (#1751)
 - **`db-postgres`, `compression` and `generators` features**, on by
   default, plus `compression-full`, so apps built with
   `default-features = false` can leave out dependencies they never use. The
@@ -117,6 +139,9 @@ subcommand.
 
 ### Fixed
 
+- **Fallback page hint.** The default 404 page told you to look for a
+  `fallback:` setting that generated configs do not contain; it now shows
+  `server.middlewares.fallback.enable: false`. (#1852)
 - **A `fallback.file` page answered 200.** The `fallback` middleware served
   its file through `ServeFile`, which reports 200 for a file it finds, so an
   unmatched route set to `assets/static/404.html` answered 200 and the

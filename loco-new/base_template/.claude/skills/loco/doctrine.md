@@ -121,6 +121,10 @@ Rails raises and a rescue handler turns it into a 500. Loco returns
   `Error::Unauthorized`, `unauthorized(...)`, `bad_request(...)`) so the right
   status code comes out. A stringly-typed `Error::string("not found")` returns
   500 and is wrong.
+- To bubble up a foreign error (or a `None`) with your own message, use
+  `.or_err("...")` from the prelude instead of `.map_err(|e| Error::string(..))`.
+  It keeps the original error as `source()`. It is not named `context`, so it
+  does not clash with `anyhow::Context`.
 
 ### 6. Mixins → traits
 
