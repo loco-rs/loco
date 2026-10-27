@@ -15,13 +15,13 @@
 //! replays: check the signature with [`verify_signature`], then refuse a
 //! timestamp older than a few minutes.
 
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, fmt::Write as _};
 
 use hmac::{Hmac, Mac};
 use serde_json::Value;
 use sha2::Sha256;
 
-use super::http_error;
+use super::{check_status, http_error};
 use crate::Result;
 
 /// Header carrying the event name.
@@ -51,7 +51,7 @@ pub fn sign(secret: &str, timestamp: &str, body: &[u8]) -> String {
     let mut hex = String::with_capacity(7 + digest.len() * 2);
     hex.push_str("sha256=");
     for byte in digest {
-        hex.push_str(&format!("{byte:02x}"));
+        let _ = write!(hex, "{byte:02x}");
     }
     hex
 }
@@ -97,6 +97,10 @@ pub(super) async fn send(http: &reqwest::Client, req: Request<'_>) -> Result<()>
         builder = builder.header(SIGNATURE_HEADER, sign(secret, &timestamp, &body));
     }
     for (name, value) in req.headers {
+        if is_reserved(name) {
+            tracing::warn!(header = %name, "webhook header is reserved by loco; skipped");
+            continue;
+        }
         builder = builder.header(name, value);
     }
 
@@ -105,17 +109,35 @@ pub(super) async fn send(http: &reqwest::Client, req: Request<'_>) -> Result<()>
         .send()
         .await
         .map_err(|e| http_error("webhook", e))?;
-    let status = response.status();
-    if status.is_success() {
-        Ok(())
-    } else {
-        Err(crate::Error::Message(format!("webhook answered {status}")))
-    }
+    check_status("webhook", response.status(), String::new)
+}
+
+/// Headers the signature and receivers rely on; user headers cannot replace
+/// them.
+fn is_reserved(name: &str) -> bool {
+    [
+        EVENT_HEADER,
+        DELIVERY_HEADER,
+        TIMESTAMP_HEADER,
+        SIGNATURE_HEADER,
+    ]
+    .iter()
+    .any(|reserved| reserved.eq_ignore_ascii_case(name))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reserved_headers_are_case_insensitive() {
+        assert!(is_reserved("x-loco-signature"));
+        assert!(is_reserved("X-LOCO-EVENT"));
+        assert!(is_reserved("X-Loco-Delivery"));
+        assert!(is_reserved("x-Loco-timestamp"));
+        assert!(!is_reserved("Authorization"));
+        assert!(!is_reserved("X-Custom"));
+    }
 
     #[test]
     fn signature_round_trips_and_rejects_tampering() {

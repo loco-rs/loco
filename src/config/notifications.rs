@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, fmt};
 
 use serde::{Deserialize, Serialize};
 
@@ -70,7 +70,7 @@ impl Default for Notifications {
 }
 
 /// Default Slack destination.
-#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[derive(Clone, Default, Deserialize, Serialize)]
 pub struct SlackNotifications {
     /// A Slack incoming-webhook URL. Empty means "not configured".
     #[serde(default)]
@@ -78,7 +78,7 @@ pub struct SlackNotifications {
 }
 
 /// Default webhook destination.
-#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[derive(Clone, Default, Deserialize, Serialize)]
 pub struct WebhookNotifications {
     /// Where to POST the JSON payload. Empty means "not configured".
     #[serde(default)]
@@ -89,6 +89,26 @@ pub struct WebhookNotifications {
     /// Extra request headers, e.g. an `Authorization` token.
     #[serde(default)]
     pub headers: BTreeMap<String, String>,
+}
+
+// Slack URLs and signing secrets are credentials, so `Debug` (and with it
+// `{:?}` of the whole config) never prints them.
+impl fmt::Debug for SlackNotifications {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SlackNotifications")
+            .field("webhook_url", &"<redacted>")
+            .finish()
+    }
+}
+
+impl fmt::Debug for WebhookNotifications {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("WebhookNotifications")
+            .field("url", &self.url)
+            .field("secret", &self.secret.as_ref().map(|_| "<redacted>"))
+            .field("headers", &self.headers.keys().collect::<Vec<_>>())
+            .finish()
+    }
 }
 
 /// Default email destination.
@@ -112,4 +132,29 @@ const fn default_retry_backoff_secs() -> u64 {
 
 const fn default_timeout_secs() -> u64 {
     10
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn debug_redacts_secrets() {
+        let config = Notifications {
+            slack: Some(SlackNotifications {
+                webhook_url: "https://hooks.slack.test/T0/SLACKSECRET".into(),
+            }),
+            webhook: Some(WebhookNotifications {
+                url: "https://example.com/hook".into(),
+                secret: Some("WEBHOOKSECRET".into()),
+                headers: BTreeMap::from([("Authorization".into(), "Bearer HEADERSECRET".into())]),
+            }),
+            ..Notifications::default()
+        };
+        let dump = format!("{config:?}");
+        for secret in ["SLACKSECRET", "WEBHOOKSECRET", "HEADERSECRET"] {
+            assert!(!dump.contains(secret), "{secret} leaked: {dump}");
+        }
+        assert!(dump.contains("<redacted>"));
+    }
 }

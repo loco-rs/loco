@@ -1,5 +1,7 @@
 //! Email deliveries through the app's mailer (`ctx.mailer`).
 
+use std::fmt::Write as _;
+
 use include_dir::Dir;
 use serde::{Deserialize, Serialize};
 
@@ -28,17 +30,18 @@ impl EmailContent {
         if let Some(body) = message.body.as_deref().filter(|b| !b.is_empty()) {
             text.push_str(body);
             text.push('\n');
-            html.push_str(&format!("<p>{}</p>", escape_html(body)));
+            let _ = write!(html, "<p>{}</p>", escape_html(body));
         }
         if !message.fields.is_empty() {
             html.push_str("<ul>");
             for field in &message.fields {
-                text.push_str(&format!("{}: {}\n", field.name, field.value));
-                html.push_str(&format!(
+                let _ = writeln!(text, "{}: {}", field.name, field.value);
+                let _ = write!(
+                    html,
                     "<li><strong>{}:</strong> {}</li>",
                     escape_html(&field.name),
                     escape_html(&field.value)
-                ));
+                );
             }
             html.push_str("</ul>");
         }
@@ -46,7 +49,7 @@ impl EmailContent {
             text.push_str(url);
             text.push('\n');
             let url = escape_html(url);
-            html.push_str(&format!("<p><a href=\"{url}\">{url}</a></p>"));
+            let _ = write!(html, "<p><a href=\"{url}\">{url}</a></p>");
         }
         Self {
             subject: message.title.clone(),

@@ -434,6 +434,88 @@ async fn non_2xx_slack_answer_is_an_error_so_the_queue_retries() {
     assert!(err.to_string().contains("429"), "{err}");
 }
 
+#[tokio::test]
+async fn permanent_4xx_answer_is_dropped_not_retried() {
+    let (base, log) = mock_server(StatusCode::NOT_FOUND).await;
+    let ctx = context(None).await;
+    let worker = NotificationWorker::build(&ctx);
+
+    worker
+        .perform(Delivery {
+            id: "d1".to_string(),
+            event: "queue_paused".to_string(),
+            target: Target::Slack {
+                webhook_url: Some(format!("{base}/gone")),
+                payload: json!({"text": "hi"}),
+            },
+        })
+        .await
+        .expect("404 will never succeed, so the job completes");
+    assert_eq!(requests(&log).len(), 1);
+}
+
+#[tokio::test]
+async fn user_headers_cannot_override_loco_headers() {
+    let (base, log) = mock_server(StatusCode::OK).await;
+    let ctx = context(None).await;
+
+    QueuePaused::to(vec![Channel::webhook_url(format!("{base}/h"))
+        .signed("s3cret")
+        .header("x-loco-signature", "forged")
+        .header("X-LOCO-EVENT", "forged")
+        .header("X-Team", "core")])
+    .deliver_later(&ctx)
+    .await;
+
+    let req = &requests(&log)[0];
+    assert_eq!(req.header("x-team").as_deref(), Some("core"));
+    assert_eq!(req.header("x-loco-event").as_deref(), Some("queue_paused"));
+    assert!(webhook::verify_signature(
+        "s3cret",
+        &req.header("x-loco-timestamp").unwrap(),
+        &req.body,
+        &req.header("x-loco-signature").unwrap()
+    ));
+}
+
+#[test]
+fn debug_output_hides_secrets() {
+    let channel = Channel::webhook_url("https://example.com/h")
+        .signed("WEBHOOKSECRET")
+        .header("Authorization", "Bearer HEADERSECRET");
+    let slack = Channel::slack_url("https://hooks.slack.test/SLACKSECRET");
+    let target = Target::Webhook {
+        url: None,
+        secret: Some("WEBHOOKSECRET".to_string()),
+        headers: BTreeMap::from([(
+            "Authorization".to_string(),
+            "Bearer HEADERSECRET".to_string(),
+        )]),
+        payload: json!({}),
+    };
+    let delivery = Delivery {
+        id: "d1".to_string(),
+        event: "e".to_string(),
+        target: Target::Slack {
+            webhook_url: Some("https://hooks.slack.test/SLACKSECRET".to_string()),
+            payload: json!({}),
+        },
+    };
+    let dump = format!("{channel:?} {slack:?} {target:?} {delivery:?}");
+    for secret in ["WEBHOOKSECRET", "HEADERSECRET", "SLACKSECRET"] {
+        assert!(!dump.contains(secret), "{secret} leaked: {dump}");
+    }
+}
+
+#[tokio::test]
+async fn http_client_is_shared_per_context() {
+    let ctx = context(None).await;
+    assert!(ctx.shared_store.get::<HttpClient>().is_none());
+    let _ = NotificationWorker::build(&ctx);
+    let _ = NotificationWorker::build(&ctx);
+    assert!(ctx.shared_store.get::<HttpClient>().is_some());
+}
+
 #[cfg(all(feature = "worker", feature = "db-sqlite"))]
 #[tokio::test]
 async fn deliveries_go_through_a_real_queue_as_one_job_per_channel() {
@@ -457,6 +539,8 @@ async fn deliveries_go_through_a_real_queue_as_one_job_per_channel() {
         poll_interval_sec: 1,
         num_workers: 1,
         reaper: None,
+        retention: None,
+        pragmas: BTreeMap::new(),
     })
     .await
     .expect("sqlite queue");

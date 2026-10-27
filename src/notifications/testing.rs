@@ -37,7 +37,7 @@ use super::{slack_url, webhook_destination, Delivery, Target};
 use crate::{app::AppContext, Result};
 
 /// One delivery as it would have been sent.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Recorded {
     /// The delivery ID (`X-Loco-Delivery` for webhooks).
     pub id: String,

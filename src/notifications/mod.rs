@@ -41,7 +41,7 @@ pub mod slack;
 pub mod testing;
 pub mod webhook;
 
-use std::{collections::BTreeMap, time::Duration};
+use std::{collections::BTreeMap, fmt, sync::Mutex, time::Duration};
 
 use async_trait::async_trait;
 pub use channel::Channel;
@@ -338,7 +338,7 @@ pub struct Delivery {
 
 /// A rendered destination. `None` destinations are resolved from the
 /// `notifications:` config when the job runs.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "channel", rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum Target {
@@ -361,6 +361,41 @@ pub enum Target {
     },
 }
 
+// Slack URLs, secrets and header values are credentials: `Debug` hides them.
+impl fmt::Debug for Target {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Slack {
+                webhook_url,
+                payload,
+            } => f
+                .debug_struct("Slack")
+                .field("webhook_url", &webhook_url.as_ref().map(|_| "<redacted>"))
+                .field("payload", payload)
+                .finish(),
+            Self::Webhook {
+                url,
+                secret,
+                headers,
+                payload,
+            } => f
+                .debug_struct("Webhook")
+                .field("url", url)
+                .field("secret", &secret.as_ref().map(|_| "<redacted>"))
+                .field("headers", &headers.keys().collect::<Vec<_>>())
+                .field("payload", payload)
+                .finish(),
+            #[cfg(feature = "mailer")]
+            Self::Email { to, from, content } => f
+                .debug_struct("Email")
+                .field("to", to)
+                .field("from", from)
+                .field("content", content)
+                .finish(),
+        }
+    }
+}
+
 impl Target {
     #[must_use]
     pub const fn name(&self) -> &'static str {
@@ -373,9 +408,11 @@ impl Target {
     }
 }
 
-/// Sends one [`Delivery`]. Registered automatically at boot when the
-/// `notifications` feature is on; a failed send returns an error so the
-/// queue retries it (`notifications.max_retries`, Postgres and `SQLite`).
+/// Sends one [`Delivery`].
+///
+/// Registered automatically at boot when the `notifications` feature is on;
+/// a failed send returns an error so the queue retries it
+/// (`notifications.max_retries`, Postgres and `SQLite`). Permanent rejections (4xx other than 408 and 429) are logged and dropped.
 pub struct NotificationWorker {
     ctx: AppContext,
     http: reqwest::Client,
@@ -388,18 +425,9 @@ impl BackgroundWorker<Delivery> for NotificationWorker {
     }
 
     fn build(ctx: &AppContext) -> Self {
-        let timeout = ctx
-            .config
-            .notifications
-            .as_ref()
-            .map_or(10, |n| n.timeout_secs);
-        let http = reqwest::Client::builder()
-            .timeout(Duration::from_secs(timeout))
-            .build()
-            .unwrap_or_default();
         Self {
             ctx: ctx.clone(),
-            http,
+            http: http_client(ctx),
         }
     }
 
@@ -439,6 +467,73 @@ impl BackgroundWorker<Delivery> for NotificationWorker {
     }
 }
 
+/// The context's shared HTTP client, built on first use with
+/// `notifications.timeout_secs`.
+#[derive(Clone)]
+struct HttpClient(reqwest::Client);
+
+/// Serializes the first insert of a context's client.
+static HTTP_INIT: Mutex<()> = Mutex::new(());
+
+fn http_client(ctx: &AppContext) -> reqwest::Client {
+    if let Some(HttpClient(client)) = ctx.shared_store.get::<HttpClient>() {
+        return client;
+    }
+    let _guard = HTTP_INIT
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    if let Some(HttpClient(client)) = ctx.shared_store.get::<HttpClient>() {
+        return client;
+    }
+    let timeout = ctx
+        .config
+        .notifications
+        .as_ref()
+        .map_or(10, |n| n.timeout_secs);
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(timeout))
+        .build()
+        .unwrap_or_else(|err| {
+            tracing::error!(
+                error = %err,
+                "notifications: could not build the HTTP client with a {timeout}s timeout; using one without it"
+            );
+            reqwest::Client::default()
+        });
+    ctx.shared_store.insert(HttpClient(client.clone()));
+    client
+}
+
+/// Whether an HTTP answer can never succeed on retry: any 4xx except
+/// `408 Request Timeout` and `429 Too Many Requests`.
+pub(crate) fn is_permanent(status: reqwest::StatusCode) -> bool {
+    status.is_client_error()
+        && status != reqwest::StatusCode::REQUEST_TIMEOUT
+        && status != reqwest::StatusCode::TOO_MANY_REQUESTS
+}
+
+/// Turns an HTTP answer into the worker's result: success is `Ok`, a
+/// permanent rejection is logged and dropped (retrying cannot help), and
+/// anything else is an error so the queue retries.
+pub(crate) fn check_status(
+    channel: &str,
+    status: reqwest::StatusCode,
+    detail: impl FnOnce() -> String,
+) -> Result<()> {
+    if status.is_success() {
+        Ok(())
+    } else if is_permanent(status) {
+        tracing::warn!(channel, %status, "notification rejected; not retrying");
+        Ok(())
+    } else {
+        let detail = detail();
+        Err(Error::Message(format!(
+            "{channel} answered {status}{}{detail}",
+            if detail.is_empty() { "" } else { ": " }
+        )))
+    }
+}
+
 /// The Slack URL of a delivery: its own, else `notifications.slack`.
 fn slack_url(config: Option<&Notifications>, webhook_url: Option<String>) -> Result<String> {
     webhook_url
@@ -462,20 +557,19 @@ fn webhook_destination(
     secret: Option<String>,
     mut headers: BTreeMap<String, String>,
 ) -> Result<(String, Option<String>, BTreeMap<String, String>)> {
-    let (url, secret) = match url {
-        Some(url) => (url, secret),
-        None => {
-            let defaults = config.and_then(|c| c.webhook.as_ref()).ok_or_else(|| {
-                Error::string("webhook notification: notifications.webhook is not set")
-            })?;
-            for (name, value) in &defaults.headers {
-                headers.entry(name.clone()).or_insert_with(|| value.clone());
-            }
-            (
-                defaults.url.clone(),
-                secret.or_else(|| defaults.secret.clone()),
-            )
+    let (url, secret) = if let Some(url) = url {
+        (url, secret)
+    } else {
+        let defaults = config.and_then(|c| c.webhook.as_ref()).ok_or_else(|| {
+            Error::string("webhook notification: notifications.webhook is not set")
+        })?;
+        for (name, value) in &defaults.headers {
+            headers.entry(name.clone()).or_insert_with(|| value.clone());
         }
+        (
+            defaults.url.clone(),
+            secret.or_else(|| defaults.secret.clone()),
+        )
     };
     if url.trim().is_empty() {
         return Err(Error::string("webhook notification: no URL"));

@@ -135,7 +135,7 @@ Deliveries run on the background worker, like mail:
 cargo loco start --server-and-worker
 ```
 
-`NotificationWorker` is registered automatically. A delivery that fails, whether a connection error or a non-2xx answer such as Slack's `429`, returns an error so the queue retries it with exponential backoff. Only the Postgres and SQLite queue providers retry. On Redis, boot logs a warning and each delivery is tried once. In `BackgroundAsync` mode deliveries run on a spawned task with no retries. In `ForegroundBlocking` mode they run inline.
+`NotificationWorker` is registered automatically. A delivery that fails with a connection error, a timeout or a retryable answer (`408`, `429` or any `5xx`, such as Slack's `429`) returns an error so the queue retries it with exponential backoff. Any other `4xx` (a revoked Slack URL, a `401` from your endpoint) will never succeed, so it is logged as a warning and the job completes without retrying. Only the Postgres and SQLite queue providers retry. On Redis the worker polls the `notifications` queue by default, and each delivery is tried once; boot logs a warning about that. In `BackgroundAsync` mode deliveries run on a spawned task with no retries. In `ForegroundBlocking` mode they run inline.
 
 ## Customize payloads
 

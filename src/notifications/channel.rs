@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, fmt};
 
 use crate::config::Notifications;
 
@@ -9,7 +9,7 @@ use crate::config::Notifications;
 /// config block (`slack`, `webhook`, `email`). A default that is not
 /// configured, or an explicit destination that is empty, is skipped with a
 /// warning rather than failing the delivery.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Channel {
     /// A Slack incoming webhook. `None` uses `notifications.slack.webhook_url`.
@@ -28,6 +28,34 @@ pub enum Channel {
         to: Vec<String>,
         from: Option<String>,
     },
+}
+
+// Slack URLs, secrets and header values are credentials: `Debug` hides them.
+impl fmt::Debug for Channel {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Slack { webhook_url } => f
+                .debug_struct("Slack")
+                .field("webhook_url", &webhook_url.as_ref().map(|_| "<redacted>"))
+                .finish(),
+            Self::Webhook {
+                url,
+                secret,
+                headers,
+            } => f
+                .debug_struct("Webhook")
+                .field("url", url)
+                .field("secret", &secret.as_ref().map(|_| "<redacted>"))
+                .field("headers", &headers.keys().collect::<Vec<_>>())
+                .finish(),
+            #[cfg(feature = "mailer")]
+            Self::Email { to, from } => f
+                .debug_struct("Email")
+                .field("to", to)
+                .field("from", from)
+                .finish(),
+        }
+    }
 }
 
 impl Channel {
