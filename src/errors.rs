@@ -201,3 +201,141 @@ impl Error {
         }
     }
 }
+
+/// An error with a message of your own on top of the one that caused it.
+/// Display shows the message; the cause stays reachable through `source()`.
+#[derive(Debug)]
+struct Contextual {
+    msg: String,
+    source: Option<Box<dyn std::error::Error + Send + Sync>>,
+}
+
+impl std::fmt::Display for Contextual {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.msg)
+    }
+}
+
+impl std::error::Error for Contextual {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.source
+            .as_deref()
+            .map(|e| e as &(dyn std::error::Error + 'static))
+    }
+}
+
+/// Turn a foreign `Result` or `Option` into a [`crate::Result`] with a message
+/// of your own, so `?` works without a hand-written `map_err`.
+///
+/// ```
+/// use loco_rs::prelude::*;
+///
+/// fn port(raw: &str) -> Result<u16> {
+///     raw.parse::<u16>().or_err("invalid port")
+/// }
+///
+/// fn first(items: &[u8]) -> Result<u8> {
+///     items.first().copied().or_err("no items")
+/// }
+///
+/// assert_eq!(port("80").unwrap(), 80);
+/// assert_eq!(port("x").unwrap_err().to_string(), "invalid port");
+/// assert_eq!(first(&[]).unwrap_err().to_string(), "no items");
+/// ```
+///
+/// For a `Result` the original error is kept as the `source()` of the new one,
+/// so logs and `std::error::Error::source` walkers still see the whole chain.
+/// The result is [`Error::Any`], which responds with a generic `500`; use
+/// `Error::BadRequest` and friends when the caller should see the message.
+///
+/// The method is named `or_err` rather than `context` so it never collides
+/// with `anyhow::Context` when both are in scope.
+pub trait OrErr<T> {
+    /// # Errors
+    /// Returns [`Error::Any`] carrying `msg`, with the original error as its
+    /// source when there is one.
+    fn or_err(self, msg: impl Into<String>) -> crate::Result<T>;
+
+    /// Like [`OrErr::or_err`], but the message is built only on failure.
+    ///
+    /// # Errors
+    /// Same as [`OrErr::or_err`].
+    fn or_err_with<S: Into<String>>(self, f: impl FnOnce() -> S) -> crate::Result<T>;
+}
+
+impl<T, E> OrErr<T> for std::result::Result<T, E>
+where
+    E: std::error::Error + Send + Sync + 'static,
+{
+    fn or_err(self, msg: impl Into<String>) -> crate::Result<T> {
+        self.or_err_with(|| msg)
+    }
+
+    fn or_err_with<S: Into<String>>(self, f: impl FnOnce() -> S) -> crate::Result<T> {
+        self.map_err(|source| {
+            Error::wrap(Contextual {
+                msg: f().into(),
+                source: Some(Box::new(source)),
+            })
+        })
+    }
+}
+
+impl<T> OrErr<T> for Option<T> {
+    fn or_err(self, msg: impl Into<String>) -> crate::Result<T> {
+        self.or_err_with(|| msg)
+    }
+
+    fn or_err_with<S: Into<String>>(self, f: impl FnOnce() -> S) -> crate::Result<T> {
+        self.ok_or_else(|| {
+            Error::wrap(Contextual {
+                msg: f().into(),
+                source: None,
+            })
+        })
+    }
+}
+
+#[cfg(test)]
+mod or_err_tests {
+
+    use super::*;
+
+    #[test]
+    fn result_keeps_source_chain() {
+        let err = "x".parse::<u8>().or_err("bad number").unwrap_err();
+        assert_eq!(err.to_string(), "bad number");
+        let Error::Any(inner) = &err else {
+            panic!("expected Error::Any, got {err:?}")
+        };
+        let cause = inner.source().expect("source preserved");
+        assert!(cause.is::<std::num::ParseIntError>());
+    }
+
+    #[test]
+    fn option_none_has_message_and_no_source() {
+        let err = None::<u8>.or_err("missing").unwrap_err();
+        assert_eq!(err.to_string(), "missing");
+        let Error::Any(inner) = &err else {
+            panic!("expected Error::Any")
+        };
+        assert!(inner.source().is_none());
+    }
+
+    #[test]
+    fn ok_values_pass_through_and_lazy_message_is_not_built() {
+        assert_eq!("7".parse::<u8>().or_err("no").unwrap(), 7);
+        assert_eq!(
+            Some(1)
+                .or_err_with(|| -> String { panic!("built eagerly") })
+                .unwrap(),
+            1
+        );
+    }
+
+    #[test]
+    fn lazy_message_on_failure() {
+        let err = None::<u8>.or_err_with(|| format!("id {}", 3)).unwrap_err();
+        assert_eq!(err.to_string(), "id 3");
+    }
+}
