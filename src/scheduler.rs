@@ -335,6 +335,14 @@ impl Scheduler {
                 job.prepare_command(&self.binary_path, &self.default_output, &self.environment);
             // Report exit statuses without including task arguments in process errors.
             let process = job.prepare_process(&self.binary_path)?.unchecked();
+            // What the logs may say about this job: a shell command as written,
+            // but only the binary for a native task, whose arguments may carry
+            // secrets.
+            let logged_command = if job.shell {
+                job.run.clone()
+            } else {
+                format!("{} task", self.binary_path.display())
+            };
 
             let cron_syntax = if get_re_is_cron_syntax().is_match(&job.cron) {
                 job.cron.clone()
@@ -354,12 +362,12 @@ impl Scheduler {
 
             tasks.spawn(async move {
                 if job.run_on_start {
-                    spawn_job(&job_name, &job_description, &process);
+                    spawn_job(&job_name, &job_description, &process, &logged_command);
                 }
                 while let Some(next) = cron.next_after(chrono::Utc::now()) {
                     let wait = (next - chrono::Utc::now()).to_std().unwrap_or_default();
                     tokio::time::sleep(wait).await;
-                    spawn_job(&job_name, &job_description, &process);
+                    spawn_job(&job_name, &job_description, &process, &logged_command);
                 }
                 tracing::warn!(job_name, "cron has no further occurrences; job stopped");
             });
@@ -375,12 +383,24 @@ impl Scheduler {
 /// Starts a run without waiting for it, so a slow run never delays the next
 /// tick. `job_description.run()` blocks for the whole child-process lifetime,
 /// so it runs off the async runtime's worker threads.
-fn spawn_job(job_name: &str, job_description: &JobDescription, process: &duct::Expression) {
+fn spawn_job(
+    job_name: &str,
+    job_description: &JobDescription,
+    process: &duct::Expression,
+    logged_command: &str,
+) {
     let job_name = job_name.to_string();
+    let logged_command = logged_command.to_string();
     let job_description = job_description.clone();
     let process = process.clone();
     tokio::task::spawn_blocking(move || {
-        execute_job(&job_name, Uuid::new_v4(), &job_description, &process);
+        execute_job(
+            &job_name,
+            Uuid::new_v4(),
+            &job_description,
+            &process,
+            &logged_command,
+        );
     });
 }
 
@@ -389,6 +409,7 @@ fn execute_job(
     uuid: Uuid,
     job_description: &JobDescription,
     process: &duct::Expression,
+    logged_command: &str,
 ) {
     let task_span = tracing::span!(
         tracing::Level::DEBUG,
@@ -398,6 +419,7 @@ fn execute_job(
     );
     let start = Instant::now();
     let _guard = task_span.enter();
+    tracing::info!(command = logged_command, "execute job command");
     match job_description.run_process(process) {
         Ok(output) if !output.status.success() => {
             tracing::error!(
@@ -416,7 +438,8 @@ fn execute_job(
         Err(err) => {
             tracing::error!(
                 duration = ?start.elapsed(),
-                error = ?err.kind(),
+                command = logged_command,
+                error = %err,
                 "failed to execute scheduler job in sub process"
             );
         }
@@ -623,7 +646,10 @@ jobs:
         ];
         let expected = format!("{arguments:?}|test|true");
         let contents = std::fs::read_to_string(output).unwrap();
-        assert!(contents.lines().all(|line| line == expected));
+        assert!(
+            contents.lines().all(|line| line == expected),
+            "{contents:?} vs {expected:?}"
+        );
         assert!(
             !sentinel.exists(),
             "native arguments must not execute shell syntax"

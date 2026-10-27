@@ -9,12 +9,12 @@ fn main() {
         .append(true)
         .open(&arguments[2])
         .unwrap();
-    writeln!(
-        output,
-        "{:?}|{}|{}",
+    // One write call per line, so the test never reads a half-written line.
+    let line = format!(
+        "{:?}|{}|{}\n",
         &arguments[3..],
         env::var("LOCO_ENV").unwrap(),
         env::var_os("PATH").is_some()
-    )
-    .unwrap();
+    );
+    output.write_all(line.as_bytes()).unwrap();
 }
