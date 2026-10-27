@@ -6,7 +6,10 @@ use super::{
     sql::{to_job, Driver},
     JobHandler, JobStatus, Queue, QueueProvider, RetryPolicy,
 };
-use crate::{config::SqliteQueueConfig, Result};
+use crate::{
+    config::{RetentionConfig, SqliteQueueConfig},
+    Result,
+};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 pub use sqlx::SqlitePool;
@@ -165,6 +168,23 @@ impl QueueProvider for SqliteQueue {
                 }
             });
         }
+        if let Some(retention) = self.run_opts.retention.clone() {
+            let pool = self.pool.clone();
+            let token = self.token.clone();
+            tokio::spawn(async move {
+                let interval = std::time::Duration::from_secs(retention.interval_seconds);
+                loop {
+                    tokio::select! {
+                        () = token.cancelled() => break,
+                        () = tokio::time::sleep(interval) => {
+                            if let Err(err) = apply_retention(&pool, &retention).await {
+                                tracing::error!(error = %err, "retention: failed to delete finished jobs");
+                            }
+                        }
+                    }
+                }
+            });
+        }
         let handles = self.registry.lock().await.run::<SqliteDriver>(
             &self.pool,
             &self.run_opts,
@@ -258,7 +278,7 @@ pub async fn initialize_database(pool: &SqlitePool) -> Result<()> {
     debug!("Initializing job database tables");
     sqlx::query(AssertSqlSafe(format!(r"
             CREATE TABLE IF NOT EXISTS sqlt_loco_queue (
-                id TEXT NOT NULL,
+                id TEXT NOT NULL PRIMARY KEY,
                 name TEXT NOT NULL,
                 task_data JSON NOT NULL,
                 status TEXT NOT NULL DEFAULT '{}',
@@ -294,6 +314,30 @@ pub async fn initialize_database(pool: &SqlitePool) -> Result<()> {
             .await?;
     }
 
+    // Tables created before the primary key existed. SQLite cannot add one
+    // with ALTER, so a unique index on `id` stands in for it.
+    let has_primary_key: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM pragma_table_info('sqlt_loco_queue') WHERE pk > 0)",
+    )
+    .fetch_one(pool)
+    .await?;
+    if !has_primary_key {
+        let duplicate: Option<String> = sqlx::query_scalar(
+            "SELECT id FROM sqlt_loco_queue GROUP BY id HAVING COUNT(*) > 1 LIMIT 1",
+        )
+        .fetch_optional(pool)
+        .await?;
+        if let Some(id) = duplicate {
+            return Err(crate::Error::string(&format!(
+                "cannot make job ids unique in sqlt_loco_queue: job id '{id}' appears more \
+                 than once. Remove the duplicate rows (keep one per id) and start again"
+            )));
+        }
+        sqlx::query("CREATE UNIQUE INDEX IF NOT EXISTS idx_sqlt_queue_id ON sqlt_loco_queue(id)")
+            .execute(pool)
+            .await?;
+    }
+
     // Columns added after the first release, on new and existing tables
     // alike. SQLite has no `ADD COLUMN IF NOT EXISTS`.
     for (column, definition) in [
@@ -315,6 +359,21 @@ pub async fn initialize_database(pool: &SqlitePool) -> Result<()> {
             .await?;
         }
     }
+
+    // Dequeue order for queued jobs, and the (status, updated_at) scans of the
+    // reaper and retention sweeps.
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_sqlt_queue_dequeue ON sqlt_loco_queue(priority DESC, \
+         run_at, id) WHERE status = 'queued'",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_sqlt_queue_status_updated_at ON \
+         sqlt_loco_queue(status, updated_at)",
+    )
+    .execute(pool)
+    .await?;
 
     // At most one *queued* job per (name, unique_key); see `enqueue_unique`.
     sqlx::query(AssertSqlSafe(format!(
@@ -548,7 +607,7 @@ async fn dequeue(client: &SqlitePool, worker_tags: &[String]) -> Result<Option<J
         "SELECT id, name, task_data, status, run_at, interval, tags, priority
         FROM sqlt_loco_queue
         WHERE
-            status = ? AND
+            status = 'queued' AND
             run_at <= CURRENT_TIMESTAMP",
     );
 
@@ -566,7 +625,7 @@ async fn dequeue(client: &SqlitePool, worker_tags: &[String]) -> Result<Option<J
 
     query.push_str(" ORDER BY priority DESC, run_at, id LIMIT 1");
 
-    let mut db_query = sqlx::query(AssertSqlSafe(query)).bind(JobStatus::Queued.to_string());
+    let mut db_query = sqlx::query(AssertSqlSafe(query));
 
     for tag in worker_tags {
         // The tags column is a JSON array; match the quoted element as a substring.
@@ -836,6 +895,49 @@ pub async fn clear_jobs_older_than(
     Ok(())
 }
 
+/// Deletes up to `batch` jobs in `status` that finished more than `age_days`
+/// days ago, returning how many it deleted.
+async fn delete_finished_batch(
+    pool: &SqlitePool,
+    status: &JobStatus,
+    age_days: i64,
+    batch: i64,
+) -> Result<u64> {
+    // Same format as the stored `CURRENT_TIMESTAMP`, so the TEXT comparison
+    // sorts correctly.
+    let cutoff = (Utc::now() - chrono::Duration::days(age_days))
+        .format("%Y-%m-%d %H:%M:%S")
+        .to_string();
+    let result = sqlx::query(
+        "DELETE FROM sqlt_loco_queue WHERE id IN (
+            SELECT id FROM sqlt_loco_queue WHERE status = $1 AND updated_at < $2 LIMIT $3
+        )",
+    )
+    .bind(status.to_string())
+    .bind(cutoff)
+    .bind(batch)
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected())
+}
+
+/// Runs one retention sweep: deletes finished jobs older than the ages in
+/// `config`, a batch at a time. Never touches queued or processing jobs.
+///
+/// # Errors
+///
+/// This function will return an error if it fails
+pub async fn apply_retention(pool: &SqlitePool, config: &RetentionConfig) -> Result<u64> {
+    let deleted = super::sql::sweep_retention(config, |status, age_days, batch| async move {
+        delete_finished_batch(pool, &status, age_days, batch).await
+    })
+    .await?;
+    if deleted > 0 {
+        debug!(deleted, "retention: deleted finished jobs");
+    }
+    Ok(deleted)
+}
+
 /// Ping system
 ///
 /// # Errors
@@ -864,6 +966,7 @@ async fn build_provider(qcfg: &SqliteQueueConfig) -> Result<SqliteQueue> {
             num_workers: qcfg.num_workers,
             poll_interval_sec: qcfg.poll_interval_sec,
             reaper: qcfg.reaper.clone(),
+            retention: qcfg.retention.clone(),
         },
         token,
     })
@@ -976,6 +1079,7 @@ mod tests {
             poll_interval_sec: 1,
             num_workers: 1,
             reaper: None,
+            retention: None,
         }
     }
 
@@ -1778,6 +1882,7 @@ mod tests {
                 age_minutes: 5,
                 interval_seconds: 30,
             }),
+            retention: None,
         };
 
         let provider = build_provider(&qcfg).await.expect("build provider");
@@ -1809,6 +1914,7 @@ mod tests {
             poll_interval_sec: 1,
             num_workers: 1,
             reaper: None,
+            retention: None,
         };
 
         let provider = build_provider(&qcfg).await.expect("build provider");
@@ -1950,6 +2056,7 @@ mod tests {
             num_workers: 1,
             poll_interval_sec: 1,
             reaper: None,
+            retention: None,
         };
         let token = CancellationToken::new();
         let handles = registry.run::<SqliteDriver>(&pool, &opts, &token, &[]);
@@ -2419,6 +2526,7 @@ mod tests {
             num_workers: 1,
             poll_interval_sec: 1,
             reaper: None,
+            retention: None,
         };
         let token = CancellationToken::new();
         let handles = registry.run::<SqliteDriver>(pool, &opts, &token, &[]);
@@ -2603,5 +2711,167 @@ mod tests {
             .execute(pool)
             .await
             .unwrap();
+    }
+
+    const OLD_TABLE: &str = "CREATE TABLE sqlt_loco_queue (id TEXT NOT NULL, name TEXT NOT NULL, \
+        task_data JSON NOT NULL, status TEXT NOT NULL DEFAULT 'queued', run_at TIMESTAMP NOT \
+        NULL, interval INTEGER, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, \
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, tags JSON, priority INTEGER \
+        NOT NULL DEFAULT 0)";
+
+    async fn index_names(pool: &SqlitePool) -> Vec<String> {
+        sqlx::query_scalar(
+            "SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'sqlt_loco_queue' \
+             ORDER BY 1",
+        )
+        .fetch_all(pool)
+        .await
+        .unwrap()
+    }
+
+    #[tokio::test]
+    async fn setup_creates_the_primary_key_and_indexes_and_is_idempotent() {
+        let tree_fs = tree_fs::TreeBuilder::default().drop(true).create().unwrap();
+        let pool = init(&tree_fs.root).await;
+        initialize_database(&pool).await.unwrap();
+        initialize_database(&pool).await.unwrap();
+
+        let pk: bool = sqlx::query_scalar(
+            "SELECT EXISTS (SELECT 1 FROM pragma_table_info('sqlt_loco_queue') WHERE pk > 0)",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert!(pk);
+        let names = index_names(&pool).await;
+        for expected in [
+            "idx_sqlt_queue_dequeue",
+            "idx_sqlt_queue_status_updated_at",
+            "idx_sqlt_queue_unique_queued",
+        ] {
+            assert!(
+                names.iter().any(|n| n == expected),
+                "missing {expected}: {names:?}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn setup_makes_ids_unique_on_an_existing_table() {
+        let tree_fs = tree_fs::TreeBuilder::default().drop(true).create().unwrap();
+        let pool = init(&tree_fs.root).await;
+        sqlx::query(OLD_TABLE).execute(&pool).await.unwrap();
+        insert_job(&pool, "a", JobStatus::Queued, 0).await;
+
+        initialize_database(&pool).await.unwrap();
+        initialize_database(&pool).await.unwrap();
+
+        assert!(index_names(&pool)
+            .await
+            .contains(&"idx_sqlt_queue_id".to_string()));
+        let dup = sqlx::query(
+            "INSERT INTO sqlt_loco_queue (id, name, task_data, run_at) VALUES ('a', 'A', '{}', \
+             CURRENT_TIMESTAMP)",
+        )
+        .execute(&pool)
+        .await;
+        assert!(dup.is_err(), "duplicate id must be rejected");
+    }
+
+    #[tokio::test]
+    async fn setup_fails_clearly_on_duplicate_ids() {
+        let tree_fs = tree_fs::TreeBuilder::default().drop(true).create().unwrap();
+        let pool = init(&tree_fs.root).await;
+        sqlx::query(OLD_TABLE).execute(&pool).await.unwrap();
+        insert_job(&pool, "dup", JobStatus::Queued, 0).await;
+        insert_job(&pool, "dup", JobStatus::Queued, 0).await;
+
+        let err = initialize_database(&pool).await.unwrap_err().to_string();
+        assert!(err.contains("'dup' appears more than once"), "{err}");
+    }
+
+    async fn insert_job(pool: &SqlitePool, id: &str, status: JobStatus, age_days: i64) {
+        sqlx::query(AssertSqlSafe(format!(
+            "INSERT INTO sqlt_loco_queue (id, name, task_data, status, run_at, updated_at) VALUES \
+             ('{id}', 'J', '{{}}', '{status}', CURRENT_TIMESTAMP, DATETIME('now', '-{age_days} \
+             day'))"
+        )))
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    async fn remaining_ids(pool: &SqlitePool) -> Vec<String> {
+        sqlx::query_scalar("SELECT id FROM sqlt_loco_queue ORDER BY id")
+            .fetch_all(pool)
+            .await
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn retention_deletes_only_old_finished_jobs_with_an_age() {
+        let tree_fs = tree_fs::TreeBuilder::default().drop(true).create().unwrap();
+        let pool = init(&tree_fs.root).await;
+        initialize_database(&pool).await.unwrap();
+        insert_job(&pool, "completed_old", JobStatus::Completed, 10).await;
+        insert_job(&pool, "completed_new", JobStatus::Completed, 1).await;
+        insert_job(&pool, "cancelled_old", JobStatus::Cancelled, 10).await;
+        insert_job(&pool, "failed_old", JobStatus::Failed, 10).await;
+        insert_job(&pool, "queued_old", JobStatus::Queued, 100).await;
+        insert_job(&pool, "processing_old", JobStatus::Processing, 100).await;
+
+        let config = RetentionConfig {
+            completed_days: Some(7),
+            cancelled_days: Some(7),
+            failed_days: None,
+            interval_seconds: 3600,
+        };
+        let deleted = apply_retention(&pool, &config).await.unwrap();
+
+        assert_eq!(deleted, 2);
+        assert_eq!(
+            remaining_ids(&pool).await,
+            [
+                "completed_new",
+                "failed_old",
+                "processing_old",
+                "queued_old"
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn retention_without_ages_deletes_nothing() {
+        let tree_fs = tree_fs::TreeBuilder::default().drop(true).create().unwrap();
+        let pool = init(&tree_fs.root).await;
+        initialize_database(&pool).await.unwrap();
+        insert_job(&pool, "completed_old", JobStatus::Completed, 1000).await;
+        let deleted = apply_retention(&pool, &RetentionConfig::default())
+            .await
+            .unwrap();
+        assert_eq!(deleted, 0);
+        assert_eq!(remaining_ids(&pool).await, ["completed_old"]);
+    }
+
+    #[tokio::test]
+    async fn retention_loops_over_batches() {
+        let tree_fs = tree_fs::TreeBuilder::default().drop(true).create().unwrap();
+        let pool = init(&tree_fs.root).await;
+        initialize_database(&pool).await.unwrap();
+        sqlx::query(
+            "WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 2500) \
+             INSERT INTO sqlt_loco_queue (id, name, task_data, status, run_at, updated_at) SELECT \
+             'job' || i, 'J', '{}', 'completed', CURRENT_TIMESTAMP, DATETIME('now', '-30 day') \
+             FROM n",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        let config = RetentionConfig {
+            completed_days: Some(7),
+            ..RetentionConfig::default()
+        };
+        assert_eq!(apply_retention(&pool, &config).await.unwrap(), 2500);
+        assert!(remaining_ids(&pool).await.is_empty());
     }
 }

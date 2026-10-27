@@ -50,6 +50,13 @@ subcommand.
   `Inmem::from(moka::Cache)`; `InMemExpiry` and `Expiration` are gone.
   `max_capacity` counts entries, as it always did; the docs said bytes.
 
+- **`cargo loco jobs purge` spares unfinished jobs.** Without `--status` it
+  used to delete old `queued` jobs too. It now deletes only completed, failed
+  and cancelled ones; pass `--status queued` (or `processing`) to purge those.
+- **Queue ids are unique.** `pg_loco_queue` and `sqlt_loco_queue` get a
+  primary key on `id` (a unique index on an existing SQLite table). Setup
+  stops with a message naming the id if an existing table holds duplicates.
+
 ### Added
 
 - **`db-postgres`, `compression` and `generators` features**, on by
@@ -78,6 +85,20 @@ subcommand.
   one hour. The defaults keep failing on the first error.
 - **Heartbeats.** A running job refreshes `updated_at`, so the reaper only
   requeues jobs whose worker died.
+- **Queue indexes (#1849).** The Postgres and SQLite queues create a partial
+  index for the dequeue scan and a `(status, updated_at)` index for the
+  reaper and retention, plus the primary key above. Dequeue and
+  complete/fail no longer scan the whole table. On Postgres, setup runs in
+  one transaction under an advisory lock, so apps starting together are
+  safe; on an existing table it takes a brief write lock while the primary
+  key and indexes build, longer the more rows the table holds (purge old
+  jobs first on a very large one).
+- **`queue.retention` (#1850).** Opt-in deletion of finished jobs on the
+  Postgres and SQLite queues, next to `reaper`: `completed_days`,
+  `cancelled_days`, `failed_days` (each optional; a status left out is kept)
+  and `interval_seconds` (default 3600). Age counts from when the job
+  finished (`updated_at`); rows go in batches of 1000, and queued and
+  processing jobs are never touched. Off unless set.
 - `initialize_database` adds the `attempts` and `unique_key` columns to an
   existing queue table on Postgres and SQLite.
 - **`testing-core`**: the request, mailer and database test helpers without

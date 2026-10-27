@@ -9,7 +9,7 @@ expression: table_info
         _type: "TEXT",
         notnull: true,
         dflt_value: None,
-        pk: false,
+        pk: true,
     },
     TableInfo {
         cid: 1,

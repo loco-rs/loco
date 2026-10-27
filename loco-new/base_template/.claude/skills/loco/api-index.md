@@ -261,7 +261,7 @@ since they restate the trait's own API.
 - `struct` **Queue** — A handle to a background job queue
 - `trait` **QueueProvider** — Object-safe interface implemented by every queue backend (Postgres,
 - `struct` **RetryPolicy**` { max_retries: u32, backoff: Duration }` — How a queue provider retries a worker's failed jobs. Built from
-- `struct` **RunOpts**` { num_workers: u32, poll_interval_sec: u32, reaper: Option<ReaperConfig> }`
+- `struct` **RunOpts**` { num_workers: u32, poll_interval_sec: u32, reaper: Option<ReaperConfig>, retention: Option<RetentionConfig> }`
 - `fn` **converge**`(queue: &Queue, config: &QueueConfig) -> Result<()>` — Initialize the system according to configuration
 - `fn` **create_queue_provider**`(config: &Config) -> Result<Option<Arc<Queue>>>` — Create a provider from the `queue` config when `workers.mode` is
 
@@ -356,6 +356,7 @@ since they restate the trait's own API.
 
 - `struct` **PgDriver** — [`Driver`] implementation delegating to the Postgres-specific
 - `struct` **PgQueue**` { pool: PgPool, registry: Arc<Mutex<JobRegistry>>, run_opts: RunOpts, token: CancellationToken }` — The Postgres [`QueueProvider`]
+- `fn` **apply_retention**`(pool: &PgPool, config: &RetentionConfig) -> Result<u64>` — Runs one retention sweep: deletes finished jobs older than the ages in
 - `fn` **cancel_jobs_by_name**`(pool: &PgPool, name: &str) -> Result<()>` — Cancels jobs in the `pg_loco_queue` table by their name
 - `fn` **clear**`(pool: &PgPool) -> Result<()>` — Clear all jobs
 - `fn` **clear_by_status**`(pool: &PgPool, status: Vec<JobStatus>) -> Result<()>` — Deletes jobs from the `pg_loco_queue` table based on their status
@@ -399,6 +400,7 @@ since they restate the trait's own API.
 
 - `struct` **SqliteDriver** — [`Driver`] implementation delegating to the `SQLite`-specific
 - `struct` **SqliteQueue**` { pool: SqlitePool, registry: Arc<Mutex<JobRegistry>>, run_opts: RunOpts, token: CancellationToken }` — The `SQLite` [`QueueProvider`]
+- `fn` **apply_retention**`(pool: &SqlitePool, config: &RetentionConfig) -> Result<u64>` — Runs one retention sweep: deletes finished jobs older than the ages in
 - `fn` **cancel_jobs_by_name**`(pool: &SqlitePool, name: &str) -> Result<()>` — Cancels jobs in the `sqlt_loco_queue` table by their name
 - `fn` **clear**`(pool: &SqlitePool) -> Result<()>` — Clear all jobs
 - `fn` **clear_by_status**`(pool: &SqlitePool, status: Vec<JobStatus>) -> Result<()>` — Deletes jobs from the `sqlt_loco_queue` table based on their status
@@ -551,15 +553,16 @@ since they restate the trait's own API.
 - `struct` **OAuthProviderConfig**` { strategy: Option<OAuthStrategy>, client_id: String, client_secret: String, scopes: Option<Vec<String>>, base_url: Option<String>, api_url: Option<String>, authorize_url: Option<String>, token_url: Option<String>, userinfo_url: Option<String>, emails_url: Option<String>, redirect_uri: Option<String>, authorize_params: BTreeMap<String, String>, pkce: Option<bool>, token_auth: Option<OAuthTokenAuth> }` — One OAuth provider. Every URL is overridable, for GitHub Enterprise,
 - `enum` **OAuthStrategy** — Which provider preset a configured provider uses
 - `enum` **OAuthTokenAuth** — How the client authenticates to the token endpoint
-- `struct` **PostgresQueueConfig**` { uri: String, dangerously_flush: bool, enable_logging: bool, max_connections: u32, min_connections: u32, connect_timeout: u64, idle_timeout: u64, poll_interval_sec: u32, num_workers: u32, reaper: Option<ReaperConfig> }`
+- `struct` **PostgresQueueConfig**` { uri: String, dangerously_flush: bool, enable_logging: bool, max_connections: u32, min_connections: u32, connect_timeout: u64, idle_timeout: u64, poll_interval_sec: u32, num_workers: u32, reaper: Option<ReaperConfig>, retention: Option<RetentionConfig> }`
 - `enum` **QueueConfig**
 - `struct` **ReaperConfig**` { age_minutes: i64, interval_seconds: u64 }` — Configuration for an opt-in visibility-timeout reaper
 - `struct` **RedisCacheConfig**` { uri: String, max_size: u32 }`
 - `struct` **RedisQueueConfig**` { uri: String, dangerously_flush: bool, queues: Option<Vec<String>>, num_workers: u32, reaper: Option<ReaperConfig> }`
+- `struct` **RetentionConfig**` { completed_days: Option<i64>, cancelled_days: Option<i64>, failed_days: Option<i64>, interval_seconds: u64 }` — Configuration for opt-in retention of finished jobs
 - `struct` **Server**` { binding: String, port: i32, host: String, ident: Option<String>, middlewares: Config }` — Server configuration structure
 - `struct` **SessionConfig**` { secret: Option<String>, cookie_name: Option<String>, max_age: Option<u64>, secure: Option<bool>, sign_in_path: Option<String> }` — Signed cookies and the cookie session, Rails' `secret_key_base` plus its
 - `struct` **SmtpMailer**` { enable: bool, host: String, port: u16, secure: bool, tls: Option<MailerTls>, auth: Option<MailerAuth>, hello_name: Option<String> }` — SMTP mailer configuration structure
-- `struct` **SqliteQueueConfig**` { uri: String, dangerously_flush: bool, enable_logging: bool, max_connections: u32, min_connections: u32, connect_timeout: u64, idle_timeout: u64, poll_interval_sec: u32, num_workers: u32, reaper: Option<ReaperConfig> }`
+- `struct` **SqliteQueueConfig**` { uri: String, dangerously_flush: bool, enable_logging: bool, max_connections: u32, min_connections: u32, connect_timeout: u64, idle_timeout: u64, poll_interval_sec: u32, num_workers: u32, reaper: Option<ReaperConfig>, retention: Option<RetentionConfig> }`
 - `enum` **WorkerMode** — Worker mode configuration
 - `struct` **Workers**` { mode: WorkerMode }` — Background worker configuration
 - `fn` **db_connect_timeout**`() -> u64`
@@ -614,6 +617,10 @@ since they restate the trait's own API.
 - `variant` **Redis** — Redis queue
 - `variant` **Sqlite** — Sqlite queue (requires `db-sqlite` feature)
 - `fn` **dangerously_flush**`(self: &Self) -> bool` — Whether this queue is configured to discard all jobs on startup,
+
+### `RetentionConfig`
+
+- `fn` **ages**`(self: &Self) -> Vec<(JobStatus, i64)>` — The finished statuses that have an age set, with that age in days
 
 ### `Server`
 
