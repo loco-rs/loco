@@ -68,6 +68,12 @@ cargo loco task cleanup_sessions days:7      # with arguments
 `vars.cli_arg(key)` returns `Result<&str>` — it errors when the key is absent,
 so use `.unwrap_or(...)` for optional arguments.
 
+Anything after the task name is passed through, `key:value` or not:
+`cargo loco task import a.csv b.csv --dry-run`. `vars.args()` returns every
+token verbatim as `&[String]` (feed it to `clap`, or use it as a file list).
+`key:value` tokens are *also* in `cli_arg`; a task picks one view and sticks
+to it.
+
 The task gets the full `AppContext`: `ctx.db`, `ctx.config`, `ctx.storage`,
 `ctx.mailer`, `ctx.cache`. It runs in its own process and exits.
 

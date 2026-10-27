@@ -79,6 +79,8 @@ impl Task for UserCreate {
 
 `vars.cli_arg("key")` reads a `key:value` pair passed on the command line; it returns a `Result<&str>`, so missing required arguments become a clear task error rather than a panic (and you own no allocation — call `.to_string()` when you need one).
 
+Arguments that are not `key:value` are fine too. `cargo loco task import a.csv b.csv --dry-run` hands the task every token, verbatim and in order, through `vars.args()` (a `&[String]`), which you can feed to `clap` or treat as a file list. A `key:value` token appears in both views, and a token like `C:\data.csv` counts as `key:value`, so a task that takes free-form arguments should read `args()` only.
+
 ## 3. Confirm registration
 
 The generator injects this automatically — but if you write a task by hand, register it yourself in `register_tasks`:

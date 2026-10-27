@@ -23,6 +23,9 @@ impl Task for {{module_name}} {
         }
     }
     async fn run(&self, _app_context: &AppContext, _vars: &task::Vars) -> Result<()> {
+        // `cargo loco task {{name}} key:value file.txt --flag`
+        //   vars.cli_arg("key")  -> the `key:value` pairs
+        //   vars.args()          -> every argument, verbatim (`&[String]`)
         println!("Task {{module_name}} generated");
         Ok(())
     }

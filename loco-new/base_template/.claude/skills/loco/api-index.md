@@ -1591,7 +1591,10 @@ since they restate the trait's own API.
 
 ### `Vars`
 
+- `fn` **args**`(self: &Self) -> &[String]` — Every argument given after the task name, verbatim and in order
+- `field` **cli** — The `key:value` cli arguments
 - `fn` **cli_arg**`(self: &Self, key: &str) -> Result<&str>` — Retrieves the value associated with the given key from the `cli` list
+- `fn` **from_args**`(args: Vec<String>) -> Self` — Create [`Vars`] from the raw tokens given after the task name
 - `fn` **from_cli_args**`(args: Vec<(String, String)>) -> Self` — Create [`Vars`] instance from cli arguments
 ## `testing::db`
 
