@@ -25,7 +25,7 @@ use crate::{
     environment::Environment,
     errors::Error,
     scheduler::{self, Scheduler},
-    storage::{self, Storage},
+    storage,
     task::{self, Tasks},
     Result,
 };
@@ -422,12 +422,13 @@ pub async fn create_context<H: Hooks>(
     }
 
     let queue_provider = bgworker::create_queue_provider(&config).await?;
+    let storage = storage::create_storage_provider(&config)?;
     let ctx = AppContext {
         environment: environment.clone(),
         #[cfg(feature = "with-db")]
         db,
         queue_provider,
-        storage: Storage::single(storage::drivers::null::new()).into(),
+        storage: storage.into(),
         cache: cache::create_cache_provider(&config).await?,
         config,
         #[cfg(feature = "mailer")]
