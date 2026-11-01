@@ -7,9 +7,8 @@ Loco already wraps them.
 
 ## The trap: the default cache is a black hole
 
-`CacheConfig` defaults to **`Null`**. A `Null` cache accepts every write, stores
-nothing, and returns `None` from every read. Your code compiles, your tests
-pass, and nothing is ever cached.
+`CacheConfig` defaults to **`Null`**. A `Null` cache returns `None` from every
+read and an error from writes, invalidation, presence checks, and health checks.
 
 **`loco new` does not write a `cache:` block**, so a fresh app has a `Null`
 cache until you add one — to **every** environment you care about, including
@@ -18,7 +17,7 @@ cache until you add one — to **every** environment you care about, including
 ```yaml
 cache:
   kind: InMem
-  max_capacity: 33554432      # bytes; optional, defaults to 32 MiB
+  max_capacity: 33554432      # entries; optional, defaults to 32 * 1024 * 1024
 ```
 
 If a cache "isn't working," check that this block exists before debugging your
@@ -35,11 +34,35 @@ loco-rs = { version = "1.1", features = ["cache_redis"] }
 cache:
   kind: Redis
   uri: <%= get_env(name="REDIS_URL", default="redis://127.0.0.1") %>
+  max_size: 10
 ```
 
 Use `InMem` in development and test. Use `Redis` in production as soon as there
 is more than one process — an in-memory cache is per-process, so two web workers
 have two different caches and neither sees the other's entries.
+
+For memory-first reads with Redis fallback, enable both cache features and use:
+
+```yaml
+cache:
+  kind: Multi
+  error_policy: Propagate    # default; Ignore logs runtime failures and continues
+  layers:
+    - kind: InMem
+      max_capacity: 10000
+    - kind: Redis
+      uri: <%= get_env(name="REDIS_CACHE_URL", default="redis://127.0.0.1:6379/1") %>
+      max_size: 10
+```
+
+Reads stop at the first hit. Writes and invalidations attempt all layers;
+expiring writes pass the same duration to each backend. Fallback reads do not
+backfill memory or refresh expiry. At least one layer is required; `Null` and
+nested `Multi` layers are rejected. Startup and health checks always report
+errors, even with `Ignore`. Mutations are not atomic: failures may leave layers
+inconsistent. Other processes' memory entries are not invalidated, so use finite
+TTLs to bound staleness or Redis alone for shared invalidation. `clear()` also
+flushes the entire Redis logical database; dedicate one to caching.
 
 ---
 

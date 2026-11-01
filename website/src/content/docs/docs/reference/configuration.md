@@ -359,7 +359,7 @@ queue:
 
 ## `cache`
 
-`enum CacheConfig` — `src/config/cache.rs:4-16`, `#[serde(tag = "kind")]`. **Default variant: `Null`** (`#[default]`, `cache.rs:14-15`) — this is what `Config.cache`'s `#[serde(default)]` produces when the `cache` key is omitted entirely.
+`enum CacheConfig` — `src/config/cache.rs`, `#[serde(tag = "kind")]`. **Default variant: `Null`** — this is what `Config.cache`'s `#[serde(default)]` produces when the `cache` key is omitted entirely.
 
 ```yaml
 cache:
@@ -372,6 +372,17 @@ cache:
   uri: redis://...         # required
   max_size: 100            # required — max pool connections
 
+# --- or ---
+cache:
+  kind: Multi
+  error_policy: Propagate  # optional; Propagate (default) or Ignore
+  layers:                 # required, ordered, non-empty
+    - kind: InMem
+      max_capacity: 10000
+    - kind: Redis
+      uri: redis://127.0.0.1:6379/1
+      max_size: 10
+
 # --- or (default) ---
 cache:
   kind: "Null"             # no-op cache; used when `cache` key is omitted
@@ -380,15 +391,24 @@ cache:
 
 | Key | Type | Required? | Notes |
 |---|---|---|---|
-| `cache.kind` | tag: `InMem` \| `Redis` \| `"Null"` | required if `cache` present | `cache.rs:6-16`. `Null` must be written quoted: unquoted, YAML resolves it to null and the tagged enum fails to deserialize |
-| **InMem** (`InMemCacheConfig`, `cache.rs:18-22`) — feature-gated on `cache_inmem` | | | |
-| `cache.max_capacity` | `u64` | optional, default `33554432` (`32 * 1024 * 1024`, `cache_in_mem_max_capacity()`). Counts entries; when full, the least recently used entry is evicted | `cache.rs:20-21,24-26` |
-| **Redis** (`RedisCacheConfig`, `cache.rs:28-33`) — feature-gated on `cache_redis` | | | |
-| `cache.uri` | `String` | required | `cache.rs:30` |
-| `cache.max_size` | `u32` | required — max pool connections | `cache.rs:32` |
+| `cache.kind` | tag: `InMem` \| `Redis` \| `Multi` \| `"Null"` | required if `cache` present | `Null` must be written quoted: unquoted, YAML resolves it to null and the tagged enum fails to deserialize |
+| **InMem** (`InMemCacheConfig`) — feature-gated on `cache_inmem` | | | |
+| `cache.max_capacity` | `u64` | optional, default `33554432` (`32 * 1024 * 1024`, `cache_in_mem_max_capacity()`) | Counts entries; when full, the least recently used entry is evicted |
+| **Redis** (`RedisCacheConfig`) — feature-gated on `cache_redis` | | | |
+| `cache.uri` | `String` | required | Redis connection URI |
+| `cache.max_size` | `u32` | required | Maximum pool connections |
+| **Multi** (`MultiCacheConfig`) | | | |
+| `cache.layers` | list of cache configurations | required, non-empty | Lookup order. Each layer uses the same fields and feature flags as standalone `InMem` or `Redis`. `Null` and nested `Multi` layers are rejected at startup. |
+| `cache.error_policy` | `Propagate` \| `Ignore` | optional, default `Propagate` | Runtime error behavior. Mutations always attempt every layer. Initialization and `ping` errors always propagate. |
 | **Null** | (no fields) | — | default no-op cache |
 
 If the corresponding feature (`cache_inmem` / `cache_redis`) is not compiled in, that `kind` value will fail to deserialize.
+
+`Multi` reads stop at the first hit without backfilling earlier layers. Expiring
+writes pass the same TTL to every driver, subject to backend precision and
+latency. Operations are not atomic across layers, and local caches are not
+invalidated by other processes. See [Combine memory and Redis](/docs/how-to/use-cache#combine-memory-and-redis)
+for failure policies and consistency considerations.
 
 ## `initializers`, `settings`, `scheduler`
 

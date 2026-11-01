@@ -475,6 +475,8 @@ since they restate the trait's own API.
 
 - `variant` **Any**
 - `variant` **Deserialization**
+- `variant` **InvalidConfiguration**
+- `variant` **Layer**
 - `variant` **Redis**
 - `variant` **RedisConnectionError**
 - `variant` **Serialization**
@@ -499,6 +501,14 @@ since they restate the trait's own API.
 ### `Inmem`
 
 - `fn` **new**`(max_capacity: u64) -> Self` — Constructs an empty cache that holds at most `max_capacity` entries
+## `cache::drivers::multi`
+
+- `struct` **Multi** — A cache driver that composes an ordered, non-empty list of drivers
+- `fn` **new**`(config: &MultiCacheConfig) -> CacheResult<Cache>` — Creates a multi-layer cache from its configuration
+
+### `Multi`
+
+- `fn` **new**`(layers: Vec<Box<dyn CacheDriver>>, error_policy: CacheErrorPolicy) -> CacheResult<Self>` — Composes drivers in lookup order, including custom drivers
 ## `cache::drivers::null`
 
 - `struct` **Null** — Represents the in-memory cache driver
@@ -536,6 +546,7 @@ since they restate the trait's own API.
 
 - `struct` **Auth**` { jwt: Option<JWT>, session: Option<SessionConfig>, oauth: Option<OAuthConfig> }` — User authentication configuration
 - `enum` **CacheConfig** — Cache configurations for the application
+- `enum` **CacheErrorPolicy** — Runtime error handling for a multi-layer cache
 - `struct` **Config**` { logger: Logger, server: Server, database: Database, cache: CacheConfig, queue: Option<QueueConfig>, auth: Option<Auth>, workers: Workers, mailer: Option<Mailer>, initializers: Option<Initializers>, settings: Option<Value>, scheduler: Option<Config> }` — Main application configuration structure
 - `const` **DEV_SESSION_SECRET** — The secret every signed cookie is keyed off when `auth.session.secret` is
 - `struct` **Database**` { uri: String, enable_logging: bool, min_connections: u32, max_connections: u32, connect_timeout: u64, idle_timeout: u64, acquire_timeout: Option<u64>, auto_migrate: bool, dangerously_truncate: bool, dangerously_recreate: bool, run_on_start: Option<String> }` — Database configuration
@@ -549,6 +560,7 @@ since they restate the trait's own API.
 - `struct` **Mailer**` { smtp: Option<SmtpMailer>, stub: bool }` — Mailer configuration
 - `struct` **MailerAuth**` { user: String, password: String }` — Authentication details for the mailer
 - `enum` **MailerTls** — TLS mode for the SMTP connection
+- `struct` **MultiCacheConfig**` { layers: Vec<CacheConfig>, error_policy: CacheErrorPolicy }` — Configuration for an ordered chain of cache drivers
 - `struct` **OAuthConfig**` { base_url: Option<String>, after_sign_in_path: Option<String>, after_sign_out_path: Option<String>, failure_path: Option<String>, providers: BTreeMap<String, OAuthProviderConfig> }` — `OAuth2` / `OpenID` Connect sign-in, `OmniAuth`-style
 - `struct` **OAuthProviderConfig**` { strategy: Option<OAuthStrategy>, client_id: String, client_secret: String, scopes: Option<Vec<String>>, base_url: Option<String>, api_url: Option<String>, authorize_url: Option<String>, token_url: Option<String>, userinfo_url: Option<String>, emails_url: Option<String>, redirect_uri: Option<String>, authorize_params: BTreeMap<String, String>, pkce: Option<bool>, token_auth: Option<OAuthTokenAuth> }` — One OAuth provider. Every URL is overridable, for GitHub Enterprise,
 - `enum` **OAuthStrategy** — Which provider preset a configured provider uses
@@ -573,8 +585,14 @@ since they restate the trait's own API.
 ### `CacheConfig`
 
 - `variant` **InMem** — In-memory cache
+- `variant` **Multi** — Ordered cache layers, checked from first to last on reads
 - `variant` **Null** — Null cache
 - `variant` **Redis** — Redis cache
+
+### `CacheErrorPolicy`
+
+- `variant` **Ignore** — Log errors and continue. Failed reads count as misses; mutations may
+- `variant` **Propagate** — Return read errors immediately. Mutations attempt every layer before
 
 ### `Config`
 

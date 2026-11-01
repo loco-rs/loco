@@ -1,6 +1,6 @@
 ---
 title: Use the cache
-description: Configure a cache driver (null/in-memory/Redis) and use get/insert/get_or_insert with expiry, ping, and clear.
+description: Configure a cache driver (null/in-memory/Redis/multi-layer) and use get/insert/get_or_insert with expiry, ping, and clear.
 sidebar:
   order: 31
 ---
@@ -37,6 +37,56 @@ cache:
 `InMem` needs the `cache_inmem` feature (on by default); `Redis` needs `cache_redis` (off by default — add it to your `Cargo.toml`). See the [feature flags reference](/docs/reference/feature-flags).
 
 If you omit `cache` from the config file altogether, Loco silently falls back to the **`Null` driver**: `get()` always returns `None`, and every mutating operation (`insert`, `insert_with_expiry`, `remove`, `clear`, `ping`) returns an error. This is a fail-fast default for "you haven't configured a real cache" — don't ship it to production by accident.
+
+### Combine memory and Redis
+
+Use `Multi` to check a process-local cache first and fall back to Redis on a
+miss. Enable `cache_redis` in `Cargo.toml`; `cache_inmem` is already enabled by
+default. No additional feature or dependency is needed for `Multi` itself.
+
+```yaml
+# config/production.yaml
+cache:
+  kind: Multi
+  error_policy: Propagate # default; or Ignore
+  layers:
+    - kind: InMem
+      max_capacity: 10000 # entries in this process
+    - kind: Redis
+      uri: "<%= get_env(name='REDIS_CACHE_URL', default='redis://127.0.0.1:6379/1') %>"
+      max_size: 10
+```
+
+`get` and `contains_key` check layers in order and stop at the first hit.
+`insert`, `insert_with_expiry`, `remove`, and `clear` attempt every layer,
+including when another layer fails. Existing `ctx.cache` calls, including
+`get_or_insert`, work unchanged. The chain must contain at least one layer;
+`Null` and nested `Multi` layers are rejected at startup. For a single cache,
+you can keep using `kind: InMem` or `kind: Redis`, or configure one layer.
+
+Expiring writes pass the same TTL to every layer. Expiration uses each
+driver's precision: Redis currently uses whole seconds, with a minimum of
+one second. Writes across layers are not atomic and their expiry times can
+differ with network latency. Fallback reads **do not populate earlier
+layers** or refresh the TTL: the cache interface cannot retrieve a remaining
+TTL, so backfilling could extend an entry's lifetime.
+
+Choose the runtime failure behavior explicitly:
+
+| `error_policy` | Reads | Writes, removals, and clears |
+|---|---|---|
+| `Propagate` (default) | Return the first encountered error. A hit avoids later layers entirely. | Attempt all layers, then return the first error in layer order. |
+| `Ignore` | Log failed layers and continue; return a miss if no layer succeeds with a hit. | Log failures and return success, even if every layer fails. |
+
+Initialization errors always fail startup. `ping` and `/_readiness` always
+check every layer and report failures, including with `Ignore`.
+
+Each process owns its in-memory layer. Updating or removing a Redis key
+from another process does not invalidate local copies. Use finite TTLs to
+bound staleness; use Redis alone when all processes must immediately observe
+invalidation. Failed mutations can also leave layers inconsistent, especially
+when `Ignore` suppresses their errors. `clear` retains the Redis `FLUSHDB`
+behavior described below, so use a dedicated Redis database for the cache.
 
 ## 2. Insert and read values
 
@@ -140,5 +190,5 @@ async fn can_get_or_insert() {
 
 ## Reference
 
-- Every `cache:` YAML key (`kind`, `max_capacity`, `uri`, `max_size`): [Configuration reference § cache](/docs/reference/configuration#cache)
+- Every `cache:` YAML key (`kind`, `max_capacity`, `uri`, `max_size`, `layers`, `error_policy`): [Configuration reference § cache](/docs/reference/configuration#cache)
 - `cache_inmem` / `cache_redis` feature flags: [Feature flags reference](/docs/reference/feature-flags)

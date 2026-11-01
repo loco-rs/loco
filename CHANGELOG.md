@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Multi-layer cache (#1674).** Configure `cache.kind: Multi` with ordered
+  `InMem` and `Redis` layers for memory-first reads and writes/invalidation to
+  every layer. Supports TTL writes, configurable runtime error handling, and
+  readiness checks across the chain. Fallback hits do not backfill memory;
+  local caches are not invalidated across processes.
+
 **Upgrading:** nothing to do if you use `loco-rs`'s default features. If your
 `Cargo.toml` sets `default-features = false`, add whichever of the new
 features below your app uses: `db-postgres` if it talks to Postgres (database
