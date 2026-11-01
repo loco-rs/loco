@@ -58,3 +58,59 @@ pub struct RedisCacheConfig {
     /// Sets the maximum number of connections managed by the pool.
     pub max_size: u32,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(feature = "cache_inmem")]
+    #[test]
+    fn multi_defaults_to_propagating_errors_and_round_trips() {
+        let config: CacheConfig =
+            serde_yaml::from_str("kind: Multi\nlayers:\n  - kind: InMem\n").unwrap();
+        let CacheConfig::Multi(multi) = &config else {
+            panic!("expected Multi")
+        };
+        assert_eq!(multi.error_policy, CacheErrorPolicy::Propagate);
+        assert!(
+            matches!(&multi.layers[0], CacheConfig::InMem(layer) if layer.max_capacity == 32 * 1024 * 1024)
+        );
+        let serialized = serde_yaml::to_string(&config).unwrap();
+        let decoded: CacheConfig = serde_yaml::from_str(&serialized).unwrap();
+        assert_eq!(
+            serde_json::to_value(config).unwrap(),
+            serde_json::to_value(decoded).unwrap()
+        );
+    }
+
+    #[test]
+    fn multi_requires_layers_and_a_known_error_policy() {
+        assert!(serde_yaml::from_str::<CacheConfig>("kind: Multi").is_err());
+        assert!(
+            serde_yaml::from_str::<CacheConfig>("kind: Multi\nlayers: []\nerror_policy: typo")
+                .is_err()
+        );
+        let CacheConfig::Multi(config) =
+            serde_yaml::from_str::<CacheConfig>("kind: Multi\nlayers: []\nerror_policy: Ignore")
+                .unwrap()
+        else {
+            panic!("expected Multi")
+        };
+        assert_eq!(config.error_policy, CacheErrorPolicy::Ignore);
+    }
+
+    #[rstest::rstest]
+    #[case("kind: Multi\nlayers: []")]
+    #[case("kind: Multi\nlayers: [{kind: 'Null'}]")]
+    #[case("kind: Multi\nlayers: [{kind: Multi, layers: []}]")]
+    #[tokio::test]
+    async fn multi_rejects_invalid_chains_at_startup(#[case] yaml: &str) {
+        let CacheConfig::Multi(config) = serde_yaml::from_str(yaml).unwrap() else {
+            panic!("expected Multi")
+        };
+        assert!(matches!(
+            crate::cache::drivers::multi::new(&config).await,
+            Err(crate::cache::CacheError::InvalidConfiguration(_))
+        ));
+    }
+}

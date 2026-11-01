@@ -315,6 +315,51 @@ mod tests {
         assert_eq!(res_json["ok"], true);
     }
 
+    #[cfg(feature = "cache_inmem")]
+    #[tokio::test]
+    async fn readiness_checks_all_multi_layers_even_when_errors_are_ignored() {
+        use cache::drivers::{inmem::Inmem, multi::Multi, null, CacheDriver};
+
+        for unhealthy in [false, true] {
+            let mut ctx = tests_cfg::app::get_app_context().await;
+            ctx.config.cache = config::CacheConfig::Multi(config::MultiCacheConfig {
+                layers: vec![config::CacheConfig::InMem(config::InMemCacheConfig {
+                    max_capacity: 10,
+                })],
+                error_policy: config::CacheErrorPolicy::Ignore,
+            });
+            let second: Box<dyn CacheDriver> = if unhealthy {
+                null::new()
+            } else {
+                Box::new(Inmem::new(10))
+            };
+            ctx.cache = cache::Cache::new(Box::new(
+                Multi::new(
+                    vec![Box::new(Inmem::new(10)), second],
+                    config::CacheErrorPolicy::Ignore,
+                )
+                .unwrap(),
+            ))
+            .into();
+            let (status, response) = monitoring::readiness(axum::extract::State(ctx)).await;
+            assert_eq!(
+                status,
+                if unhealthy {
+                    axum::http::StatusCode::SERVICE_UNAVAILABLE
+                } else {
+                    axum::http::StatusCode::OK
+                }
+            );
+            let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            assert_eq!(
+                serde_json::from_slice::<Value>(&body).unwrap()["ok"],
+                !unhealthy
+            );
+        }
+    }
+
     #[cfg(feature = "cache_redis")]
     #[tokio::test]
     async fn readiness_with_cache_redis_failure() {
