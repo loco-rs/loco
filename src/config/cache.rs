@@ -11,9 +11,35 @@ pub enum CacheConfig {
     #[cfg(feature = "cache_redis")]
     /// Redis cache
     Redis(RedisCacheConfig),
+    /// Ordered cache layers, checked from first to last on reads.
+    Multi(MultiCacheConfig),
     /// Null cache
     #[default]
     Null,
+}
+
+/// Configuration for an ordered chain of cache drivers.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct MultiCacheConfig {
+    /// Non-empty list of cache layers in lookup order. Each layer must be
+    /// `InMem` or `Redis`; nested `Multi` and `Null` layers are rejected.
+    pub layers: Vec<CacheConfig>,
+    /// How to handle runtime layer failures. Startup and health-check errors
+    /// are always returned, regardless of this policy.
+    #[serde(default)]
+    pub error_policy: CacheErrorPolicy,
+}
+
+/// Runtime error handling for a multi-layer cache.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
+pub enum CacheErrorPolicy {
+    /// Return read errors immediately. Mutations attempt every layer before
+    /// returning the first error.
+    #[default]
+    Propagate,
+    /// Log errors and continue. Failed reads count as misses; mutations may
+    /// only succeed on some layers, or on none of them.
+    Ignore,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

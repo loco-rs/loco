@@ -26,6 +26,17 @@ pub enum CacheError {
     #[error("Deserialization error: {0}")]
     Deserialization(String),
 
+    #[error("Invalid cache configuration: {0}")]
+    InvalidConfiguration(String),
+
+    #[error("Cache layer {index}: {source}")]
+    Layer {
+        /// Zero-based position of the failing layer.
+        index: usize,
+        #[source]
+        source: Box<Self>,
+    },
+
     #[cfg(feature = "cache_redis")]
     #[error(transparent)]
     Redis(#[from] bb8_redis::redis::RedisError),
@@ -45,6 +56,7 @@ pub type CacheResult<T> = std::result::Result<T, CacheError>;
 #[allow(clippy::unused_async)]
 pub async fn create_cache_provider(config: &config::Config) -> crate::Result<Arc<Cache>> {
     match &config.cache {
+        config::CacheConfig::Multi(config) => Ok(Arc::new(drivers::multi::new(config).await?)),
         #[cfg(feature = "cache_redis")]
         config::CacheConfig::Redis(config) => {
             let cache = crate::cache::drivers::redis::new(config).await?;

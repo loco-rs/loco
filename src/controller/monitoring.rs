@@ -3,7 +3,6 @@
 //! application and its dependencies.
 
 use super::{format, routes::Routes};
-#[cfg(any(feature = "cache_inmem", feature = "cache_redis"))]
 use crate::config;
 use crate::{app::AppContext, Result};
 use axum::{
@@ -64,31 +63,14 @@ pub async fn readiness(State(ctx): State<AppContext>) -> (StatusCode, Response) 
     }
 
     // Check cache connection
-    #[cfg(any(feature = "cache_inmem", feature = "cache_redis"))]
+    if !matches!(ctx.config.cache, config::CacheConfig::Null)
+        && let Err(error) = ctx.cache.ping().await
     {
-        match ctx.config.cache {
-            #[cfg(feature = "cache_inmem")]
-            config::CacheConfig::InMem(_) => {
-                if let Err(error) = &ctx.cache.driver.ping().await {
-                    tracing::error!(err.msg = %error, err.detail = ?error, "readiness_cache_ping_error");
-                    return (
-                        StatusCode::SERVICE_UNAVAILABLE,
-                        format::json(Health { ok: false }).into_response(),
-                    );
-                }
-            }
-            #[cfg(feature = "cache_redis")]
-            config::CacheConfig::Redis(_) => {
-                if let Err(error) = &ctx.cache.driver.ping().await {
-                    tracing::error!(err.msg = %error, err.detail = ?error, "readiness_cache_ping_error");
-                    return (
-                        StatusCode::SERVICE_UNAVAILABLE,
-                        format::json(Health { ok: false }).into_response(),
-                    );
-                }
-            }
-            config::CacheConfig::Null => (),
-        }
+        tracing::error!(err.msg = %error, err.detail = ?error, "readiness_cache_ping_error");
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            format::json(Health { ok: false }).into_response(),
+        );
     }
 
     (
