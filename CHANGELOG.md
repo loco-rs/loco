@@ -22,6 +22,10 @@ subcommand.
 
 ### Breaking
 
+- **Scheduler `shell: false` jobs no longer go through a shell.** The binary
+  is run directly, so there is no shell expansion, and `run` is split into
+  arguments with POSIX quoting (backslashes in Windows paths must be
+  quoted). A line with unbalanced quotes is an error at scheduler start.
 - **Compression builds gzip only by default.** The `compression` middleware
   used to speak brotli, deflate, gzip and zstd. Enable `compression-full` to
   keep all four.

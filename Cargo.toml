@@ -214,6 +214,7 @@ tracing-subscriber = { version = "0.3.16", default-features = false, features = 
 tracing-appender = { version = "0.2.3", default-features = false }
 
 duct = { workspace = true }
+shlex = "2.0.1"
 
 tower-http = { workspace = true }
 
