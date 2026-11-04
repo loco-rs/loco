@@ -29,6 +29,9 @@ pub enum CacheError {
     #[error("Invalid cache configuration: {0}")]
     InvalidConfiguration(String),
 
+    #[error("Cache expiry duration {0:?} exceeds the supported range")]
+    InvalidExpiry(Duration),
+
     #[error("Cache layer {index}: {source}")]
     Layer {
         /// Zero-based position of the failing layer.
