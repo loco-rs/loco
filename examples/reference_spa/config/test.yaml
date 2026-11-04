@@ -73,8 +73,8 @@ database:
   uri: <%= get_env(name="DATABASE_URL", default="sqlite://reference_spa_test.sqlite?mode=rwc") %>
   # When enabled, the sql query will be logged.
   enable_logging: false
-  # Set the timeout duration when acquiring a connection.
-  connect_timeout: <%= get_env(name="DB_CONNECT_TIMEOUT", default="500") %>
+  # Allow SQLite startup and its 5-second lock wait on busy CI runners (milliseconds).
+  connect_timeout: <%= get_env(name="DB_CONNECT_TIMEOUT", default="10000") %>
   # Set the idle duration before closing a connection.
   idle_timeout: <%= get_env(name="DB_IDLE_TIMEOUT", default="500") %>
   # Minimum number of connections for a pool.
