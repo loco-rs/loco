@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.3.0 - 2026-11-04
 
 Cuts what a generated app compiles. On a SQLite app with auth, workers and
 mail, a clean `cargo build` does 31% less compiler work (rustc instructions,
@@ -75,6 +75,19 @@ subcommand.
 
 ### Added
 
+- **Notifications** (#1889), behind the `notifications` feature.
+  - A `Notifier` trait with Slack, signed-webhook and email (with `mailer`)
+    channels. `deliver_later` enqueues on the background queue and retries
+    with exponential backoff; `deliver_now` sends inline. Webhooks are signed
+    with HMAC-SHA256 over `"{timestamp}.{body}"`, and `verify_signature`
+    checks them on the receiving side.
+  - A permanent 4xx (other than 408 and 429) is logged and dropped rather
+    than retried. Secrets and Slack URLs print `<redacted>` in `Debug`.
+  - `cargo loco generate notifier <name>`, and `notifications.stub` to record
+    deliveries in tests instead of sending them.
+  - `Queue::register_with_retry_policy` registers a worker with its own
+    retry policy (Postgres and SQLite queues).
+
 - **SQLite in production, the Rails 8 way** (#1832).
   - The SQLite PRAGMAs now apply to every pooled connection, for the app
     database and for the SQLite queue's own pool. Before, they ran once on
@@ -127,6 +140,13 @@ subcommand.
   `?remember=1` on `/auth/{provider}` and `SignIn::remember()` opt in. A
   server-side store needs the new `auth_session` middleware, which the
   default stack includes. `Session::from_parts` is now `async`.
+- **Storage from config** (#1840, @robertazzopardi). A `storage:` block
+  picks the default driver: `kind: Local` (with `path`), `Aws`, `Gcp` or
+  `Azure`, behind their `storage_*` features. `Aws` takes an `endpoint` for
+  MinIO or R2, works without keys, and treats empty key strings as unset so
+  env-templated blanks fall back to environment or instance credentials.
+  Secrets print `<redacted>` in `Debug`. With no block, storage stays
+  `Null`, as before, and `Hooks::after_context` can still replace it.
 - **`db-postgres`, `compression` and `generators` features**, on by
   default, plus `compression-full`, so apps built with
   `default-features = false` can leave out dependencies they never use. The
