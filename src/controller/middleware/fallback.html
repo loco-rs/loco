@@ -37,7 +37,12 @@
             <div class="text-left space-y-4">
                 <div>
                     <h3 class="text-xl font-semibold">Remove this Fallback Page</h3>
-                    <p>To remove this fallback page, adjust the configuration in your <code class="bg-gray-200 rounded px-2 py-1">config/development.yaml</code> file. Look for the <code class="bg-gray-200 rounded px-2 py-1">fallback:</code> setting and disable or customize it.</p>
+                    <p>This page is on by default in every environment except production. To turn it off, add this to your <code class="bg-gray-200 rounded px-2 py-1">config/development.yaml</code>:</p>
+<pre class="my-1"><code class="bg-gray-200 rounded px-2 py-1">server:
+  middlewares:
+    fallback:
+      enable: false</code></pre>
+                    <p>You can also point it at your own response with <code class="bg-gray-200 rounded px-2 py-1">file</code> or <code class="bg-gray-200 rounded px-2 py-1">not_found</code> under the same <code class="bg-gray-200 rounded px-2 py-1">fallback:</code> key.</p>
                 </div>
                 <div>
                     <h3 class="text-xl font-semibold">Scaffold Your Application</h3>
