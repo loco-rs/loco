@@ -26,7 +26,7 @@
     "@astrojs/check": "^0.9.10",
     "@types/jsdom": "^30.0.0",
     "jsdom": "^30.0.1",
-    "smol-toml": "^1.7.1",
+    "smol-toml": "^1.9.0",
     "typescript": "^5.5.0",
     "vitest": "^5.0.1"
   },
