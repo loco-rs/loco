@@ -131,7 +131,7 @@ yourself.
 
 Feature `auth_session` gives `Session`, `CurrentUser<U>` and `MaybeCurrentUser<U>`; `auth_oauth` adds `/auth/{provider}` routes (`cargo loco generate oauth github`). `auth.session.store` is `cookie` (default), `database` or `redis`, and handler code is identical on all three. Pick a server-side store when sessions must be revocable.
 
-```rust
+```rust no-syntax-check="handler body fragments using `?`, shown side by side"
 // sign in: renew() rotates the id (fixation); remember()? sets the long-lived cookie
 Ok((session.renew().set_user_id(pid).remember()?, format::redirect("/")?))
 // sign out
