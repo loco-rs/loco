@@ -3,10 +3,13 @@
 ## Unreleased
 
 - **Multi-layer cache (#1674).** Configure `cache.kind: Multi` with ordered
-  `InMem` and `Redis` layers for memory-first reads and writes/invalidation to
-  every layer. Supports TTL writes, configurable runtime error handling, and
-  readiness checks across the chain. Fallback hits do not backfill memory;
-  local caches are not invalidated across processes.
+  `InMem`, `Redis`, and `Database` layers for memory-first reads and
+  writes/invalidation to every layer. A required positive `default_ttl_seconds`
+  gives every ordinary write an expiry; explicit expiry methods override it.
+  Supports configurable runtime error handling and readiness checks across the
+  chain. Reads do not refresh expiry or backfill memory. Local caches are not
+  invalidated across processes, but each successfully written local value
+  expires after its TTL, bounding how long a stale copy can remain.
 
 **Upgrading:** nothing to do if you use `loco-rs`'s default features. If your
 `Cargo.toml` sets `default-features = false`, add whichever of the new

@@ -478,6 +478,7 @@ since they restate the trait's own API.
 - `variant` **Database**
 - `variant` **Deserialization**
 - `variant` **InvalidConfiguration**
+- `variant` **InvalidExpiry**
 - `variant` **Layer**
 - `variant` **Redis**
 - `variant` **RedisConnectionError**
@@ -517,10 +518,11 @@ since they restate the trait's own API.
 
 - `struct` **Multi** — A cache driver that composes an ordered, non-empty list of drivers
 - `fn` **new**`(config: &MultiCacheConfig) -> CacheResult<Cache>` — Creates a multi-layer cache from its configuration
+- `fn` **new_with_db**`(config: &MultiCacheConfig, db: &DatabaseConnection) -> CacheResult<Cache>` — Creates a multi-layer cache, giving database layers the app's connection
 
 ### `Multi`
 
-- `fn` **new**`(layers: Vec<Box<dyn CacheDriver>>, error_policy: CacheErrorPolicy) -> CacheResult<Self>` — Composes drivers in lookup order, including custom drivers
+- `fn` **new**`(layers: Vec<Box<dyn CacheDriver>>, error_policy: CacheErrorPolicy, default_ttl: Duration) -> CacheResult<Self>` — Composes drivers in lookup order, including custom drivers
 ## `cache::drivers::null`
 
 - `struct` **Null** — Represents the in-memory cache driver
@@ -573,7 +575,7 @@ since they restate the trait's own API.
 - `struct` **Mailer**` { smtp: Option<SmtpMailer>, stub: bool }` — Mailer configuration
 - `struct` **MailerAuth**` { user: String, password: String }` — Authentication details for the mailer
 - `enum` **MailerTls** — TLS mode for the SMTP connection
-- `struct` **MultiCacheConfig**` { layers: Vec<CacheConfig>, error_policy: CacheErrorPolicy }` — Configuration for an ordered chain of cache drivers
+- `struct` **MultiCacheConfig**` { layers: Vec<CacheConfig>, default_ttl_seconds: u64, error_policy: CacheErrorPolicy }` — Configuration for an ordered chain of cache drivers
 - `struct` **OAuthConfig**` { base_url: Option<String>, after_sign_in_path: Option<String>, after_sign_out_path: Option<String>, failure_path: Option<String>, providers: BTreeMap<String, OAuthProviderConfig> }` — `OAuth2` / `OpenID` Connect sign-in, `OmniAuth`-style
 - `struct` **OAuthProviderConfig**` { strategy: Option<OAuthStrategy>, client_id: String, client_secret: String, scopes: Option<Vec<String>>, base_url: Option<String>, api_url: Option<String>, authorize_url: Option<String>, token_url: Option<String>, userinfo_url: Option<String>, emails_url: Option<String>, redirect_uri: Option<String>, authorize_params: BTreeMap<String, String>, pkce: Option<bool>, token_auth: Option<OAuthTokenAuth> }` — One OAuth provider. Every URL is overridable, for GitHub Enterprise,
 - `enum` **OAuthStrategy** — Which provider preset a configured provider uses

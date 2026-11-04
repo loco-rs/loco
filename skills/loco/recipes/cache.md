@@ -62,6 +62,7 @@ For memory-first reads with Redis fallback, enable both cache features and use:
 ```yaml
 cache:
   kind: Multi
+  default_ttl_seconds: 60    # required, positive; used by insert/get_or_insert
   error_policy: Propagate    # default; Ignore logs runtime failures and continues
   layers:
     - kind: InMem
@@ -71,14 +72,20 @@ cache:
       max_size: 10
 ```
 
-Reads stop at the first hit. Writes and invalidations attempt all layers;
-expiring writes pass the same duration to each backend. Fallback reads do not
-backfill memory or refresh expiry. At least one layer is required; `Null` and
-nested `Multi` layers are rejected. Startup and health checks always report
-errors, even with `Ignore`. Mutations are not atomic: failures may leave layers
-inconsistent. Other processes' memory entries are not invalidated, so use finite
-TTLs to bound staleness or Redis alone for shared invalidation. `clear()` also
-flushes the entire Redis logical database; dedicate one to caching.
+Reads stop at the first hit. Writes and invalidations attempt all layers.
+Every `Multi` write has an expiry: `insert` and cache misses in `get_or_insert`
+use the required positive `default_ttl_seconds`. Explicit expiry methods use
+their supplied duration instead, without a cap from the default. Each write
+passes the same TTL to every backend, subject to its expiry precision.
+Reads never refresh expiry or backfill memory. At least one layer is required;
+`Null` and nested `Multi` layers are rejected. Startup validation, including
+the default TTL, and health checks always report errors, even with `Ignore`.
+Mutations are not atomic: failures may leave layers inconsistent. Other
+processes' memory entries are not invalidated by shared updates, removals, or
+clears; each successfully written local value expires after its TTL, bounding
+how long that copy can remain stale. Choose TTLs your application can tolerate,
+or use Redis or Database alone for immediate shared invalidation. `clear()`
+also flushes the entire Redis logical database; dedicate one to caching.
 
 ---
 
@@ -89,9 +96,9 @@ All of it is on `ctx.cache`, all `async`.
 | Method | Use |
 |---|---|
 | `get::<T>(key)` | `Ok(None)` on a miss — not an error |
-| `insert(key, &value)` | store, no expiry |
+| `insert(key, &value)` | store; `Multi` applies its default TTL, standalone drivers do not expire |
 | `insert_with_expiry(key, &value, duration)` | store with a TTL |
-| `get_or_insert(key, fut)` | read, or compute-and-store on a miss |
+| `get_or_insert(key, fut)` | read, or compute-and-store on a miss (`Multi` applies its default TTL) |
 | `get_or_insert_with_expiry(key, duration, fut)` | the same, with a TTL |
 | `contains_key(key)` | presence without deserializing |
 | `remove(key)` | invalidate one entry |

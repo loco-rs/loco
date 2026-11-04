@@ -386,6 +386,7 @@ cache:
 # --- or ---
 cache:
   kind: Multi
+  default_ttl_seconds: 60  # required, positive; used by insert/get_or_insert
   error_policy: Propagate  # optional; Propagate (default) or Ignore
   layers:                 # required, ordered, non-empty
     - kind: InMem
@@ -413,15 +414,20 @@ cache:
 | `cache.sweep_batch` | `u64` | optional, default `1000` | The most expired rows one sweep deletes |
 | **Multi** (`MultiCacheConfig`) | | | |
 | `cache.layers` | list of cache configurations | required, non-empty | Lookup order. Each layer uses the same fields and feature flags as standalone `InMem`, `Database`, or `Redis`. `Null` and nested `Multi` layers are rejected at startup. |
+| `cache.default_ttl_seconds` | `u64` | required, positive | TTL for `insert` and cache misses in `get_or_insert`, applied to every layer. Explicit expiry methods use their supplied duration instead; this is a default, not a maximum. Invalid default TTLs fail startup even with `Ignore`. |
 | `cache.error_policy` | `Propagate` \| `Ignore` | optional, default `Propagate` | Runtime error behavior. Mutations always attempt every layer. Initialization and `ping` errors always propagate. |
 | **Null** | (no fields) | — | default no-op cache |
 
 If the corresponding feature (`cache_inmem` / `cache_redis` / `with-db`) is not compiled in, that `kind` value will fail to deserialize.
 
-`Multi` reads stop at the first hit without backfilling earlier layers. Expiring
-writes pass the same TTL to every driver, subject to backend precision and
-latency. Operations are not atomic across layers, and local caches are not
-invalidated by other processes. See [Combine memory and Redis](/docs/how-to/use-cache#combine-memory-and-redis)
+`Multi` reads stop at the first hit without backfilling earlier layers or
+refreshing expiry. Every write has a TTL: the required default applies to
+ordinary writes, while explicit expiry methods override it. Writes pass the
+same TTL to every driver, subject to backend precision and latency. Operations
+are not atomic across layers, and local caches are not invalidated by other
+processes. A stale local value can remain until its existing TTL elapses; use
+Redis or Database alone for immediate shared invalidation. See
+[Combine memory and Redis](/docs/how-to/use-cache#combine-memory-and-redis)
 for failure policies and consistency considerations.
 
 ## `initializers`, `settings`, `scheduler`
