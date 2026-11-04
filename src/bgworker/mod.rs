@@ -1152,6 +1152,7 @@ pub async fn converge(queue: &Queue, config: &QueueConfig) -> Result<()> {
             min_connections: _,
             reaper: _,
             retention: _,
+            pragmas: _,
         }) => {
             if *dangerously_flush {
                 tracing::warn!("Flush mode enabled - clearing all jobs from queue");
@@ -1240,6 +1241,7 @@ mod tests {
             num_workers: 1,
             reaper: None,
             retention: None,
+            pragmas: std::collections::BTreeMap::new(),
         }
     }
 

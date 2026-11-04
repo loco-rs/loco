@@ -126,7 +126,10 @@ handler keeps the knowledge of where settings come from.
 ## A missing block is not an error
 
 Config sections you never write do not fail — they fall back to an inert
-default. `cache:` is the one that bites most often: `loco new` writes no
+default. On SQLite, Loco sets production PRAGMAs (WAL, `busy_timeout`, `foreign_keys`, ...)
+on every pooled connection; extend or override them with
+`database.sqlite.pragmas:` (and `queue.pragmas:` for the SQLite queue), not
+`run_on_start`, which reaches only one connection. `cache:` is the one that bites most often: `loco new` writes no
 `cache:` block, so `ctx.cache` is a `Null` cache that accepts every write and
 returns nothing, silently. See `recipes/cache.md`.
 

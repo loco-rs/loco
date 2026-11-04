@@ -1,6 +1,6 @@
 ---
 title: Use the cache
-description: Configure a cache driver (null/in-memory/Redis/multi-layer) and use get/insert/get_or_insert with expiry, ping, and clear.
+description: Configure a cache driver (null/in-memory/database/Redis/multi-layer) and use get/insert/get_or_insert with expiry, ping, and clear.
 sidebar:
   order: 31
 ---
@@ -29,12 +29,29 @@ cache:
 ```
 
 ```yaml
-# omit the `cache` key entirely, or set explicitly — this is the default
+# config/production.yaml — shared across processes, no Redis: entries live in
+# the app's own database (Postgres or SQLite), in a `loco_cache` table
 cache:
-  kind: Null
+  kind: Database
+  sweep_every: 100  # optional — delete expired rows after this many writes; 0 never sweeps
+  sweep_batch: 1000 # optional — at most this many rows per sweep
 ```
 
-`InMem` needs the `cache_inmem` feature (on by default); `Redis` needs `cache_redis` (off by default — add it to your `Cargo.toml`). See the [feature flags reference](/docs/reference/feature-flags).
+```yaml
+# omit the `cache` key entirely, or set explicitly — this is the default
+cache:
+  kind: "Null"
+```
+
+`InMem` needs the `cache_inmem` feature (on by default); `Database` needs `with-db` (on by default); `Redis` needs `cache_redis` (off by default — add it to your `Cargo.toml`). See the [feature flags reference](/docs/reference/feature-flags).
+
+### The database cache
+
+`kind: Database` is Loco's version of Rails' Solid Cache. It stores entries in the `loco_cache` table of `ctx.db`, so it works on Postgres and SQLite, is shared by every process that uses the database, and survives restarts. Loco creates the table with `CREATE TABLE IF NOT EXISTS` the first time the cache is used, so there is no migration to write, and `cargo loco db entities` skips it.
+
+- An entry past its TTL counts as missing as soon as it expires. Expired rows are physically deleted in batches: every `sweep_every` writes, up to `sweep_batch` rows go.
+- It is a database table, so a read costs a query, about a millisecond on SQLite and more on a remote Postgres. Use `InMem` for values you read on every request and `Database` for the shared, durable ones.
+- The cache shares the database's write lock. On SQLite that makes a write-heavy cache compete with your other writes; see [Run SQLite in production](/docs/how-to/run-sqlite-in-production).
 
 If you omit `cache` from the config file altogether, Loco silently falls back to the **`Null` driver**: `get()` always returns `None`, and every mutating operation (`insert`, `insert_with_expiry`, `remove`, `clear`, `ping`) returns an error. This is a fail-fast default for "you haven't configured a real cache" — don't ship it to production by accident.
 
@@ -61,8 +78,10 @@ cache:
 `insert`, `insert_with_expiry`, `remove`, and `clear` attempt every layer,
 including when another layer fails. Existing `ctx.cache` calls, including
 `get_or_insert`, work unchanged. The chain must contain at least one layer;
-`Null` and nested `Multi` layers are rejected at startup. For a single cache,
-you can keep using `kind: InMem` or `kind: Redis`, or configure one layer.
+`Null` and nested `Multi` layers are rejected at startup. `Database` can also
+be used as a layer when `with-db` is enabled, using the app's database connection.
+For a single cache, you can keep using `kind: InMem`, `kind: Database`, or
+`kind: Redis`, or configure one layer.
 
 Expiring writes pass the same TTL to every layer. Expiration uses each
 driver's precision: Redis currently uses whole seconds, with a minimum of
@@ -190,5 +209,5 @@ async fn can_get_or_insert() {
 
 ## Reference
 
-- Every `cache:` YAML key (`kind`, `max_capacity`, `uri`, `max_size`, `layers`, `error_policy`): [Configuration reference § cache](/docs/reference/configuration#cache)
-- `cache_inmem` / `cache_redis` feature flags: [Feature flags reference](/docs/reference/feature-flags)
+- Every `cache:` YAML key (`kind`, `max_capacity`, `uri`, `max_size`, `sweep_every`, `sweep_batch`, `layers`, `error_policy`): [Configuration reference § cache](/docs/reference/configuration#cache)
+- `cache_inmem` / `cache_redis` / `with-db` feature flags: [Feature flags reference](/docs/reference/feature-flags)

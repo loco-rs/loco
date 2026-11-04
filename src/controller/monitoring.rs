@@ -62,10 +62,15 @@ pub async fn readiness(State(ctx): State<AppContext>) -> (StatusCode, Response) 
         );
     }
 
-    // Check cache connection
-    if !matches!(ctx.config.cache, config::CacheConfig::Null)
-        && let Err(error) = ctx.cache.ping().await
-    {
+    // Check cache connections. The standalone database cache uses the database
+    // checked above; multi-layer caches must still check every layer.
+    let check_cache = match &ctx.config.cache {
+        config::CacheConfig::Null => false,
+        #[cfg(feature = "with-db")]
+        config::CacheConfig::Database(_) => false,
+        _ => true,
+    };
+    if check_cache && let Err(error) = ctx.cache.ping().await {
         tracing::error!(err.msg = %error, err.detail = ?error, "readiness_cache_ping_error");
         return (
             StatusCode::SERVICE_UNAVAILABLE,
@@ -240,6 +245,30 @@ mod tests {
             .unwrap();
         let res_json: Value = serde_json::from_slice(&body).expect("Valid JSON response");
         assert_eq!(res_json["ok"], false);
+    }
+
+    #[cfg(feature = "with-db")]
+    #[tokio::test]
+    async fn readiness_database_cache_uses_the_database_health_check() {
+        for unhealthy in [false, true] {
+            let mut ctx = tests_cfg::app::get_app_context().await;
+            ctx.config.cache =
+                config::CacheConfig::Database(config::DatabaseCacheConfig::default());
+            // Null fails ping, so this also checks that the cache is not pinged again.
+            ctx.cache = cache::Cache::new(cache::drivers::null::new()).into();
+            if unhealthy {
+                ctx.db = fail_connection().await;
+            }
+            let (status, _) = monitoring::readiness(axum::extract::State(ctx)).await;
+            assert_eq!(
+                status,
+                if unhealthy {
+                    axum::http::StatusCode::SERVICE_UNAVAILABLE
+                } else {
+                    axum::http::StatusCode::OK
+                }
+            );
+        }
     }
 
     #[cfg(feature = "cache_inmem")]

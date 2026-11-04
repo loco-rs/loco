@@ -37,6 +37,10 @@ pub enum CacheError {
         source: Box<Self>,
     },
 
+    #[cfg(feature = "with-db")]
+    #[error(transparent)]
+    Database(#[from] sea_orm::DbErr),
+
     #[cfg(feature = "cache_redis")]
     #[error(transparent)]
     Redis(#[from] bb8_redis::redis::RedisError),
@@ -57,6 +61,11 @@ pub type CacheResult<T> = std::result::Result<T, CacheError>;
 pub async fn create_cache_provider(config: &config::Config) -> crate::Result<Arc<Cache>> {
     match &config.cache {
         config::CacheConfig::Multi(config) => Ok(Arc::new(drivers::multi::new(config).await?)),
+        #[cfg(feature = "with-db")]
+        config::CacheConfig::Database(_) => Err(crate::Error::string(
+            "cache.kind `Database` needs the app's database connection; use \
+             `create_cache_provider_with_db`",
+        )),
         #[cfg(feature = "cache_redis")]
         config::CacheConfig::Redis(config) => {
             let cache = crate::cache::drivers::redis::new(config).await?;
@@ -71,6 +80,25 @@ pub async fn create_cache_provider(config: &config::Config) -> crate::Result<Arc
             let driver = crate::cache::drivers::null::new();
             Ok(Arc::new(Cache::new(driver)))
         }
+    }
+}
+
+/// Create a provider, giving the database cache the app's connection.
+///
+/// # Errors
+///
+/// This function will return an error if fails to build
+#[cfg(feature = "with-db")]
+pub async fn create_cache_provider_with_db(
+    config: &config::Config,
+    db: &sea_orm::DatabaseConnection,
+) -> crate::Result<Arc<Cache>> {
+    match &config.cache {
+        config::CacheConfig::Database(cfg) => Ok(Arc::new(drivers::db::new(cfg, db))),
+        config::CacheConfig::Multi(cfg) => {
+            Ok(Arc::new(drivers::multi::new_with_db(cfg, db).await?))
+        }
+        _ => create_cache_provider(config).await,
     }
 }
 

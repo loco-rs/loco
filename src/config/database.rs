@@ -63,24 +63,37 @@ pub struct Database {
     #[serde(default)]
     pub dangerously_recreate: bool,
 
-    // Execute query after initializing the DB
-    /// for e.g. this can be used to confiure PRAGMAs for `SQLite` where you can pass all values as a string.
-    /// Default values are:
-    ///
-    /// PRAGMA `foreign_keys` = ON;
-    ///
-    /// PRAGMA `journal_mode` = WAL;
-    ///
-    /// PRAGMA `synchronous` = NORMAL;
-    ///
-    /// PRAGMA `mmap_size` = 134217728;
-    ///
-    /// PRAGMA `journal_size_limit` = 67108864;
-    ///
-    /// PRAGMA `cache_size` = 2000;
-    ///
-    /// PRAGMA `busy_timeout` = 5000;
+    /// SQL run once, on one connection, after the pool is up. For `SQLite`
+    /// PRAGMAs prefer `sqlite.pragmas`: it applies to every connection in the
+    /// pool, while this runs on whichever connection the pool hands out first.
+    #[serde(default)]
     pub run_on_start: Option<String>,
+
+    /// `SQLite`-only settings. Ignored for other databases.
+    #[serde(default)]
+    pub sqlite: SqliteConfig,
+}
+
+/// `SQLite` settings shared by the database and the `SQLite` queue.
+///
+/// Loco opens every `SQLite` connection with production defaults (WAL,
+/// `synchronous=NORMAL`, `busy_timeout=5000`, `foreign_keys=ON`,
+/// `journal_size_limit`, `mmap_size`, `cache_size`). `pragmas` overrides
+/// those or adds more, and applies to *every* connection in the pool.
+///
+/// ```yaml
+/// database:
+///   uri: sqlite://db.sqlite?mode=rwc
+///   sqlite:
+///     pragmas:
+///       synchronous: FULL
+///       cache_size: -20000
+/// ```
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub struct SqliteConfig {
+    /// PRAGMA name to value, merged over the defaults.
+    #[serde(default)]
+    pub pragmas: std::collections::BTreeMap<String, String>,
 }
 
 #[must_use]
@@ -101,4 +114,18 @@ pub fn db_connect_timeout() -> u64 {
 #[must_use]
 pub fn db_idle_timeout() -> u64 {
     500
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sqlite_pragmas_parse_from_yaml() {
+        let cfg: SqliteConfig =
+            serde_yaml::from_str("pragmas:\n  synchronous: FULL\n  cache_size: -20000").unwrap();
+        assert_eq!(cfg.pragmas["synchronous"], "FULL");
+        assert_eq!(cfg.pragmas["cache_size"], "-20000");
+        assert!(SqliteConfig::default().pragmas.is_empty());
+    }
 }

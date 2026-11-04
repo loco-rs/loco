@@ -254,7 +254,7 @@ mod tests {
         let cmd = EntityCmd::new(&get_database_config());
 
         let expected = "generate entity --database-url sqlite::memory: --ignore-tables \
-            seaql_migrations,pg_loco_queue,sqlt_loco_queue,sqlt_loco_queue_lock --output-dir \
+            seaql_migrations,loco_cache,pg_loco_queue,sqlt_loco_queue,sqlt_loco_queue_lock --output-dir \
             src/models/_entities --with-copy-enums --with-serde both";
         assert_eq!(cmd.command().join(" "), expected);
     }
@@ -272,7 +272,7 @@ model-extra-derives = "ts_rs::Ts"
         let cmd = EntityCmd::merge_with_config(&get_database_config(), &config);
 
         let expected = "generate entity --database-url sqlite::memory: --ignore-tables \
-            seaql_migrations,pg_loco_queue,sqlt_loco_queue,sqlt_loco_queue_lock,table1,table2 \
+            seaql_migrations,loco_cache,pg_loco_queue,sqlt_loco_queue,sqlt_loco_queue_lock,table1,table2 \
             --max-connections 1 --model-extra-derives ts_rs::Ts --output-dir src/models/_entities \
             --with-copy-enums --with-serde none";
         assert_eq!(cmd.command().join(" "), expected);

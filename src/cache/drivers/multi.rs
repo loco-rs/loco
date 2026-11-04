@@ -6,7 +6,8 @@
 //! pass the same duration to each driver, using that driver's TTL precision.
 //!
 //! Mutations are not atomic across layers. Other processes' in-memory caches
-//! are not invalidated; use finite TTLs when sharing Redis between processes.
+//! are not invalidated; use finite TTLs when sharing Redis or a database between
+//! processes.
 
 use std::time::Duration;
 
@@ -24,8 +25,34 @@ use crate::{
 /// # Errors
 /// Returns an error for an empty chain, nested `Multi` or `Null` layers, or
 /// when any layer cannot be initialized. `error_policy` only applies after
-/// initialization.
+/// initialization. Database layers require `new_with_db` (the `with-db` feature).
 pub async fn new(config: &MultiCacheConfig) -> CacheResult<Cache> {
+    build(
+        config,
+        #[cfg(feature = "with-db")]
+        None,
+    )
+    .await
+}
+
+/// Creates a multi-layer cache, giving database layers the app's connection.
+///
+/// # Errors
+/// Returns an error for an empty chain, nested `Multi` or `Null` layers, or
+/// when any layer cannot be initialized. `error_policy` only applies after
+/// initialization.
+#[cfg(feature = "with-db")]
+pub async fn new_with_db(
+    config: &MultiCacheConfig,
+    db: &sea_orm::DatabaseConnection,
+) -> CacheResult<Cache> {
+    build(config, Some(db)).await
+}
+
+async fn build(
+    config: &MultiCacheConfig,
+    #[cfg(feature = "with-db")] db: Option<&sea_orm::DatabaseConnection>,
+) -> CacheResult<Cache> {
     // Validate the whole chain before opening any external connections.
     if config.layers.is_empty()
         || config
@@ -34,21 +61,29 @@ pub async fn new(config: &MultiCacheConfig) -> CacheResult<Cache> {
             .any(|layer| matches!(layer, CacheConfig::Multi(_) | CacheConfig::Null))
     {
         return Err(CacheError::InvalidConfiguration(
-            "Multi requires at least one layer; layers must be InMem or Redis".to_string(),
+            "Multi requires at least one layer; layers must be InMem, Database or Redis"
+                .to_string(),
         ));
     }
 
-    let layers = try_join_all(config.layers.iter().map(|layer| async {
-        match layer {
+    let layers = try_join_all(config.layers.iter().enumerate().map(|(index, layer)| async move {
+        let result = match layer {
             #[cfg(feature = "cache_inmem")]
             CacheConfig::InMem(config) => Ok(super::inmem::new(config).driver),
             #[cfg(feature = "cache_redis")]
             CacheConfig::Redis(config) => super::redis::new(config).await.map(|cache| cache.driver),
+            #[cfg(feature = "with-db")]
+            CacheConfig::Database(config) => db
+                .map(|db| super::db::new(config, db).driver)
+                .ok_or_else(|| CacheError::InvalidConfiguration(
+                    "Database layers need the app's database connection; use new_with_db".to_string(),
+                )),
             // Already checked above; keep this exhaustive with no cache features.
             CacheConfig::Multi(_) | CacheConfig::Null => Err(CacheError::InvalidConfiguration(
-                "Multi layers must be InMem or Redis".to_string(),
+                "Multi layers must be InMem, Database or Redis".to_string(),
             )),
-        }
+        };
+        result.map_err(|error| Multi::layer_error(index, error))
     }))
     .await?;
 
@@ -509,6 +544,81 @@ mod tests {
         let cache = new(&config).await.unwrap();
         cache.insert("key", &42).await.unwrap();
         assert_eq!(cache.get::<i32>("key").await.unwrap(), Some(42));
+    }
+
+    #[cfg(feature = "with-db")]
+    #[tokio::test]
+    async fn database_layers_require_a_connection_even_when_errors_are_ignored() {
+        let config = MultiCacheConfig {
+            layers: vec![
+                CacheConfig::InMem(crate::config::InMemCacheConfig { max_capacity: 1 }),
+                CacheConfig::Database(crate::config::DatabaseCacheConfig::default()),
+            ],
+            error_policy: CacheErrorPolicy::Ignore,
+        };
+        assert!(matches!(
+            new(&config).await,
+            Err(CacheError::Layer { index: 1, source })
+                if matches!(source.as_ref(), CacheError::InvalidConfiguration(_))
+        ));
+    }
+
+    #[cfg(all(feature = "with-db", feature = "db-sqlite"))]
+    #[tokio::test]
+    async fn memory_and_database_chain() {
+        let (db_config, _tree) = crate::tests_cfg::config::get_sqlite_test_config("multi_cache");
+        let db = crate::db::connect(&db_config).await.unwrap();
+        let database_config = crate::config::DatabaseCacheConfig::default();
+        let database = super::super::db::new(&database_config, &db);
+        let mut config = crate::tests_cfg::config::test_config();
+        config.cache = CacheConfig::Multi(MultiCacheConfig {
+            layers: vec![
+                CacheConfig::InMem(crate::config::InMemCacheConfig { max_capacity: 1 }),
+                CacheConfig::Database(database_config),
+            ],
+            error_policy: CacheErrorPolicy::Propagate,
+        });
+        let cache = crate::cache::create_cache_provider_with_db(&config, &db)
+            .await
+            .unwrap();
+        cache.ping().await.unwrap();
+
+        cache.insert("key", &"value").await.unwrap();
+        assert_eq!(
+            database.get::<String>("key").await.unwrap().as_deref(),
+            Some("value")
+        );
+        database.insert("key", &"database value").await.unwrap();
+        assert_eq!(
+            cache.get::<String>("key").await.unwrap().as_deref(),
+            Some("value")
+        );
+
+        // Evict memory to exercise database fallback without backfilling memory.
+        cache.insert("evict", &true).await.unwrap();
+        assert_eq!(
+            cache.get::<String>("key").await.unwrap().as_deref(),
+            Some("database value")
+        );
+        database.remove("key").await.unwrap();
+        assert_eq!(cache.get::<String>("key").await.unwrap(), None);
+
+        cache
+            .insert_with_expiry("expired", &42, Duration::ZERO)
+            .await
+            .unwrap();
+        assert_eq!(cache.get::<i32>("expired").await.unwrap(), None);
+        assert_eq!(database.get::<i32>("expired").await.unwrap(), None);
+
+        cache.insert("remove", &true).await.unwrap();
+        cache.remove("remove").await.unwrap();
+        assert!(!cache.contains_key("remove").await.unwrap());
+        assert!(!database.contains_key("remove").await.unwrap());
+        cache.insert("clear", &true).await.unwrap();
+        cache.clear().await.unwrap();
+        assert!(!cache.contains_key("clear").await.unwrap());
+        assert!(!database.contains_key("clear").await.unwrap());
+        assert!(!database.contains_key("evict").await.unwrap());
     }
 
     #[cfg(feature = "cache_redis")]
