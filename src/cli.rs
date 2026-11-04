@@ -710,7 +710,7 @@ enum JobsCommands {
 }
 
 /// Parse a single key-value pair
-#[cfg(all(debug_assertions, feature = "generators"))]
+#[cfg(all(debug_assertions, feature = "generators", feature = "with-db"))]
 fn parse_key_val<T, U>(
     s: &str,
 ) -> std::result::Result<(T, U), Box<dyn std::error::Error + Send + Sync>>
@@ -1227,7 +1227,7 @@ mod tests {
         );
     }
 
-    #[cfg(feature = "generators")]
+    #[cfg(all(feature = "generators", feature = "with-db"))]
     #[test]
     fn key_value_pairs_split_on_the_first_colon() {
         assert_eq!(
