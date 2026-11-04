@@ -20,6 +20,9 @@ pub struct FlowState {
     pub verifier: Option<String>,
     /// Same-site path to land on after sign-in.
     pub return_to: Option<String>,
+    /// The sign-in link asked to be remembered.
+    #[serde(default)]
+    pub remember: bool,
 }
 
 impl FlowState {
@@ -30,6 +33,7 @@ impl FlowState {
             state: random_token(),
             verifier: pkce.then(random_token),
             return_to: return_to.and_then(safe_return_to),
+            remember: false,
         }
     }
 

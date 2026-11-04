@@ -57,9 +57,23 @@ pub const DEV_SESSION_SECRET: &str =
 ///     secret: <%= get_env(name="SESSION_SECRET") %>
 ///     # All optional:
 ///     cookie_name: loco_session
-///     max_age: 2592000      # seconds; 30 days
+///     max_age: 2592000      # seconds; 30 days (cookie store only)
 ///     secure: true          # default: true when `server.host` is https
 ///     sign_in_path: /login  # where `CurrentUser` sends signed-out browsers
+///     # Where the session lives: `cookie` (default), `database` or `redis`.
+///     # Server-side stores keep the data on the server (the cookie carries
+///     # only a signed random id), so a session can be revoked.
+///     store: database
+///     # Server-side stores only: how long an idle session lives, in seconds
+///     # (it slides on use). The session cookie itself ends with the browser.
+///     ttl: 86400            # default: 1 day
+///     # Remember-me (server-side stores only): how long the long-lived
+///     # remember cookie lasts, in seconds. Default 14 days when
+///     # `Session::remember()` is used.
+///     remember_for: 1209600
+///     remember_cookie_name: loco_remember
+///     # `store: redis` only. Defaults to the `cache` section's redis uri.
+///     redis_uri: redis://127.0.0.1:6379
 /// ```
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct SessionConfig {
@@ -69,8 +83,10 @@ pub struct SessionConfig {
     pub secret: Option<String>,
     /// Name of the session cookie. Default `loco_session`.
     pub cookie_name: Option<String>,
-    /// Session lifetime in seconds, enforced both by the cookie's `Max-Age`
-    /// and by an expiry signed into the value. Default 30 days.
+    /// Cookie-store session lifetime in seconds, enforced both by the
+    /// cookie's `Max-Age` and by an expiry signed into the value. Default 30
+    /// days. Server-side stores use [`ttl`](Self::ttl) instead, and their
+    /// session cookie has no `Max-Age`.
     pub max_age: Option<u64>,
     /// Force the `Secure` cookie flag on or off. Default: on when
     /// `server.host` starts with `https://`.
@@ -79,6 +95,46 @@ pub struct SessionConfig {
     /// accept HTML), with `?return_to=<original path>`. When unset, it answers
     /// `401 Unauthorized`.
     pub sign_in_path: Option<String>,
+    /// Where the session data lives. Default [`SessionStoreKind::Cookie`].
+    #[serde(default)]
+    pub store: SessionStoreKind,
+    /// How long an idle server-side session lives, in seconds; each use
+    /// within the second half of that window extends it. Default 1 day. Must
+    /// be shorter than [`remember_for`](Self::remember_for), or remember-me
+    /// would never be needed. Ignored by the cookie store.
+    pub ttl: Option<u64>,
+    /// Lifetime of the remember-me cookie and its server-side token, in
+    /// seconds. Setting it requires a server-side `store`, and a value longer
+    /// than `ttl`; the app refuses to boot otherwise. When unset,
+    /// `Session::remember()` uses 14 days.
+    pub remember_for: Option<u64>,
+    /// Name of the remember-me cookie. Default `loco_remember`.
+    pub remember_cookie_name: Option<String>,
+    /// Redis connection URI for `store: redis`. Default: the uri of the
+    /// `cache` section when that is a redis cache.
+    pub redis_uri: Option<String>,
+}
+
+/// Where [`SessionConfig::store`] keeps the session.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SessionStoreKind {
+    /// The whole session in one signed cookie. Stateless; cannot be revoked
+    /// from the server.
+    #[default]
+    Cookie,
+    /// A `loco_sessions` table in the app database (`with-db`).
+    Database,
+    /// Redis keys with a TTL (`cache_redis` feature).
+    Redis,
+}
+
+impl SessionStoreKind {
+    /// Whether the session data lives on the server.
+    #[must_use]
+    pub const fn is_server_side(self) -> bool {
+        !matches!(self, Self::Cookie)
+    }
 }
 
 /// `OAuth2` / `OpenID` Connect sign-in, `OmniAuth`-style.

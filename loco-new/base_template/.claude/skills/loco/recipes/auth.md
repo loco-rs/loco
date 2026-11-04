@@ -127,6 +127,23 @@ Token location is configurable — bearer header (default), cookie, or query
 param. See the docs under **How-to → JWT locations** rather than parsing headers
 yourself.
 
+## Sessions, OAuth sign-in and remember me
+
+Feature `auth_session` gives `Session`, `CurrentUser<U>` and `MaybeCurrentUser<U>`; `auth_oauth` adds `/auth/{provider}` routes (`cargo loco generate oauth github`). `auth.session.store` is `cookie` (default), `database` or `redis`, and handler code is identical on all three. Pick a server-side store when sessions must be revocable.
+
+```rust no-syntax-check="handler body fragments using `?`, shown side by side"
+// sign in: renew() rotates the id (fixation); remember()? sets the long-lived cookie
+Ok((session.renew().set_user_id(pid).remember()?, format::redirect("/")?))
+// sign out
+Ok((session.clear(), format::redirect("/")?))
+// every device, sessions and remember tokens
+loco_rs::auth::session_store::sign_out_everywhere(&ctx, &pid).await?;
+```
+
+- `remember_for` (seconds) with `store: cookie` is a boot error: remember-me needs the server to hold the series. So is a `remember_for` that is not longer than `ttl` (server-side idle timeout, default 1 day; the session cookie has no `Max-Age`, `max_age` is cookie-store only). `.remember()?` errors on the cookie store. Also boot errors: `ttl: 0`, `remember_for` over 400 days, `remember_cookie_name` equal to `cookie_name`. A rotated token lost to a panic or failed write looks like theft and signs the user out everywhere, by design. The series has a fixed lifetime (rotation never extends it) and a replayed old token signs the user out everywhere. The `redis` store needs a single node (no Cluster).
+- `store: database` needs `with-db`; `redis` needs `cache_redis`. Tables are created on first use.
+- Server-side stores need the `auth_session` middleware: keep it if you override `Hooks::middlewares`.
+
 ## Scaffold the whole thing
 
 A new app created with the SaaS/auth starter already ships registration, login,

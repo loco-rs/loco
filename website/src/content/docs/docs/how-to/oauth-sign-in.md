@@ -247,6 +247,57 @@ async fn sign_out(session: Session) -> Result<impl IntoResponse> {
 
 The session is a JSON map in one signed cookie. The browser can read it but not change it, so keep it to identifiers. It carries its own expiry, which the server enforces whatever the browser does with `Max-Age`. A session that would outgrow a cookie (about 3.8 KB) is an error, not a silent sign-out. Return the `Session` from the handler for changes to reach the browser. An unchanged session writes no cookie.
 
+## Server-side sessions and remember me
+
+A cookie session cannot be revoked: whoever holds the cookie is signed in until it expires. For apps that need "sign out everywhere", or a "remember me" box, keep the session on the server:
+
+```yaml
+auth:
+  session:
+    secret: <%= get_env(name="SESSION_SECRET") %>
+    store: database        # or redis
+    ttl: 86400             # optional, seconds an idle session lives (default 1 day)
+    remember_for: 1209600  # optional, seconds (default 14 days); must exceed ttl
+```
+
+Nothing in your handlers changes. `Session`, `CurrentUser` and the OAuth routes work the same; the cookie now holds only a signed random id (256 bits), and the data, its expiry and the user id live in the store.
+
+- The session cookie has no `Max-Age`: it ends with the browser. The server ends the session `ttl` after its last use (it slides, so an active user stays signed in). That is why `max_age` applies to the cookie store only, and why remember me, which outlives the browser, has to last longer than `ttl`.
+- **`database`** creates `loco_sessions` and `loco_remember_tokens` the first time a session is used, if they are missing (Postgres and SQLite). The statements run in one transaction under an advisory lock on Postgres, so several processes starting together do not collide, and commands that never touch a session (migrations, tasks) never create them. Only the SHA-256 of the session id is stored, so a leaked table cannot be replayed. Expired rows read as absent and are deleted in batches as sessions are saved; call `SessionStore::purge_expired` from a task to sweep on a schedule.
+- **`redis`** stores one key per session with a TTL, plus a sorted set per user (members scored by when they expire, dead ones swept on every write) so sign out everywhere finds every live session and series. Its scripts reach keys named by those sets, so it needs a single Redis node; Redis Cluster is not supported. It uses `auth.session.redis_uri`, or the `cache` Redis when that is unset.
+- Signing in with `session.renew()` gives the user a new id, so an id planted before sign-in is dead. Setting a different user id with `set_user_id` rotates the id too, even if you forgot `renew()`. `session.clear()` deletes the record and the browser's remember me series, and stays cleared if you write to the session afterwards (a flash message, say).
+- Writes to an existing session are updates, never inserts: a request that was in flight when the session was signed out or revoked cannot bring it back. The writes of one response (delete the old id, add the new one, rotate the remember series) are one transaction on the `database` store.
+- Sign a user out of every device (sessions and remember-me tokens):
+
+```rust
+use loco_rs::{auth::session_store, prelude::*};
+
+async fn sign_out_everywhere(
+    State(ctx): State<AppContext>,
+    CurrentUser(pid): CurrentUser<String>,
+    session: Session,
+) -> Result<impl IntoResponse> {
+    session_store::sign_out_everywhere(&ctx, &pid).await?;
+    Ok((session.clear(), format::redirect("/")?))
+}
+```
+
+### Remember me
+
+Call `.remember()?` on the session when the user ticks the box, or on the OAuth `SignIn`. The `/auth/{provider}` link also takes `?remember=1`:
+
+```rust
+let session = session.renew().set_user_id(pid).remember()?;
+```
+
+A second cookie (`loco_remember`, `HttpOnly`, same `Secure` and `SameSite` as the session) carries a series id and a token. The store keeps the series, the user and a generation counter; the token of each generation is an HMAC of the series under the cookie signing key, so a database dump alone cannot mint one. When a request has no live session but a valid remember cookie, the session is re-created and the token rotates (a compare-and-swap, so requests arriving together agree on one rotation).
+
+A series has a fixed lifetime, `remember_for` from the sign-in that asked for it: using it never extends it. If a known series shows up with a token that is neither the current one nor the one just replaced, the cookie was copied, so everything that user has is revoked, every session and every series, because the sessions a thief already minted would otherwise live on. The replaced token stays good for ten seconds, and answering it hands back the current token rather than rotating again. Two tabs loading at once, or a rotation response that never reached the browser, therefore heal instead of looking like theft. The series ends with the sign-in it belongs to: signing out, or signing in as someone else, deletes it and the browser's remember cookie, and `remember()` is the only way to start a new one.
+
+Remember me needs a server-side store. `.remember()` on the `cookie` store returns an error at the call. `?remember=1` on an OAuth link is ignored there, so the sign-in still succeeds. Setting `auth.session.remember_for` with `store: cookie`, or an explicit value that is not longer than `ttl`, or over 400 days (left unset it is 14 days, or `ttl` plus a day if that is longer), stops the app at boot with a message saying so. So do `ttl: 0` and a `remember_cookie_name` equal to `cookie_name`. A response that carries a rotated remember cookie keeps its `Set-Cookie` header, and is marked `Cache-Control: private`, even when the ETag middleware turns it into a `304`. A rotated token that never reached the browser because the request panicked or the write failed looks like a replayed one once the ten seconds pass, and signs that user out everywhere. That is by design.
+
+Server-side stores rely on the `auth_session` middleware to write the session before the response goes out. It is in the default stack; an app that builds its own `Hooks::middlewares` must keep it. If the store write fails, the client gets a `500` and no session cookie.
+
 For single cookies use `SignedCookies` (tamper-evident) or `EncryptedCookies` (also unreadable; feature `auth_session_encrypted`). Both are keyed off the same `auth.session.secret`:
 
 ```rust

@@ -440,6 +440,12 @@ pub async fn create_context<H: Hooks>(
         shared_store: Arc::new(crate::app::SharedStore::default()),
     };
 
+    // Refuse a session configuration that cannot work. The server-side store
+    // itself opens on first use, so commands that never touch a session
+    // (migrations, tasks) need neither its table nor Redis.
+    #[cfg(feature = "auth_session")]
+    crate::auth::session_store::validate(&ctx.config)?;
+
     H::after_context(ctx).await
 }
 

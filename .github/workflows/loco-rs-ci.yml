@@ -85,6 +85,9 @@ jobs:
         with:
           tool: cargo-hack
       - run: cargo hack check --each-feature
+      # Pairs that --each-feature cannot see: the Redis session store needs
+      # cache_redis alone to bring in everything it compiles against.
+      - run: cargo check --lib --no-default-features --features auth_session,cache_redis
 
   build:
     needs: [check]

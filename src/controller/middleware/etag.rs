@@ -12,7 +12,9 @@ use axum::{
     body::Body,
     extract::Request,
     http::{
-        header::{CACHE_CONTROL, CONTENT_LOCATION, DATE, ETAG, EXPIRES, IF_NONE_MATCH, VARY},
+        header::{
+            CACHE_CONTROL, CONTENT_LOCATION, DATE, ETAG, EXPIRES, IF_NONE_MATCH, SET_COOKIE, VARY,
+        },
         StatusCode,
     },
     response::Response,
@@ -103,6 +105,29 @@ where
                     for name in [ETAG, CACHE_CONTROL, VARY, EXPIRES, DATE, CONTENT_LOCATION] {
                         if let Some(value) = response.headers().get(&name) {
                             headers.insert(name, value.clone());
+                        }
+                    }
+                    // Cookies are not part of the representation: a session or
+                    // remember-me rotation rides on this response too, and losing
+                    // it would leave the browser holding a stale token.
+                    for value in response.headers().get_all(SET_COOKIE) {
+                        headers.append(SET_COOKIE, value.clone());
+                    }
+                    // A 304 that sets a cookie must not sit in a shared cache.
+                    if headers.contains_key(SET_COOKIE) {
+                        let kept = headers
+                            .get(CACHE_CONTROL)
+                            .and_then(|v| v.to_str().ok())
+                            .map(str::to_ascii_lowercase);
+                        let private = kept
+                            .as_deref()
+                            .is_some_and(|v| v.contains("private") || v.contains("no-store"));
+                        if !private {
+                            let value = kept
+                                .map_or_else(|| "private".to_string(), |v| format!("{v}, private"));
+                            if let Ok(value) = value.parse() {
+                                headers.insert(CACHE_CONTROL, value);
+                            }
                         }
                     }
                 }

@@ -816,8 +816,12 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
         } => {
             let start_mode = start_mode_from_flags(all, server_and_worker, worker, scheduler);
 
-            let boot_result =
-                create_app::<H, M>(start_mode, &environment, app_context.config).await?;
+            let boot_result = Box::pin(create_app::<H, M>(
+                start_mode,
+                &environment,
+                app_context.config,
+            ))
+            .await?;
             let serve_params = ServeParams {
                 port: port.unwrap_or(boot_result.app_context.config.server.port),
                 binding: binding

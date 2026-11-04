@@ -11,6 +11,9 @@ auth:
     # Signs the session cookie. Production reads it from SESSION_SECRET;
     # generate one with `openssl rand -base64 64`.
     secret: development-session-secret-change-me-0123456789abcdef
+    # Where sessions live: `cookie` (the cookie holds the data), or `database` /
+    # `redis` for server-side sessions you can revoke, with remember-me.
+    store: cookie
   # JWT authentication
   jwt:
     secret: abc

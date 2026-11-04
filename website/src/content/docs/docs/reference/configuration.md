@@ -91,9 +91,12 @@ auth:
   session:
     secret: <%= get_env(name="SESSION_SECRET") %>
     cookie_name: loco_session   # optional
-    max_age: 2592000            # optional, seconds
+    max_age: 2592000            # optional, seconds (cookie store only)
     secure: true                # optional, default: server.host is https://
     sign_in_path: /login        # optional
+    store: cookie               # cookie | database | redis
+    ttl: 86400                  # optional, seconds; database or redis
+    remember_for: 1209600       # optional, seconds; needs database or redis
   oauth:
     base_url: https://app.example.com
     after_sign_in_path: /
@@ -109,9 +112,14 @@ auth:
 |---|---|---|---|
 | `auth.session.secret` | `Option<String>` | required in production | Keys every signed and encrypted cookie (SHA-512-derived). Unset in development/test means a public default and a warning; in production cookie extractors fail and `doctor --production` reports it, and also flags secrets under 32 characters |
 | `auth.session.cookie_name` | `Option<String>` | optional, default `loco_session` | |
-| `auth.session.max_age` | `Option<u64>` | optional, default 30 days | Cookie `Max-Age` and the server-enforced expiry inside the signed value |
+| `auth.session.max_age` | `Option<u64>` | optional, default 30 days | Cookie store only: the cookie `Max-Age` and the server-enforced expiry inside the signed value. Server-side stores use `ttl`, and their session cookie has no `Max-Age` |
+| `auth.session.ttl` | `Option<u64>` | optional, default 1 day | Server-side stores only: how long an idle session lives, in seconds, at least 1. It slides on use |
 | `auth.session.secure` | `Option<bool>` | optional | Default: on when `server.host` starts with `https://` |
 | `auth.session.sign_in_path` | `Option<String>` | optional | Where `CurrentUser` redirects signed-out HTML requests (`?return_to=` appended); without it they get `401` |
+| `auth.session.store` | `cookie` \| `database` \| `redis` | optional, default `cookie` | `cookie`: the signed cookie holds the session. `database`: a `loco_sessions` table (Postgres and SQLite, created on first use); `redis`: keys with a TTL. Both server-side stores put only a random id in the cookie. See [Server-side sessions and remember me](/docs/how-to/oauth-sign-in#server-side-sessions-and-remember-me) |
+| `auth.session.remember_for` | `Option<u64>` | optional, default 14 days | Lifetime of a remember-me series, in seconds. Fixed from the sign-in; rotation does not extend it. Unset, it is 14 days, or `ttl` plus one day when `ttl` is 13 days or more. Setting it with `store: cookie`, to no more than `ttl`, or over 400 days is a boot error |
+| `auth.session.remember_cookie_name` | `Option<String>` | optional, default `loco_remember` | Must differ from `cookie_name` |
+| `auth.session.redis_uri` | `Option<String>` | optional | Redis for `store: redis`; default is the `cache` Redis URI |
 | `auth.oauth.base_url` | `Option<String>` | optional | Public origin for callback URLs; default `server.full_url()` |
 | `auth.oauth.after_sign_in_path` | `Option<String>` | optional, default `/` | Used when neither `return_to` nor `SignIn::redirect_to` is set |
 | `auth.oauth.after_sign_out_path` | `Option<String>` | optional, default `/` | |

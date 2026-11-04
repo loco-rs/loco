@@ -103,6 +103,30 @@ subcommand.
   original as `source()`, and does the same for `Option`; `.or_err_with(||
   ...)` builds the message lazily. Named so it never clashes with
   `anyhow::Context`. (#1751)
+- **Server-side sessions and remember me** (#1842). `auth.session.store` is
+  `cookie` (default, nothing changes), `database` or `redis`. A server-side
+  store keeps the data on the server and puts only a signed random id in the
+  cookie, so `session.clear()` really ends a session and
+  `auth::session_store::sign_out_everywhere` ends all of a user's. The
+  `database` store creates `loco_sessions` and `loco_remember_tokens` itself
+  on first use and stores only a SHA-256 of the id (`with-db`; Postgres and
+  SQLite); `redis` needs `cache_redis`. A server-side session lives
+  `auth.session.ttl` (default one day, sliding) and its cookie has no
+  `Max-Age`; `max_age` applies to the cookie store only. Writes to an
+  existing session never recreate it, so a request in flight cannot undo a
+  sign-out, and a new user id rotates the session id by itself.
+  `Session::remember()?` and `auth.session.remember_for` add Devise-style
+  remember me: a rotating token with theft detection that tolerates parallel
+  requests and a lost response; the series keeps the lifetime it was
+  created with, and a replayed token revokes every session and series the
+  user has. The `redis` store needs a single node (no Cluster). `ttl: 0`,
+  a `remember_for` over 400 days or not longer than `ttl`
+  and equal cookie names are boot errors. Remember me with the `cookie` store is a boot
+  error (and `remember()` returns an error; `?remember=1` is ignored).
+  `Session`, `CurrentUser` and OAuth sign-in work unchanged on every store;
+  `?remember=1` on `/auth/{provider}` and `SignIn::remember()` opt in. A
+  server-side store needs the new `auth_session` middleware, which the
+  default stack includes. `Session::from_parts` is now `async`.
 - **`db-postgres`, `compression` and `generators` features**, on by
   default, plus `compression-full`, so apps built with
   `default-features = false` can leave out dependencies they never use. The
