@@ -154,6 +154,7 @@ export default defineConfig({
               items: [
                 { slug: 'docs/how-to/configure-storage' },
                 { slug: 'docs/how-to/use-cache' },
+                { slug: 'docs/how-to/run-sqlite-in-production' },
                 { slug: 'docs/how-to/configure-logging' },
                 { slug: 'docs/how-to/connect-over-tls' },
                 { slug: 'docs/how-to/deploy' },
