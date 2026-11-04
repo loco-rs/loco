@@ -1,0 +1,13 @@
+---
+source: loco-gen/tests/templates/notifier.rs
+expression: "read(&tree, \"config/test.yaml\")"
+---
+server:
+  port: 5150
+
+# Notifier channels (`cargo loco generate notifier`). A channel whose URL is
+# empty is skipped.
+notifications:
+  stub: true
+  slack:
+    webhook_url: "https://hooks.slack.com/services/test"

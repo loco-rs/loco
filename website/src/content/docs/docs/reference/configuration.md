@@ -29,22 +29,23 @@ This page is a dictionary of every key Loco's configuration loader understands. 
 
 ## Top-level `Config`
 
-`struct Config` — `src/config/mod.rs:66-98`. Every field is a top-level YAML key.
+`struct Config` — `src/config/mod.rs:66-103`. Every field is a top-level YAML key.
 
 | Key | Type | Required? | Notes |
 |---|---|---|---|
-| `logger` | [`Logger`](#logger) | required | `mod.rs:67` |
-| `server` | [`Server`](#server) | required | `mod.rs:68` |
-| `database` | [`Database`](#database) | required, only when the `with-db` feature is enabled | `#[cfg(feature = "with-db")]`, `mod.rs:69-70` |
-| `cache` | [`CacheConfig`](#cache) | optional — `#[serde(default)]`, defaults to `Null` | `mod.rs:71-72` |
-| `storage` | [`StorageConfig`](#storage) | optional — `#[serde(default)]`, defaults to `Null` | `mod.rs:73-74` |
-| `queue` | `Option<`[`QueueConfig`](#queue)`>` | optional | `mod.rs:75` |
-| `auth` | `Option<`[`Auth`](#auth)`>` | optional | `mod.rs:76` |
-| `workers` | [`Workers`](#workers) | optional — `#[serde(default)]` | `mod.rs:77-78` |
-| `mailer` | `Option<`[`Mailer`](#mailer)`>` | optional | `mod.rs:79` |
-| `initializers` | `Option<Initializers>` (= `Option<BTreeMap<String, serde_json::Value>>`) | optional | `mod.rs:80`, type alias at `mod.rs:112` |
-| `settings` | `Option<serde_json::Value>` | optional — `#[serde(default)]` | `mod.rs:95`; free-form app settings, surfaced at `ctx.config.settings` |
-| `scheduler` | `Option<scheduler::Config>` | optional | `mod.rs:97`; struct owned by the scheduler area, not detailed here |
+| `logger` | [`Logger`](#logger) | required | `mod.rs:69` |
+| `server` | [`Server`](#server) | required | `mod.rs:70` |
+| `database` | [`Database`](#database) | required, only when the `with-db` feature is enabled | `#[cfg(feature = "with-db")]`, `mod.rs:71-72` |
+| `cache` | [`CacheConfig`](#cache) | optional — `#[serde(default)]`, defaults to `Null` | `mod.rs:73-74` |
+| `storage` | [`StorageConfig`](#storage) | optional — `#[serde(default)]`, defaults to `Null` | `mod.rs:75-76` |
+| `queue` | `Option<`[`QueueConfig`](#queue)`>` | optional | `mod.rs:77` |
+| `auth` | `Option<`[`Auth`](#auth)`>` | optional | `mod.rs:78` |
+| `workers` | [`Workers`](#workers) | optional — `#[serde(default)]` | `mod.rs:79-80` |
+| `mailer` | `Option<`[`Mailer`](#mailer)`>` | optional | `mod.rs:81` |
+| `notifications` | `Option<Notifications>` | optional — `#[serde(default)]` | `mod.rs:83-84`, `notifications.rs`; Slack, webhook and email defaults plus `max_retries`, `retry_backoff_secs`, `timeout_secs`, and `stub` (record instead of send, for tests). See [Send notifications](/docs/how-to/send-notifications#4-configure-the-channels) |
+| `initializers` | `Option<Initializers>` (= `Option<BTreeMap<String, serde_json::Value>>`) | optional | `mod.rs:85`, type alias at `mod.rs:117` |
+| `settings` | `Option<serde_json::Value>` | optional — `#[serde(default)]` | `mod.rs:99-100`; free-form app settings, surfaced at `ctx.config.settings` |
+| `scheduler` | `Option<scheduler::Config>` | optional | `mod.rs:102`; struct owned by the scheduler area, not detailed here |
 
 ## `auth`
 

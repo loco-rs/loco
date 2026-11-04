@@ -626,6 +626,42 @@ impl Queue {
         Ok(())
     }
 
+    /// Register a worker with a retry policy decided at runtime (for example
+    /// read from config) instead of by [`BackgroundWorker::max_retries`].
+    ///
+    /// Best effort: on a provider without automatic retries this logs a
+    /// warning and the worker's jobs run once, rather than failing boot the
+    /// way [`Queue::register`] does for a worker whose `max_retries` is set.
+    /// Meant for framework-provided workers that every app registers.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if registering the handler fails.
+    pub async fn register_with_retry_policy<
+        A: Serialize + Send + Sync + 'static + for<'de> serde::Deserialize<'de>,
+        W: BackgroundWorker<A> + 'static,
+    >(
+        &self,
+        worker: W,
+        policy: RetryPolicy,
+    ) -> Result<()> {
+        tracing::info!(worker = W::class_name(), "Registering background worker");
+        let name = W::class_name();
+        self.0
+            .register_handler(name.clone(), erase_worker(worker))
+            .await?;
+        if policy.max_retries > 0
+            && let Err(err) = self.0.set_retry_policy(name.clone(), policy).await
+        {
+            tracing::warn!(
+                worker = name,
+                err = err.to_string(),
+                "queue provider does not retry; jobs run once"
+            );
+        }
+        Ok(())
+    }
+
     /// Add a job unless one with the same `class` and `key` is already
     /// queued; then return the queued job's ID and add nothing.
     ///
@@ -716,7 +752,7 @@ impl Queue {
         self.0.shutdown()
     }
 
-    async fn get_jobs(
+    pub(crate) async fn get_jobs(
         &self,
         status: Option<&Vec<JobStatus>>,
         age_days: Option<i64>,

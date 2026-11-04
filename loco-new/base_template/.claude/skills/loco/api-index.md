@@ -11,7 +11,7 @@ since they restate the trait's own API.
 
 `use loco_rs::prelude::*;` brings these into scope. They are already available — importing them again is redundant.
 
-`ActiveModelBehavior`, `ActiveModelTrait`, `ActiveValue`, `AppContext`, `Authenticable`, `BackgroundWorker`, `ColumnTrait`, `Condition`, `ConnectionTrait`, `CurrentUser`, `DatabaseConnection`, `Date`, `DateTime`, `DateTimeUtc`, `DateTimeWithTimeZone`, `DbErr`, `Decimal`, `Dir`, `EncryptedCookies`, `EntityTrait`, `Error`, `Expr`, `Form`, `Format`, `Identity`, `Initializer`, `IntoActiveModel`, `IntoResponse`, `Json`, `JsonValidate`, `JsonValidateWithMessage`, `Mailer`, `MaybeCurrentUser`, `MiddlewareStackExt`, `ModelError`, `ModelResult`, `ModelTrait`, `Multipart`, `OAuthFailure`, `OAuthHandler`, `OrErr`, `Order`, `Pager`, `PagerMeta`, `PaginatorTrait`, `Path`, `Query`, `QueryFilter`, `QueryOrder`, `QuerySelect`, `Queue`, `RemoteIP`, `RespondTo`, `Response`, `Result`, `Routes`, `Session`, `SessionUser`, `Set`, `SharedStore`, `SignIn`, `SignedCookies`, `State`, `Task`, `TaskInfo`, `TenantActiveModelExt`, `TenantEntity`, `TenantQueryExt`, `TeraView`, `TransactionTrait`, `Uuid`, `Validatable`, `Validate`, `ValidatorTrait`, `ViewEngine`, `ViewRenderer`, `async_trait`, `auth`, `bad_request`, `cookie`, `data`, `debug_handler`, `delete`, `format`, `get`, `head`, `include_dir`, `mailer`, `not_found`, `options`, `patch`, `post`, `prelude`, `put`, `query`, `task`, `trace`, `unauthorized`, `validation`
+`ActiveModelBehavior`, `ActiveModelTrait`, `ActiveValue`, `AppContext`, `Authenticable`, `BackgroundWorker`, `ColumnTrait`, `Condition`, `ConnectionTrait`, `CurrentUser`, `DatabaseConnection`, `Date`, `DateTime`, `DateTimeUtc`, `DateTimeWithTimeZone`, `DbErr`, `Decimal`, `Dir`, `EncryptedCookies`, `EntityTrait`, `Error`, `Expr`, `Form`, `Format`, `Identity`, `Initializer`, `IntoActiveModel`, `IntoResponse`, `Json`, `JsonValidate`, `JsonValidateWithMessage`, `Mailer`, `MaybeCurrentUser`, `MiddlewareStackExt`, `ModelError`, `ModelResult`, `ModelTrait`, `Multipart`, `Notifier`, `OAuthFailure`, `OAuthHandler`, `OrErr`, `Order`, `Pager`, `PagerMeta`, `PaginatorTrait`, `Path`, `Query`, `QueryFilter`, `QueryOrder`, `QuerySelect`, `Queue`, `RemoteIP`, `RespondTo`, `Response`, `Result`, `Routes`, `Session`, `SessionUser`, `Set`, `SharedStore`, `SignIn`, `SignedCookies`, `State`, `Task`, `TaskInfo`, `TenantActiveModelExt`, `TenantEntity`, `TenantQueryExt`, `TeraView`, `TransactionTrait`, `Uuid`, `Validatable`, `Validate`, `ValidatorTrait`, `ViewEngine`, `ViewRenderer`, `async_trait`, `auth`, `bad_request`, `cookie`, `data`, `debug_handler`, `delete`, `format`, `get`, `head`, `include_dir`, `mailer`, `not_found`, `notifications`, `options`, `patch`, `post`, `prelude`, `put`, `query`, `task`, `trace`, `unauthorized`, `validation`
 
 ## `loco_rs::testing::prelude`
 
@@ -346,6 +346,7 @@ since they restate the trait's own API.
 - `fn` **import**`(self: &Self, path: &Path) -> Result<()>` — Imports jobs from a JSON or legacy YAML file into the configured queue provider
 - `fn` **ping**`(self: &Self) -> Result<()>` — Returns a ping of this [`Queue`]
 - `fn` **register**`(self: &Self, worker: W) -> Result<()>` — Register a worker
+- `fn` **register_with_retry_policy**`(self: &Self, worker: W, policy: RetryPolicy) -> Result<()>` — Register a worker with a retry policy decided at runtime (for example
 - `fn` **requeue**`(self: &Self, age_minutes: &i64) -> Result<()>` — Requeued job with the given minutes ages
 - `fn` **retry_failed**`(self: &Self, id: Option<&str>) -> Result<u64>` — Moves failed jobs back to [`JobStatus::Queued`], returning how many
 - `fn` **run**`(self: &Self, tags: Vec<String>) -> Result<()>` — Runs the worker loop for this [`Queue`]
@@ -574,10 +575,11 @@ since they restate the trait's own API.
 - `struct` **AwsStorageConfig**` { bucket: String, region: String, endpoint: Option<String>, access_key_id: Option<String>, secret_access_key: Option<String>, session_token: Option<String> }`
 - `struct` **AzureStorageConfig**` { container: String, account_name: String, access_key: String, endpoint: String }`
 - `enum` **CacheConfig** — Cache configurations for the application
-- `struct` **Config**` { logger: Logger, server: Server, database: Database, cache: CacheConfig, storage: StorageConfig, queue: Option<QueueConfig>, auth: Option<Auth>, workers: Workers, mailer: Option<Mailer>, initializers: Option<Initializers>, settings: Option<Value>, scheduler: Option<Config> }` — Main application configuration structure
+- `struct` **Config**` { logger: Logger, server: Server, database: Database, cache: CacheConfig, storage: StorageConfig, queue: Option<QueueConfig>, auth: Option<Auth>, workers: Workers, mailer: Option<Mailer>, notifications: Option<Notifications>, initializers: Option<Initializers>, settings: Option<Value>, scheduler: Option<Config> }` — Main application configuration structure
 - `const` **DEV_SESSION_SECRET** — The secret every signed cookie is keyed off when `auth.session.secret` is
 - `struct` **Database**` { uri: String, enable_logging: bool, min_connections: u32, max_connections: u32, connect_timeout: u64, idle_timeout: u64, acquire_timeout: Option<u64>, auto_migrate: bool, dangerously_truncate: bool, dangerously_recreate: bool, run_on_start: Option<String>, sqlite: SqliteConfig }` — Database configuration
 - `struct` **DatabaseCacheConfig**` { sweep_every: u64, sweep_batch: u64 }` — Settings of the database cache (`cache.kind: Database`). Both fields have
+- `struct` **EmailNotifications**` { to: Vec<String>, from: Option<String> }` — Default email destination
 - `struct` **GcpStorageConfig**` { bucket: String, credential_path: String }`
 - `struct` **InMemCacheConfig**` { max_capacity: u64 }`
 - `type` **Initializers** — Initializers configuration
@@ -590,6 +592,7 @@ since they restate the trait's own API.
 - `struct` **Mailer**` { smtp: Option<SmtpMailer>, stub: bool }` — Mailer configuration
 - `struct` **MailerAuth**` { user: String, password: String }` — Authentication details for the mailer
 - `enum` **MailerTls** — TLS mode for the SMTP connection
+- `struct` **Notifications**` { slack: Option<SlackNotifications>, webhook: Option<WebhookNotifications>, email: Option<EmailNotifications>, max_retries: u32, retry_backoff_secs: u64, timeout_secs: u64, stub: bool }` — Notifications configuration: the default destination of each channel and
 - `struct` **OAuthConfig**` { base_url: Option<String>, after_sign_in_path: Option<String>, after_sign_out_path: Option<String>, failure_path: Option<String>, providers: BTreeMap<String, OAuthProviderConfig> }` — `OAuth2` / `OpenID` Connect sign-in, `OmniAuth`-style
 - `struct` **OAuthProviderConfig**` { strategy: Option<OAuthStrategy>, client_id: String, client_secret: String, scopes: Option<Vec<String>>, base_url: Option<String>, api_url: Option<String>, authorize_url: Option<String>, token_url: Option<String>, userinfo_url: Option<String>, emails_url: Option<String>, redirect_uri: Option<String>, authorize_params: BTreeMap<String, String>, pkce: Option<bool>, token_auth: Option<OAuthTokenAuth> }` — One OAuth provider. Every URL is overridable, for GitHub Enterprise,
 - `enum` **OAuthStrategy** — Which provider preset a configured provider uses
@@ -603,10 +606,12 @@ since they restate the trait's own API.
 - `struct` **Server**` { binding: String, port: i32, host: String, ident: Option<String>, middlewares: Config }` — Server configuration structure
 - `struct` **SessionConfig**` { secret: Option<String>, cookie_name: Option<String>, max_age: Option<u64>, secure: Option<bool>, sign_in_path: Option<String>, store: SessionStoreKind, ttl: Option<u64>, remember_for: Option<u64>, remember_cookie_name: Option<String>, redis_uri: Option<String> }` — Signed cookies and the cookie session, Rails' `secret_key_base` plus its
 - `enum` **SessionStoreKind** — Where [`SessionConfig::store`] keeps the session
+- `struct` **SlackNotifications**` { webhook_url: String }` — Default Slack destination
 - `struct` **SmtpMailer**` { enable: bool, host: String, port: u16, secure: bool, tls: Option<MailerTls>, auth: Option<MailerAuth>, hello_name: Option<String> }` — SMTP mailer configuration structure
 - `struct` **SqliteConfig**` { pragmas: BTreeMap<String, String> }` — `SQLite` settings shared by the database and the `SQLite` queue
 - `struct` **SqliteQueueConfig**` { uri: String, dangerously_flush: bool, enable_logging: bool, max_connections: u32, min_connections: u32, connect_timeout: u64, idle_timeout: u64, poll_interval_sec: u32, num_workers: u32, reaper: Option<ReaperConfig>, retention: Option<RetentionConfig>, pragmas: BTreeMap<String, String> }`
 - `enum` **StorageConfig** — Storage configuration for the application
+- `struct` **WebhookNotifications**` { url: String, secret: Option<String>, headers: BTreeMap<String, String> }` — Default webhook destination
 - `enum` **WorkerMode** — Worker mode configuration
 - `struct` **Workers**` { mode: WorkerMode }` — Background worker configuration
 - `fn` **db_connect_timeout**`() -> u64`
@@ -1279,6 +1284,92 @@ since they restate the trait's own API.
 - `variant` **Asc**
 - `variant` **Desc**
 - `fn` **order**`(self: &Self) -> Order` — Returns the corresponding `Order` enum variant based on the current
+## `notifications`
+
+- `enum` **Channel** — Where a notification goes. Returned by [`super::Notifier::channels`]
+- `struct` **Delivery**` { id: String, event: String, target: Target }` — A rendered notification for one channel: the job payload of
+- `struct` **Field**` { name: String, value: String }` — One `name: value` line of a [`Message`]
+- `struct` **Message**` { title: String, body: Option<String>, url: Option<String>, fields: Vec<Field> }` — What a notification says, independent of channel. Each channel renders
+- `struct` **NotificationWorker** — Sends one [`Delivery`]
+- `trait` **Notifier** — A notification type. Implement it on a `Serialize` struct holding the
+- `const` **QUEUE** — The queue notification deliveries are enqueued on
+- `struct` **Report**` { accepted: usize, skipped: usize, failed: usize }` — What a single [`Notifier::deliver_later`] call did, per channel
+- `enum` **Target** — A rendered destination. `None` destinations are resolved from the
+
+### `Channel`
+
+- `variant` **Email** — Email through the app's mailer. Empty `to` uses
+- `variant` **Slack** — A Slack incoming webhook. `None` uses `notifications.slack.webhook_url`
+- `variant` **Webhook** — A JSON `POST`. `None` uses `notifications.webhook.url` together with
+- `fn` **and_to**`(self: Self, recipient: impl Trait) -> Self` — Add another email recipient. No effect on other channels
+- `fn` **email**`() -> Self` — Email the default recipients from `notifications.email.to`
+- `fn` **email_to**`(to: impl Trait) -> Self` — Email a specific recipient. Chain [`Channel::and_to`] for more
+- `fn` **from**`(self: Self, sender: impl Trait) -> Self` — Set the email sender. No effect on other channels
+- `fn` **header**`(self: Self, name: impl Trait, value: impl Trait) -> Self` — Add a request header to a webhook. No effect on other channels
+- `fn` **name**`(self: &Self) -> &str` — The channel's name in logs and job payloads
+- `fn` **signed**`(self: Self, with: impl Trait) -> Self` — Sign webhook requests with HMAC-SHA256 under `secret` (see
+- `fn` **slack**`() -> Self` — The default Slack webhook from `notifications.slack.webhook_url`
+- `fn` **slack_url**`(url: impl Trait) -> Self` — A specific Slack incoming-webhook URL, e.g. one stored per team or
+- `fn` **webhook**`() -> Self` — The default webhook from `notifications.webhook`
+- `fn` **webhook_url**`(url: impl Trait) -> Self` — A specific webhook URL, unsigned unless [`Channel::signed`] is added
+
+### `Message`
+
+- `fn` **body**`(self: Self, body: impl Trait) -> Self`
+- `fn` **field**`(self: Self, name: impl Trait, value: impl Trait) -> Self`
+- `fn` **new**`(title: impl Trait) -> Self`
+- `fn` **url**`(self: Self, url: impl Trait) -> Self`
+
+### `Notifier`
+
+- `fn` **channels**`(self: &Self, ctx: &AppContext) -> Vec<Channel>` — Where to deliver it. Decided per notification, so it can depend on
+- `fn` **deliver_later**`(self: &Self, ctx: &AppContext) -> Pin<Box<dyn Future + Send>>` — Delivers to every channel in the background, through the
+- `fn` **deliver_now**`(self: &Self, ctx: &AppContext) -> Pin<Box<dyn Future + Send>>` — Delivers to every channel now, in this task, bypassing the queue and
+- `fn` **deliveries**`(self: &Self, ctx: &AppContext) -> Result<(Vec<Delivery>, usize)>` — Renders one [`Delivery`] per deliverable channel
+- `fn` **email**`(self: &Self, message: &Message) -> Result<EmailContent>` — The email's parts. Defaults to [`EmailContent::from_message`]; use
+- `fn` **event**`() -> String` — The event name sent to webhooks (`X-Loco-Event`). Defaults to the
+- `fn` **message**`(self: &Self) -> Message` — The notification's content
+- `fn` **priority**`() -> Option<i32>` — Background-queue priority for the deliveries
+- `fn` **slack_payload**`(self: &Self, message: &Message) -> Value` — The JSON sent to a Slack incoming webhook. Defaults to
+- `fn` **webhook_payload**`(self: &Self, payload: Value) -> Value` — The JSON body of a webhook. Receives the default payload (`id`,
+
+### `Target`
+
+- `variant` **Email**
+- `variant` **Slack**
+- `variant` **Webhook**
+- `fn` **name**`(self: &Self) -> &str`
+## `notifications::email`
+
+- `struct` **EmailContent**` { subject: String, text: String, html: String }` — The rendered parts of a notification email
+
+### `EmailContent`
+
+- `fn` **from_message**`(message: &Message) -> Self` — Plain email built from the message: the title as subject, then the
+- `fn` **from_template**`(dir: &Dir, locals: &impl Trait) -> Result<Self>` — Renders a mailer template directory (`subject.t`, `text.t`,
+## `notifications::slack`
+
+- `fn` **escape**`(text: &str) -> String` — Escapes the three characters Slack's `mrkdwn` treats as control
+- `fn` **payload**`(message: &Message) -> Value` — The default Slack payload for `message`
+## `notifications::testing`
+
+- `struct` **Recorded**` { id: String, event: String, channel: String, to: Vec<String>, payload: Value, headers: BTreeMap<String, String>, signed: bool }` — One delivery as it would have been sent
+- `fn` **clear**`(ctx: &AppContext)` — Forgets the deliveries recorded on `ctx`; recording stays on
+- `fn` **deliveries**`(ctx: &AppContext) -> Vec<Recorded>` — Every delivery recorded on `ctx` so far, oldest first. Empty when
+- `fn` **is_recording**`(ctx: &AppContext) -> bool` — Whether deliveries on `ctx` are recorded instead of sent
+- `fn` **record**`(ctx: &AppContext)` — Turns recording on for `ctx`, as `notifications.stub: true` does. Has no
+
+### `Recorded`
+
+- `fn` **text**`(self: &Self) -> String` — The human-readable text of the delivery, to assert on regardless of
+## `notifications::webhook`
+
+- `const` **DELIVERY_HEADER** — Header carrying the delivery ID
+- `const` **EVENT_HEADER** — Header carrying the event name
+- `const` **SIGNATURE_HEADER** — Header carrying the `sha256=<hex>` signature
+- `const` **TIMESTAMP_HEADER** — Header carrying the attempt's Unix timestamp
+- `fn` **sign**`(secret: &str, timestamp: &str, body: &[u8]) -> String` — The `X-Loco-Signature` value for `body` sent at `timestamp`
+- `fn` **verify_signature**`(secret: &str, timestamp: &str, body: &[u8], signature: &str) -> bool` — Checks a received `X-Loco-Signature` header in constant time. For apps
 ## `scheduler`
 
 - `struct` **Config**` { jobs: HashMap<String, Job>, output: Output }` — Configuration structure for the scheduler

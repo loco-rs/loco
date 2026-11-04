@@ -1,0 +1,10 @@
+---
+source: loco-gen/tests/templates/notifier.rs
+expression: "read(&tree, \"Cargo.toml\")"
+---
+[package]
+name = "tester"
+
+[dependencies]
+loco-rs = { version = "1.2", features = ["notifications"] }
+serde = "1"

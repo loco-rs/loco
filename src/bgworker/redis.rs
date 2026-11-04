@@ -1077,7 +1077,7 @@ pub async fn cancel_jobs_by_name(client: &RedisPool, job_name: &str) -> Result<(
     Ok(())
 }
 
-pub const DEFAULT_QUEUES: &[&str] = &["default", "mailer"];
+pub const DEFAULT_QUEUES: &[&str] = &["default", "mailer", "notifications"];
 
 pub fn get_queues(config_queues: &Option<Vec<String>>) -> Vec<String> {
     let mut queues = DEFAULT_QUEUES
@@ -1266,6 +1266,18 @@ mod tests {
     use crate::{bgworker::BackgroundWorker, tests_cfg::redis::setup_redis_container};
     use chrono::Utc;
     use testcontainers::{ContainerAsync, GenericImage};
+
+    /// Every queue the built-in workers enqueue on is polled without being
+    /// listed in `queue.queues`, or its jobs would sit unread.
+    #[test]
+    fn get_queues_includes_builtin_queues() {
+        let queues = get_queues(&None);
+        assert!(queues.contains(&"mailer".to_string()));
+        assert!(queues.contains(&"notifications".to_string()));
+        let queues = get_queues(&Some(vec!["notifications".into(), "extra".into()]));
+        assert_eq!(queues.iter().filter(|q| *q == "notifications").count(), 1);
+        assert!(queues.contains(&"extra".to_string()));
+    }
 
     /// A cancelled worker stops trying immediately rather than working through
     /// its retry budget against a server it will never be allowed to reach.
