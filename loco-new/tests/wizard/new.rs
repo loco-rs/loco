@@ -556,7 +556,10 @@ impl Tester {
     }
 
     fn run_test(&self) -> Result<Output, std::io::Error> {
-        cmd!("cargo", "test")
+        // Generated tests share a SQLite database and recreate its schema at
+        // boot. The outer harness's `--test-threads` does not propagate to this
+        // subprocess, so serialize its tests too, including runtime teardown.
+        cmd!("cargo", "test", "--", "--test-threads=1")
             // .stdout_null()
             // .stderr_null()
             .full_env(&self.env_map)

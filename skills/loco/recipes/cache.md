@@ -7,9 +7,8 @@ Loco already wraps them.
 
 ## The trap: the default cache is a black hole
 
-`CacheConfig` defaults to **`Null`**. A `Null` cache accepts every write, stores
-nothing, and returns `None` from every read. Your code compiles, your tests
-pass, and nothing is ever cached.
+`CacheConfig` defaults to **`Null`**. A `Null` cache returns `None` from every
+read and an error from writes, invalidation, presence checks, and health checks.
 
 **`loco new` does not write a `cache:` block**, so a fresh app has a `Null`
 cache until you add one — to **every** environment you care about, including
@@ -18,7 +17,7 @@ cache until you add one — to **every** environment you care about, including
 ```yaml
 cache:
   kind: InMem
-  max_capacity: 33554432      # bytes; optional, defaults to 32 MiB
+  max_capacity: 33554432      # entries; optional, defaults to 32 * 1024 * 1024
 ```
 
 If a cache "isn't working," check that this block exists before debugging your
@@ -35,6 +34,7 @@ loco-rs = { version = "1.1", features = ["cache_redis"] }
 cache:
   kind: Redis
   uri: <%= get_env(name="REDIS_URL", default="redis://127.0.0.1") %>
+  max_size: 10
 ```
 
 Or keep the cache in the app's own database, with no Redis and no feature to
@@ -57,6 +57,36 @@ than one process — an in-memory cache is per-process, so two web workers have
 two different caches and neither sees the other's entries — use `Database` (one
 less service) or `Redis`.
 
+For memory-first reads with Redis fallback, enable both cache features and use:
+
+```yaml
+cache:
+  kind: Multi
+  default_ttl_seconds: 60    # required, positive; used by insert/get_or_insert
+  error_policy: Propagate    # default; Ignore logs runtime failures and continues
+  layers:
+    - kind: InMem
+      max_capacity: 10000
+    - kind: Redis
+      uri: <%= get_env(name="REDIS_CACHE_URL", default="redis://127.0.0.1:6379/1") %>
+      max_size: 10
+```
+
+Reads stop at the first hit. Writes and invalidations attempt all layers.
+Every `Multi` write has an expiry: `insert` and cache misses in `get_or_insert`
+use the required positive `default_ttl_seconds`. Explicit expiry methods use
+their supplied duration instead, without a cap from the default. Each write
+passes the same TTL to every backend, subject to its expiry precision.
+Reads never refresh expiry or backfill memory. At least one layer is required;
+`Null` and nested `Multi` layers are rejected. Startup validation, including
+the default TTL, and health checks always report errors, even with `Ignore`.
+Mutations are not atomic: failures may leave layers inconsistent. Other
+processes' memory entries are not invalidated by shared updates, removals, or
+clears; each successfully written local value expires after its TTL, bounding
+how long that copy can remain stale. Choose TTLs your application can tolerate,
+or use Redis or Database alone for immediate shared invalidation. `clear()`
+also flushes the entire Redis logical database; dedicate one to caching.
+
 ---
 
 ## The API
@@ -66,9 +96,9 @@ All of it is on `ctx.cache`, all `async`.
 | Method | Use |
 |---|---|
 | `get::<T>(key)` | `Ok(None)` on a miss — not an error |
-| `insert(key, &value)` | store, no expiry |
+| `insert(key, &value)` | store; `Multi` applies its default TTL, standalone drivers do not expire |
 | `insert_with_expiry(key, &value, duration)` | store with a TTL |
-| `get_or_insert(key, fut)` | read, or compute-and-store on a miss |
+| `get_or_insert(key, fut)` | read, or compute-and-store on a miss (`Multi` applies its default TTL) |
 | `get_or_insert_with_expiry(key, duration, fut)` | the same, with a TTL |
 | `contains_key(key)` | presence without deserializing |
 | `remove(key)` | invalidate one entry |

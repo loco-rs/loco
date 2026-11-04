@@ -364,7 +364,7 @@ queue:
 
 ## `cache`
 
-`enum CacheConfig` — `src/config/cache.rs:4-16`, `#[serde(tag = "kind")]`. **Default variant: `Null`** (`#[default]`, `cache.rs:14-15`) — this is what `Config.cache`'s `#[serde(default)]` produces when the `cache` key is omitted entirely.
+`enum CacheConfig` — `src/config/cache.rs`, `#[serde(tag = "kind")]`. **Default variant: `Null`** — this is what `Config.cache`'s `#[serde(default)]` produces when the `cache` key is omitted entirely.
 
 ```yaml
 cache:
@@ -377,6 +377,24 @@ cache:
   uri: redis://...         # required
   max_size: 100            # required — max pool connections
 
+# --- or ---
+cache:
+  kind: Database           # requires the `with-db` feature; uses the app database
+  sweep_every: 100         # optional; writes between sweeps, 0 disables sweeping
+  sweep_batch: 1000        # optional; maximum expired rows deleted per sweep
+
+# --- or ---
+cache:
+  kind: Multi
+  default_ttl_seconds: 60  # required, positive; used by insert/get_or_insert
+  error_policy: Propagate  # optional; Propagate (default) or Ignore
+  layers:                 # required, ordered, non-empty
+    - kind: InMem
+      max_capacity: 10000
+    - kind: Redis
+      uri: redis://127.0.0.1:6379/1
+      max_size: 10
+
 # --- or (default) ---
 cache:
   kind: "Null"             # no-op cache; used when `cache` key is omitted
@@ -385,18 +403,32 @@ cache:
 
 | Key | Type | Required? | Notes |
 |---|---|---|---|
-| `cache.kind` | tag: `InMem` \| `Database` \| `Redis` \| `"Null"` | required if `cache` present | `cache.rs:6-16`. `Null` must be written quoted: unquoted, YAML resolves it to null and the tagged enum fails to deserialize |
-| **InMem** (`InMemCacheConfig`, `cache.rs:18-22`) — feature-gated on `cache_inmem` | | | |
-| `cache.max_capacity` | `u64` | optional, default `33554432` (`32 * 1024 * 1024`, `cache_in_mem_max_capacity()`). Counts entries; when full, the least recently used entry is evicted | `cache.rs:20-21,24-26` |
-| **Redis** (`RedisCacheConfig`, `cache.rs:28-33`) — feature-gated on `cache_redis` | | | |
-| `cache.uri` | `String` | required | `cache.rs:30` |
-| `cache.max_size` | `u32` | required — max pool connections | `cache.rs:32` |
-| **Database** (`DatabaseCacheConfig`, `cache.rs`) — feature-gated on `with-db` | | | Entries live in the `loco_cache` table of the app database (Postgres or SQLite), created on first use |
+| `cache.kind` | tag: `InMem` \| `Database` \| `Redis` \| `Multi` \| `"Null"` | required if `cache` present | `Null` must be written quoted: unquoted, YAML resolves it to null and the tagged enum fails to deserialize |
+| **InMem** (`InMemCacheConfig`) — feature-gated on `cache_inmem` | | | |
+| `cache.max_capacity` | `u64` | optional, default `33554432` (`32 * 1024 * 1024`, `cache_in_mem_max_capacity()`) | Counts entries; when full, the least recently used entry is evicted |
+| **Redis** (`RedisCacheConfig`) — feature-gated on `cache_redis` | | | |
+| `cache.uri` | `String` | required | Redis connection URI |
+| `cache.max_size` | `u32` | required | Maximum pool connections |
+| **Database** (`DatabaseCacheConfig`) — feature-gated on `with-db` | | | Entries live in the `loco_cache` table of the app database (Postgres or SQLite), created on first use |
 | `cache.sweep_every` | `u64` | optional, default `100` | Delete expired rows after this many writes. `0` turns the sweep off |
 | `cache.sweep_batch` | `u64` | optional, default `1000` | The most expired rows one sweep deletes |
+| **Multi** (`MultiCacheConfig`) | | | |
+| `cache.layers` | list of cache configurations | required, non-empty | Lookup order. Each layer uses the same fields and feature flags as standalone `InMem`, `Database`, or `Redis`. `Null` and nested `Multi` layers are rejected at startup. |
+| `cache.default_ttl_seconds` | `u64` | required, positive | TTL for `insert` and cache misses in `get_or_insert`, applied to every layer. Explicit expiry methods use their supplied duration instead; this is a default, not a maximum. Invalid default TTLs fail startup even with `Ignore`. |
+| `cache.error_policy` | `Propagate` \| `Ignore` | optional, default `Propagate` | Runtime error behavior. Mutations always attempt every layer. Initialization and `ping` errors always propagate. |
 | **Null** | (no fields) | — | default no-op cache |
 
-If the corresponding feature (`cache_inmem` / `cache_redis`) is not compiled in, that `kind` value will fail to deserialize.
+If the corresponding feature (`cache_inmem` / `cache_redis` / `with-db`) is not compiled in, that `kind` value will fail to deserialize.
+
+`Multi` reads stop at the first hit without backfilling earlier layers or
+refreshing expiry. Every write has a TTL: the required default applies to
+ordinary writes, while explicit expiry methods override it. Writes pass the
+same TTL to every driver, subject to backend precision and latency. Operations
+are not atomic across layers, and local caches are not invalidated by other
+processes. A stale local value can remain until its existing TTL elapses; use
+Redis or Database alone for immediate shared invalidation. See
+[Combine memory and Redis](/docs/how-to/use-cache#combine-memory-and-redis)
+for failure policies and consistency considerations.
 
 ## `initializers`, `settings`, `scheduler`
 

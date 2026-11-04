@@ -1,3 +1,7 @@
+// Cache-only builds use bb8's re-export; the direct dependency is optional
+// and is enabled by worker_redis.
+#[cfg(feature = "cache_redis")]
+use bb8_redis::redis;
 use redis::Client;
 use std::time::Duration;
 use testcontainers::{

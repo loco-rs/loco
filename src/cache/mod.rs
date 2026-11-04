@@ -26,6 +26,20 @@ pub enum CacheError {
     #[error("Deserialization error: {0}")]
     Deserialization(String),
 
+    #[error("Invalid cache configuration: {0}")]
+    InvalidConfiguration(String),
+
+    #[error("Cache expiry duration {0:?} exceeds the supported range")]
+    InvalidExpiry(Duration),
+
+    #[error("Cache layer {index}: {source}")]
+    Layer {
+        /// Zero-based position of the failing layer.
+        index: usize,
+        #[source]
+        source: Box<Self>,
+    },
+
     #[cfg(feature = "with-db")]
     #[error(transparent)]
     Database(#[from] sea_orm::DbErr),
@@ -49,6 +63,7 @@ pub type CacheResult<T> = std::result::Result<T, CacheError>;
 #[allow(clippy::unused_async)]
 pub async fn create_cache_provider(config: &config::Config) -> crate::Result<Arc<Cache>> {
     match &config.cache {
+        config::CacheConfig::Multi(config) => Ok(Arc::new(drivers::multi::new(config).await?)),
         #[cfg(feature = "with-db")]
         config::CacheConfig::Database(_) => Err(crate::Error::string(
             "cache.kind `Database` needs the app's database connection; use \
@@ -83,6 +98,9 @@ pub async fn create_cache_provider_with_db(
 ) -> crate::Result<Arc<Cache>> {
     match &config.cache {
         config::CacheConfig::Database(cfg) => Ok(Arc::new(drivers::db::new(cfg, db))),
+        config::CacheConfig::Multi(cfg) => {
+            Ok(Arc::new(drivers::multi::new_with_db(cfg, db).await?))
+        }
         _ => create_cache_provider(config).await,
     }
 }
@@ -188,6 +206,7 @@ impl Cache {
     }
 
     /// Inserts a serializable value into the cache with the provided key.
+    /// A multi-layer cache applies its configured default TTL to every layer.
     ///
     /// # Example
     /// ```
@@ -235,6 +254,7 @@ impl Cache {
     }
 
     /// Inserts a serializable value into the cache with the provided key and expiry duration.
+    /// The supplied duration overrides a multi-layer cache's default TTL.
     ///
     /// # Example
     /// ```
@@ -289,6 +309,7 @@ impl Cache {
     /// Retrieves and deserializes the value associated with the given key from the cache,
     /// or inserts it if it does not exist, using the provided closure to
     /// generate the value.
+    /// A multi-layer cache applies its default TTL on a miss; hits do not refresh expiry.
     ///
     /// # Example
     /// ```

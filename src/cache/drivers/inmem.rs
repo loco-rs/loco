@@ -12,7 +12,7 @@ use std::{
 use async_trait::async_trait;
 
 use super::CacheDriver;
-use crate::cache::CacheResult;
+use crate::cache::{CacheError, CacheResult};
 use crate::config::InMemCacheConfig;
 
 /// Creates a new instance of the in-memory cache driver, with a default Loco
@@ -84,7 +84,7 @@ impl Store {
         Some(&entry.value)
     }
 
-    fn insert(&mut self, key: &str, value: &str, ttl: Option<Duration>, max_capacity: u64) {
+    fn insert(&mut self, key: &str, value: &str, expires_at: Option<Instant>, max_capacity: u64) {
         self.remove(key);
         if max_capacity == 0 {
             return;
@@ -101,7 +101,7 @@ impl Store {
             key.to_string(),
             Entry {
                 value: value.to_string(),
-                expires_at: ttl.and_then(|ttl| Instant::now().checked_add(ttl)),
+                expires_at,
                 used: self.clock,
             },
         );
@@ -158,15 +158,18 @@ impl CacheDriver for Inmem {
     ///
     /// # Errors
     ///
-    /// Returns a [`crate::cache::CacheError`] if there is an error during the
-    /// operation.
+    /// Returns [`CacheError::InvalidExpiry`] if the expiry exceeds the supported
+    /// range. The cache is left unchanged.
     async fn insert_with_expiry(
         &self,
         key: &str,
         value: &str,
         duration: Duration,
     ) -> CacheResult<()> {
-        self.with_store(|store| store.insert(key, value, Some(duration), self.max_capacity));
+        let expires_at = Instant::now()
+            .checked_add(duration)
+            .ok_or(CacheError::InvalidExpiry(duration))?;
+        self.with_store(|store| store.insert(key, value, Some(expires_at), self.max_capacity));
         Ok(())
     }
 
@@ -275,6 +278,35 @@ mod tests {
         // A plain insert over an expiring entry keeps it for good.
         mem.insert("long", "c").await.unwrap();
         assert!(mem.with_store(|store| store.entries["long"].expires_at.is_none()));
+    }
+
+    #[tokio::test]
+    async fn overflowing_expiry_leaves_existing_entries_unchanged() {
+        let mem = Inmem::new(2);
+        mem.insert_with_expiry("expiring", "original", Duration::from_secs(60))
+            .await
+            .unwrap();
+        mem.insert("other", "keep").await.unwrap();
+        let expires_at = mem.with_store(|store| store.entries["expiring"].expires_at);
+        assert!(expires_at.is_some());
+
+        for key in ["expiring", "missing"] {
+            assert!(matches!(
+                mem.insert_with_expiry(key, "replacement", Duration::MAX).await,
+                Err(CacheError::InvalidExpiry(duration)) if duration == Duration::MAX
+            ));
+        }
+
+        assert_eq!(
+            mem.get("expiring").await.unwrap().as_deref(),
+            Some("original")
+        );
+        assert_eq!(
+            mem.with_store(|store| store.entries["expiring"].expires_at),
+            expires_at
+        );
+        assert_eq!(mem.get("other").await.unwrap().as_deref(), Some("keep"));
+        assert!(!mem.contains_key("missing").await.unwrap());
     }
 
     #[tokio::test]

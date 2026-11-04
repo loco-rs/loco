@@ -3,7 +3,6 @@
 //! application and its dependencies.
 
 use super::{format, routes::Routes};
-#[cfg(any(feature = "cache_inmem", feature = "cache_redis", feature = "with-db"))]
 use crate::config;
 use crate::{app::AppContext, Result};
 use axum::{
@@ -63,35 +62,20 @@ pub async fn readiness(State(ctx): State<AppContext>) -> (StatusCode, Response) 
         );
     }
 
-    // Check cache connection
-    #[cfg(any(feature = "cache_inmem", feature = "cache_redis", feature = "with-db"))]
-    {
-        match ctx.config.cache {
-            #[cfg(feature = "cache_inmem")]
-            config::CacheConfig::InMem(_) => {
-                if let Err(error) = &ctx.cache.driver.ping().await {
-                    tracing::error!(err.msg = %error, err.detail = ?error, "readiness_cache_ping_error");
-                    return (
-                        StatusCode::SERVICE_UNAVAILABLE,
-                        format::json(Health { ok: false }).into_response(),
-                    );
-                }
-            }
-            #[cfg(feature = "cache_redis")]
-            config::CacheConfig::Redis(_) => {
-                if let Err(error) = &ctx.cache.driver.ping().await {
-                    tracing::error!(err.msg = %error, err.detail = ?error, "readiness_cache_ping_error");
-                    return (
-                        StatusCode::SERVICE_UNAVAILABLE,
-                        format::json(Health { ok: false }).into_response(),
-                    );
-                }
-            }
-            // The database itself is checked above.
-            #[cfg(feature = "with-db")]
-            config::CacheConfig::Database(_) => (),
-            config::CacheConfig::Null => (),
-        }
+    // Check cache connections. The standalone database cache uses the database
+    // checked above; multi-layer caches must still check every layer.
+    let check_cache = match &ctx.config.cache {
+        config::CacheConfig::Null => false,
+        #[cfg(feature = "with-db")]
+        config::CacheConfig::Database(_) => false,
+        _ => true,
+    };
+    if check_cache && let Err(error) = ctx.cache.ping().await {
+        tracing::error!(err.msg = %error, err.detail = ?error, "readiness_cache_ping_error");
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            format::json(Health { ok: false }).into_response(),
+        );
     }
 
     (
@@ -263,6 +247,30 @@ mod tests {
         assert_eq!(res_json["ok"], false);
     }
 
+    #[cfg(feature = "with-db")]
+    #[tokio::test]
+    async fn readiness_database_cache_uses_the_database_health_check() {
+        for unhealthy in [false, true] {
+            let mut ctx = tests_cfg::app::get_app_context().await;
+            ctx.config.cache =
+                config::CacheConfig::Database(config::DatabaseCacheConfig::default());
+            // Null fails ping, so this also checks that the cache is not pinged again.
+            ctx.cache = cache::Cache::new(cache::drivers::null::new()).into();
+            if unhealthy {
+                ctx.db = fail_connection().await;
+            }
+            let (status, _) = monitoring::readiness(axum::extract::State(ctx)).await;
+            assert_eq!(
+                status,
+                if unhealthy {
+                    axum::http::StatusCode::SERVICE_UNAVAILABLE
+                } else {
+                    axum::http::StatusCode::OK
+                }
+            );
+        }
+    }
+
     #[cfg(feature = "cache_inmem")]
     #[tokio::test]
     async fn readiness_with_cache_inmem() {
@@ -334,6 +342,53 @@ mod tests {
             .unwrap();
         let res_json: Value = serde_json::from_slice(&body).expect("Valid JSON response");
         assert_eq!(res_json["ok"], true);
+    }
+
+    #[cfg(feature = "cache_inmem")]
+    #[tokio::test]
+    async fn readiness_checks_all_multi_layers_even_when_errors_are_ignored() {
+        use cache::drivers::{inmem::Inmem, multi::Multi, null, CacheDriver};
+
+        for unhealthy in [false, true] {
+            let mut ctx = tests_cfg::app::get_app_context().await;
+            ctx.config.cache = config::CacheConfig::Multi(config::MultiCacheConfig {
+                default_ttl_seconds: 60,
+                layers: vec![config::CacheConfig::InMem(config::InMemCacheConfig {
+                    max_capacity: 10,
+                })],
+                error_policy: config::CacheErrorPolicy::Ignore,
+            });
+            let second: Box<dyn CacheDriver> = if unhealthy {
+                null::new()
+            } else {
+                Box::new(Inmem::new(10))
+            };
+            ctx.cache = cache::Cache::new(Box::new(
+                Multi::new(
+                    vec![Box::new(Inmem::new(10)), second],
+                    config::CacheErrorPolicy::Ignore,
+                    std::time::Duration::from_secs(60),
+                )
+                .unwrap(),
+            ))
+            .into();
+            let (status, response) = monitoring::readiness(axum::extract::State(ctx)).await;
+            assert_eq!(
+                status,
+                if unhealthy {
+                    axum::http::StatusCode::SERVICE_UNAVAILABLE
+                } else {
+                    axum::http::StatusCode::OK
+                }
+            );
+            let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            assert_eq!(
+                serde_json::from_slice::<Value>(&body).unwrap()["ok"],
+                !unhealthy
+            );
+        }
     }
 
     #[cfg(feature = "cache_redis")]

@@ -1,11 +1,11 @@
 ---
 title: Use the cache
-description: Configure a cache driver (null/in-memory/database/Redis) and use get/insert/get_or_insert with expiry, ping, and clear.
+description: Configure a cache driver (null/in-memory/database/Redis/multi-layer) and use get/insert/get_or_insert with expiry, ping, and clear.
 sidebar:
   order: 31
 ---
 
-Goal: cache a value (a computed result, an external API response, a hot query) behind a key, with an optional TTL, using a driver you can swap per environment.
+Goal: cache a value (a computed result, an external API response, a hot query) behind a key, with an expiry policy, using a driver you can swap per environment.
 
 `ctx.cache` is available in every controller, task, and worker. Values are serialized as JSON strings under the hood, so anything `Serialize + DeserializeOwned` can go in.
 
@@ -40,7 +40,7 @@ cache:
 ```yaml
 # omit the `cache` key entirely, or set explicitly — this is the default
 cache:
-  kind: Null
+  kind: "Null"
 ```
 
 `InMem` needs the `cache_inmem` feature (on by default); `Database` needs `with-db` (on by default); `Redis` needs `cache_redis` (off by default — add it to your `Cargo.toml`). See the [feature flags reference](/docs/reference/feature-flags).
@@ -55,7 +55,74 @@ cache:
 
 If you omit `cache` from the config file altogether, Loco silently falls back to the **`Null` driver**: `get()` always returns `None`, and every mutating operation (`insert`, `insert_with_expiry`, `remove`, `clear`, `ping`) returns an error. This is a fail-fast default for "you haven't configured a real cache" — don't ship it to production by accident.
 
+### Combine memory and Redis
+
+Use `Multi` to check a process-local cache first and fall back to Redis on a
+miss. Enable `cache_redis` in `Cargo.toml`; `cache_inmem` is already enabled by
+default. No additional feature or dependency is needed for `Multi` itself.
+
+```yaml
+# config/production.yaml
+cache:
+  kind: Multi
+  default_ttl_seconds: 60 # required, positive; used by insert/get_or_insert
+  error_policy: Propagate # default; or Ignore
+  layers:
+    - kind: InMem
+      max_capacity: 10000 # entries in this process
+    - kind: Redis
+      uri: "<%= get_env(name='REDIS_CACHE_URL', default='redis://127.0.0.1:6379/1') %>"
+      max_size: 10
+```
+
+`get` and `contains_key` check layers in order and stop at the first hit.
+`insert`, `insert_with_expiry`, `remove`, and `clear` attempt every layer,
+including when another layer fails. `insert` and `get_or_insert` use the
+configured default TTL when writing. The chain must contain at least one layer;
+`Null` and nested `Multi` layers are rejected at startup. `Database` can also
+be used as a layer when `with-db` is enabled, using the app's database connection.
+For a single cache, you can keep using `kind: InMem`, `kind: Database`, or
+`kind: Redis`, or configure one layer.
+
+Every `Multi` write has an expiry. `default_ttl_seconds` is required and must
+be positive: `insert` and cache misses in `get_or_insert` apply it to every
+layer. `insert_with_expiry` and `get_or_insert_with_expiry` use the caller's
+duration instead; the default does not cap an explicit TTL. Reads do not
+extend expiry, so repeatedly accessing a value cannot keep it alive forever.
+
+Writes pass the same TTL to every layer. Expiration uses each
+driver's precision: Redis currently uses whole seconds, with a minimum of
+one second. Writes across layers are not atomic and their expiry times can
+differ with network latency. Fallback reads **do not populate earlier
+layers** or refresh the TTL: the cache interface cannot retrieve a remaining
+TTL, so backfilling could extend an entry's lifetime.
+
+Choose the runtime failure behavior explicitly:
+
+| `error_policy` | Reads | Writes, removals, and clears |
+|---|---|---|
+| `Propagate` (default) | Return the first encountered error. A hit avoids later layers entirely. | Attempt all layers, then return the first error in layer order. |
+| `Ignore` | Log failed layers and continue; return a miss if no layer succeeds with a hit. | Log failures and return success, even if every layer fails. |
+
+Initialization errors, including an invalid default TTL, always fail startup.
+Expiry durations that overflow the local clock are rejected before any layer is
+written, even with `Ignore`. `ping` and `/_readiness` always check every layer
+and report failures, including with `Ignore`.
+
+Each process owns its in-memory layer. Updating, removing, or clearing shared
+Redis or database entries from another process does not invalidate local copies.
+Each successfully written local value expires after its TTL; a stale copy can
+remain until that existing TTL elapses. Choose the default and explicit TTLs
+to match the staleness your application can tolerate. Use Redis or Database
+alone when all processes must immediately observe invalidation. Failed
+mutations can also leave layers inconsistent, especially
+when `Ignore` suppresses their errors. `clear` retains the Redis `FLUSHDB`
+behavior described below, so use a dedicated Redis database for the cache.
+
 ## 2. Insert and read values
+
+With `Multi`, `insert` applies `default_ttl_seconds`; standalone drivers keep
+their existing non-expiring `insert` behavior.
 
 ```rust
 use loco_rs::cache;
@@ -95,7 +162,7 @@ ctx.cache
 
 ## 4. Cache the result of a computation with `get_or_insert`
 
-`get_or_insert` returns the cached value if present, otherwise runs the given future, stores the result, and returns it. `get_or_insert_with_expiry` does the same but attaches a TTL to the freshly-computed value.
+`get_or_insert` returns the cached value if present, otherwise runs the given future, stores the result, and returns it. With `Multi`, that write uses `default_ttl_seconds`. `get_or_insert_with_expiry` uses its supplied TTL for the freshly-computed value, overriding the `Multi` default. Neither method refreshes expiry on a cache hit.
 
 ```rust
 let expensive_report = ctx
@@ -157,5 +224,5 @@ async fn can_get_or_insert() {
 
 ## Reference
 
-- Every `cache:` YAML key (`kind`, `max_capacity`, `uri`, `max_size`, `sweep_every`, `sweep_batch`): [Configuration reference § cache](/docs/reference/configuration#cache)
-- `cache_inmem` / `cache_redis` feature flags: [Feature flags reference](/docs/reference/feature-flags)
+- Every `cache:` YAML key (`kind`, `max_capacity`, `uri`, `max_size`, `sweep_every`, `sweep_batch`, `layers`, `default_ttl_seconds`, `error_policy`): [Configuration reference § cache](/docs/reference/configuration#cache)
+- `cache_inmem` / `cache_redis` / `with-db` feature flags: [Feature flags reference](/docs/reference/feature-flags)
