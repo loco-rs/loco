@@ -2,14 +2,15 @@
 //!
 //! Reads stop at the first hit. They do not populate earlier layers: the
 //! [`CacheDriver`] interface does not expose remaining TTLs, so copying a hit
-//! could accidentally keep it alive past its original expiry. Expiring writes
-//! pass the same duration to each driver, using that driver's TTL precision.
+//! could accidentally keep it alive past its original expiry. Every write
+//! expires: plain writes use the required default TTL, and expiring writes
+//! override it. The same duration reaches each driver, using its TTL precision.
 //!
 //! Mutations are not atomic across layers. Other processes' in-memory caches
 //! are not invalidated; use finite TTLs when sharing Redis or a database between
 //! processes.
 
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
 use futures_util::future::{join_all, try_join_all};
@@ -23,7 +24,7 @@ use crate::{
 /// Creates a multi-layer cache from its configuration.
 ///
 /// # Errors
-/// Returns an error for an empty chain, nested `Multi` or `Null` layers, or
+/// Returns an error for an invalid default TTL, an empty chain, nested `Multi` or `Null` layers, or
 /// when any layer cannot be initialized. `error_policy` only applies after
 /// initialization. Database layers require `new_with_db` (the `with-db` feature).
 pub async fn new(config: &MultiCacheConfig) -> CacheResult<Cache> {
@@ -38,7 +39,7 @@ pub async fn new(config: &MultiCacheConfig) -> CacheResult<Cache> {
 /// Creates a multi-layer cache, giving database layers the app's connection.
 ///
 /// # Errors
-/// Returns an error for an empty chain, nested `Multi` or `Null` layers, or
+/// Returns an error for an invalid default TTL, an empty chain, nested `Multi` or `Null` layers, or
 /// when any layer cannot be initialized. `error_policy` only applies after
 /// initialization.
 #[cfg(feature = "with-db")]
@@ -54,6 +55,8 @@ async fn build(
     #[cfg(feature = "with-db")] db: Option<&sea_orm::DatabaseConnection>,
 ) -> CacheResult<Cache> {
     // Validate the whole chain before opening any external connections.
+    let default_ttl = Duration::from_secs(config.default_ttl_seconds);
+    Multi::validate_default_ttl(default_ttl)?;
     if config.layers.is_empty()
         || config
             .layers
@@ -90,6 +93,7 @@ async fn build(
     Ok(Cache::new(Box::new(Multi::new(
         layers,
         config.error_policy,
+        default_ttl,
     )?)))
 }
 
@@ -97,26 +101,42 @@ async fn build(
 pub struct Multi {
     layers: Vec<Box<dyn CacheDriver>>,
     error_policy: CacheErrorPolicy,
+    default_ttl: Duration,
 }
 
 impl Multi {
     /// Composes drivers in lookup order, including custom drivers.
     ///
+    /// Plain writes use `default_ttl`; explicit expiry durations override it.
+    ///
     /// # Errors
-    /// Returns an error if `layers` is empty.
+    /// Returns an error if `layers` is empty or `default_ttl` is zero or too large.
     pub fn new(
         layers: Vec<Box<dyn CacheDriver>>,
         error_policy: CacheErrorPolicy,
+        default_ttl: Duration,
     ) -> CacheResult<Self> {
         if layers.is_empty() {
             return Err(CacheError::InvalidConfiguration(
                 "Multi requires at least one layer".to_string(),
             ));
         }
+        Self::validate_default_ttl(default_ttl)?;
         Ok(Self {
             layers,
             error_policy,
+            default_ttl,
         })
+    }
+
+    fn validate_default_ttl(default_ttl: Duration) -> CacheResult<()> {
+        if default_ttl.is_zero() || Instant::now().checked_add(default_ttl).is_none() {
+            return Err(CacheError::InvalidConfiguration(
+                "Multi requires a positive, representable default TTL (default_ttl_seconds)"
+                    .to_string(),
+            ));
+        }
+        Ok(())
     }
 
     fn layer_error(index: usize, source: CacheError) -> CacheError {
@@ -191,11 +211,7 @@ impl CacheDriver for Multi {
     }
 
     async fn insert(&self, key: &str, value: &str) -> CacheResult<()> {
-        Self::check_results(
-            "insert",
-            join_all(self.layers.iter().map(|layer| layer.insert(key, value))).await,
-            self.error_policy,
-        )
+        self.insert_with_expiry(key, value, self.default_ttl).await
     }
 
     async fn insert_with_expiry(
@@ -204,6 +220,9 @@ impl CacheDriver for Multi {
         value: &str,
         duration: Duration,
     ) -> CacheResult<()> {
+        if Instant::now().checked_add(duration).is_none() {
+            return Err(CacheError::InvalidExpiry(duration));
+        }
         Self::check_results(
             "insert_with_expiry",
             join_all(
@@ -242,6 +261,8 @@ mod tests {
 
     use super::*;
     use crate::cache::drivers::inmem::Inmem;
+
+    const DEFAULT_TTL: Duration = Duration::from_secs(60);
 
     #[derive(Clone)]
     struct TestLayer {
@@ -322,6 +343,7 @@ mod tests {
         Multi::new(
             vec![Box::new(first.clone()), Box::new(second.clone())],
             policy,
+            DEFAULT_TTL,
         )
         .unwrap()
     }
@@ -383,8 +405,16 @@ mod tests {
             assert_eq!(layer.store.get("other").await.unwrap(), None);
             assert_eq!(
                 layer.calls(),
-                ["insert", "insert", "remove", "insert", "clear", "ping"]
+                [
+                    "insert_with_expiry",
+                    "insert_with_expiry",
+                    "remove",
+                    "insert_with_expiry",
+                    "clear",
+                    "ping"
+                ]
             );
+            assert_eq!(*layer.expiries.lock().unwrap(), [DEFAULT_TTL; 3]);
         }
     }
 
@@ -406,6 +436,95 @@ mod tests {
         tokio::time::sleep(Duration::from_millis(150)).await;
         assert_eq!(multi.get("key").await.unwrap(), None);
         assert!(!multi.contains_key("key").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn explicit_expiry_can_exceed_the_default() {
+        let first = TestLayer::new();
+        let second = TestLayer::new();
+        let multi = chain(&first, &second, CacheErrorPolicy::Propagate);
+        let ttl = DEFAULT_TTL * 2;
+        multi.insert_with_expiry("key", "value", ttl).await.unwrap();
+        for layer in [&first, &second] {
+            assert_eq!(*layer.expiries.lock().unwrap(), [ttl]);
+        }
+    }
+
+    #[tokio::test]
+    async fn invalid_ttls_are_rejected_even_when_errors_are_ignored() {
+        for policy in [CacheErrorPolicy::Propagate, CacheErrorPolicy::Ignore] {
+            for ttl in [Duration::ZERO, Duration::MAX] {
+                assert!(matches!(
+                    Multi::new(vec![Box::new(Inmem::new(10))], policy, ttl),
+                    Err(CacheError::InvalidConfiguration(_))
+                ));
+            }
+
+            let first = TestLayer::new();
+            let second = TestLayer::new();
+            let multi = chain(&first, &second, policy);
+            assert!(matches!(
+                multi
+                    .insert_with_expiry("key", "value", Duration::MAX)
+                    .await,
+                Err(CacheError::InvalidExpiry(Duration::MAX))
+            ));
+            assert!(first.calls().is_empty());
+            assert!(second.calls().is_empty());
+        }
+    }
+
+    #[rstest::rstest]
+    #[case(false, CacheErrorPolicy::Propagate)]
+    #[case(true, CacheErrorPolicy::Propagate)]
+    #[case(false, CacheErrorPolicy::Ignore)]
+    #[case(true, CacheErrorPolicy::Ignore)]
+    #[tokio::test]
+    async fn other_instances_stale_entries_expire_after_invalidation(
+        #[case] clear: bool,
+        #[case] policy: CacheErrorPolicy,
+    ) {
+        let shared = TestLayer::new();
+        let ttl = Duration::from_secs(1);
+        let caches: Vec<_> = (0..2)
+            .map(|_| {
+                Cache::new(Box::new(
+                    Multi::new(
+                        vec![Box::new(Inmem::new(10)), Box::new(shared.clone())],
+                        policy,
+                        ttl,
+                    )
+                    .unwrap(),
+                ))
+            })
+            .collect();
+
+        // Separate local caches represent two processes sharing a lower layer.
+        caches[1].insert("plain", &42).await.unwrap();
+        let computed = caches[1]
+            .get_or_insert("computed", async { Ok(43) })
+            .await
+            .unwrap();
+        assert_eq!(computed, 43);
+        assert_eq!(*shared.expiries.lock().unwrap(), [ttl; 2]);
+
+        if clear {
+            caches[0].clear().await.unwrap();
+        } else {
+            caches[0].remove("plain").await.unwrap();
+            caches[0].remove("computed").await.unwrap();
+        }
+        for key in ["plain", "computed"] {
+            assert!(!shared.store.contains_key(key).await.unwrap());
+            assert!(!caches[0].contains_key(key).await.unwrap());
+            assert!(caches[1].contains_key(key).await.unwrap());
+        }
+
+        tokio::time::sleep(Duration::from_millis(1100)).await;
+        for key in ["plain", "computed"] {
+            assert_eq!(caches[1].get::<i32>(key).await.unwrap(), None);
+            assert!(!caches[1].contains_key(key).await.unwrap());
+        }
     }
 
     #[tokio::test]
@@ -488,8 +607,8 @@ mod tests {
             } else {
                 assert!(result.is_ok());
             }
-            assert_eq!(first.calls(), ["insert"]);
-            assert_eq!(second.calls(), ["insert"]);
+            assert_eq!(first.calls(), ["insert_with_expiry"]);
+            assert_eq!(second.calls(), ["insert_with_expiry"]);
         }
     }
 
@@ -497,6 +616,7 @@ mod tests {
     #[tokio::test]
     async fn ignore_policy_does_not_hide_initialization_errors() {
         let config = MultiCacheConfig {
+            default_ttl_seconds: DEFAULT_TTL.as_secs(),
             layers: vec![CacheConfig::Redis(crate::config::RedisCacheConfig {
                 uri: "not-a-redis-url".to_string(),
                 max_size: 1,
@@ -509,7 +629,7 @@ mod tests {
     #[tokio::test]
     async fn configuration_builds_a_cache_usable_through_the_public_api() {
         let mut config = crate::tests_cfg::config::test_config();
-        config.cache = serde_yaml::from_str("kind: Multi\nlayers:\n  - kind: InMem\n    max_capacity: 1\n  - kind: InMem\n    max_capacity: 10\n").unwrap();
+        config.cache = serde_yaml::from_str("kind: Multi\ndefault_ttl_seconds: 1\nlayers:\n  - kind: InMem\n    max_capacity: 1\n  - kind: InMem\n    max_capacity: 10\n").unwrap();
         let cache = crate::cache::create_cache_provider(&config).await.unwrap();
         cache.insert("key", &vec![1, 2, 3]).await.unwrap();
         cache.insert("evict", &true).await.unwrap();
@@ -530,12 +650,17 @@ mod tests {
             42
         );
         assert_eq!(cache.get::<i32>("new").await.unwrap(), Some(42));
+        tokio::time::sleep(Duration::from_millis(1100)).await;
+        assert_eq!(cache.get::<Vec<i32>>("key").await.unwrap(), None);
+        assert!(!cache.contains_key("evict").await.unwrap());
+        assert_eq!(cache.get::<i32>("new").await.unwrap(), Some(42));
     }
 
     #[tokio::test]
     async fn a_single_layer_is_supported_but_an_empty_chain_is_not() {
-        assert!(Multi::new(vec![], CacheErrorPolicy::Propagate).is_err());
+        assert!(Multi::new(vec![], CacheErrorPolicy::Propagate, DEFAULT_TTL).is_err());
         let config = MultiCacheConfig {
+            default_ttl_seconds: DEFAULT_TTL.as_secs(),
             layers: vec![CacheConfig::InMem(crate::config::InMemCacheConfig {
                 max_capacity: 10,
             })],
@@ -550,6 +675,7 @@ mod tests {
     #[tokio::test]
     async fn database_layers_require_a_connection_even_when_errors_are_ignored() {
         let config = MultiCacheConfig {
+            default_ttl_seconds: DEFAULT_TTL.as_secs(),
             layers: vec![
                 CacheConfig::InMem(crate::config::InMemCacheConfig { max_capacity: 1 }),
                 CacheConfig::Database(crate::config::DatabaseCacheConfig::default()),
@@ -572,6 +698,7 @@ mod tests {
         let database = super::super::db::new(&database_config, &db);
         let mut config = crate::tests_cfg::config::test_config();
         config.cache = CacheConfig::Multi(MultiCacheConfig {
+            default_ttl_seconds: DEFAULT_TTL.as_secs(),
             layers: vec![
                 CacheConfig::InMem(crate::config::InMemCacheConfig { max_capacity: 1 }),
                 CacheConfig::Database(database_config),
@@ -629,6 +756,7 @@ mod tests {
         let redis = super::super::redis::new(&redis_config).await.unwrap();
         let mut config = crate::tests_cfg::config::test_config();
         config.cache = CacheConfig::Multi(MultiCacheConfig {
+            default_ttl_seconds: DEFAULT_TTL.as_secs(),
             layers: vec![
                 CacheConfig::InMem(crate::config::InMemCacheConfig { max_capacity: 1 }),
                 CacheConfig::Redis(redis_config),

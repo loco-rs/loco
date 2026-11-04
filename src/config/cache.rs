@@ -27,6 +27,9 @@ pub struct MultiCacheConfig {
     /// Non-empty list of cache layers in lookup order. Each layer must be
     /// `InMem`, `Redis`, or `Database`; nested `Multi` and `Null` layers are rejected.
     pub layers: Vec<CacheConfig>,
+    /// Required positive TTL, in seconds, for `insert` and `get_or_insert` writes.
+    /// Explicit expiry methods use their supplied duration instead.
+    pub default_ttl_seconds: u64,
     /// How to handle runtime layer failures. Startup and health-check errors
     /// are always returned, regardless of this policy.
     #[serde(default)]
@@ -102,12 +105,15 @@ mod tests {
     #[cfg(feature = "cache_inmem")]
     #[test]
     fn multi_defaults_to_propagating_errors_and_round_trips() {
-        let config: CacheConfig =
-            serde_yaml::from_str("kind: Multi\nlayers:\n  - kind: InMem\n").unwrap();
+        let config: CacheConfig = serde_yaml::from_str(
+            "kind: Multi\ndefault_ttl_seconds: 60\nlayers:\n  - kind: InMem\n",
+        )
+        .unwrap();
         let CacheConfig::Multi(multi) = &config else {
             panic!("expected Multi")
         };
         assert_eq!(multi.error_policy, CacheErrorPolicy::Propagate);
+        assert_eq!(multi.default_ttl_seconds, 60);
         assert!(
             matches!(&multi.layers[0], CacheConfig::InMem(layer) if layer.max_capacity == 32 * 1024 * 1024)
         );
@@ -120,28 +126,51 @@ mod tests {
     }
 
     #[test]
-    fn multi_requires_layers_and_a_known_error_policy() {
-        assert!(serde_yaml::from_str::<CacheConfig>("kind: Multi").is_err());
+    fn multi_requires_layers_ttl_and_a_known_error_policy() {
         assert!(
-            serde_yaml::from_str::<CacheConfig>("kind: Multi\nlayers: []\nerror_policy: typo")
-                .is_err()
+            serde_yaml::from_str::<CacheConfig>("kind: Multi\ndefault_ttl_seconds: 60").is_err()
         );
-        let CacheConfig::Multi(config) =
-            serde_yaml::from_str::<CacheConfig>("kind: Multi\nlayers: []\nerror_policy: Ignore")
-                .unwrap()
-        else {
+        let missing_ttl =
+            serde_yaml::from_str::<CacheConfig>("kind: Multi\nlayers: []").unwrap_err();
+        assert!(missing_ttl.to_string().contains("default_ttl_seconds"));
+        assert!(serde_yaml::from_str::<CacheConfig>(
+            "kind: Multi\ndefault_ttl_seconds: 60\nlayers: []\nerror_policy: typo",
+        )
+        .is_err());
+        let CacheConfig::Multi(config) = serde_yaml::from_str::<CacheConfig>(
+            "kind: Multi\ndefault_ttl_seconds: 60\nlayers: []\nerror_policy: Ignore",
+        )
+        .unwrap() else {
             panic!("expected Multi")
         };
         assert_eq!(config.error_policy, CacheErrorPolicy::Ignore);
     }
 
     #[rstest::rstest]
-    #[case("kind: Multi\nlayers: []")]
-    #[case("kind: Multi\nlayers: [{kind: 'Null'}]")]
-    #[case("kind: Multi\nlayers: [{kind: Multi, layers: []}]")]
+    #[case("kind: Multi\ndefault_ttl_seconds: 60\nlayers: []")]
+    #[case("kind: Multi\ndefault_ttl_seconds: 60\nlayers: [{kind: 'Null'}]")]
+    #[case("kind: Multi\ndefault_ttl_seconds: 60\nlayers: [{kind: Multi, default_ttl_seconds: 60, layers: []}]")]
     #[tokio::test]
     async fn multi_rejects_invalid_chains_at_startup(#[case] yaml: &str) {
         let CacheConfig::Multi(config) = serde_yaml::from_str(yaml).unwrap() else {
+            panic!("expected Multi")
+        };
+        assert!(matches!(
+            crate::cache::drivers::multi::new(&config).await,
+            Err(crate::cache::CacheError::InvalidConfiguration(_))
+        ));
+    }
+
+    #[cfg(feature = "cache_inmem")]
+    #[rstest::rstest]
+    #[case("Propagate")]
+    #[case("Ignore")]
+    #[tokio::test]
+    async fn multi_rejects_a_zero_default_ttl_at_startup(#[case] error_policy: &str) {
+        let CacheConfig::Multi(config) = serde_yaml::from_str(&format!(
+            "kind: Multi\ndefault_ttl_seconds: 0\nlayers: [{{kind: InMem}}]\nerror_policy: {error_policy}",
+        ))
+        .unwrap() else {
             panic!("expected Multi")
         };
         assert!(matches!(

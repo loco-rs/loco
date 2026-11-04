@@ -206,6 +206,7 @@ impl Cache {
     }
 
     /// Inserts a serializable value into the cache with the provided key.
+    /// A multi-layer cache applies its configured default TTL to every layer.
     ///
     /// # Example
     /// ```
@@ -253,6 +254,7 @@ impl Cache {
     }
 
     /// Inserts a serializable value into the cache with the provided key and expiry duration.
+    /// The supplied duration overrides a multi-layer cache's default TTL.
     ///
     /// # Example
     /// ```
@@ -307,6 +309,7 @@ impl Cache {
     /// Retrieves and deserializes the value associated with the given key from the cache,
     /// or inserts it if it does not exist, using the provided closure to
     /// generate the value.
+    /// A multi-layer cache applies its default TTL on a miss; hits do not refresh expiry.
     ///
     /// # Example
     /// ```

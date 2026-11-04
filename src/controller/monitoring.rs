@@ -352,6 +352,7 @@ mod tests {
         for unhealthy in [false, true] {
             let mut ctx = tests_cfg::app::get_app_context().await;
             ctx.config.cache = config::CacheConfig::Multi(config::MultiCacheConfig {
+                default_ttl_seconds: 60,
                 layers: vec![config::CacheConfig::InMem(config::InMemCacheConfig {
                     max_capacity: 10,
                 })],
@@ -366,6 +367,7 @@ mod tests {
                 Multi::new(
                     vec![Box::new(Inmem::new(10)), second],
                     config::CacheErrorPolicy::Ignore,
+                    std::time::Duration::from_secs(60),
                 )
                 .unwrap(),
             ))
