@@ -25,6 +25,22 @@ fn is_in_memory(uri: &str) -> bool {
     uri.contains(":memory:") || uri.contains("mode=memory")
 }
 
+/// How long a connection may wait on a locked file while it opens.
+///
+/// Opening a connection runs the PRAGMAs, and some (`synchronous`,
+/// `cache_size`, `journal_mode`) read the database file, so they wait on any
+/// other connection's lock for up to `busy_timeout`. That wait happens inside
+/// the pool's acquire timeout, so an acquire timeout shorter than
+/// `busy_timeout` (500ms in the test configs) fails with `PoolTimedOut`
+/// instead of waiting the lock out. Add this to the acquire timeout of every
+/// `SQLite` pool.
+pub fn open_budget_ms(overrides: &BTreeMap<String, String>) -> u64 {
+    overrides
+        .get("busy_timeout")
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(5000)
+}
+
 /// Rejects PRAGMA names that are not plain identifiers.
 ///
 /// # Errors

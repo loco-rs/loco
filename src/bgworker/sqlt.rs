@@ -265,7 +265,10 @@ async fn connect(cfg: &SqliteQueueConfig) -> Result<SqlitePool> {
         .min_connections(cfg.min_connections)
         .max_connections(cfg.max_connections)
         .idle_timeout(Duration::from_millis(cfg.idle_timeout))
-        .acquire_timeout(Duration::from_millis(cfg.connect_timeout))
+        .acquire_timeout(Duration::from_millis(
+            cfg.connect_timeout
+                .saturating_add(crate::sqlite_pragmas::open_budget_ms(&cfg.pragmas)),
+        ))
         .connect_with(conn_opts)
         .await?;
     Ok(pool)
