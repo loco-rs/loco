@@ -116,6 +116,11 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
         let uri = config.uri.clone();
         let pragmas = config.sqlite.pragmas.clone();
         crate::sqlite_pragmas::validate(&pragmas).map_err(|e| DbErr::Custom(e.to_string()))?;
+        // Opening a connection can wait on the file lock; see `open_budget_ms`.
+        let acquire = config.acquire_timeout.unwrap_or(config.connect_timeout);
+        opt.acquire_timeout(Duration::from_millis(
+            acquire.saturating_add(crate::sqlite_pragmas::open_budget_ms(&pragmas)),
+        ));
         // Applied by sqlx to every connection the pool opens, not just one.
         opt.map_sqlx_sqlite_opts(move |opts| crate::sqlite_pragmas::apply(opts, &uri, &pragmas));
     }
@@ -422,6 +427,48 @@ mod tests {
         // Not overridden, so still the default.
         assert_eq!(get_value(&db, "PRAGMA journal_mode").await, "wal");
         assert_eq!(get_value(&db, "PRAGMA foreign_keys").await, "1");
+    }
+
+    /// Opening a connection runs PRAGMAs that read the database file
+    /// (`synchronous`, `cache_size`, `journal_mode`), so it can wait on another
+    /// connection's lock. That wait is inside the pool's acquire timeout, and
+    /// `connect_timeout` is 500ms in the test configs, so it used to fail boot
+    /// with `PoolTimedOut` instead of waiting out `busy_timeout`.
+    #[cfg(feature = "db-sqlite")]
+    #[tokio::test]
+    async fn test_sqlite_connect_does_not_time_out_on_a_locked_file() {
+        use sqlx::{sqlite::SqliteConnectOptions, ConnectOptions, Connection};
+        use std::str::FromStr;
+
+        let (mut config, _tree_fs) = crate::tests_cfg::config::get_sqlite_test_config("locked");
+        config.connect_timeout = 300;
+
+        // A rollback-journal file, exclusively locked for longer than `connect_timeout`.
+        let mut locker = SqliteConnectOptions::from_str(&config.uri)
+            .unwrap()
+            .journal_mode(sqlx::sqlite::SqliteJournalMode::Delete)
+            .connect()
+            .await
+            .unwrap();
+        sqlx::query("CREATE TABLE t (x INTEGER)")
+            .execute(&mut locker)
+            .await
+            .unwrap();
+        sqlx::query("BEGIN EXCLUSIVE")
+            .execute(&mut locker)
+            .await
+            .unwrap();
+        let release = tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(900)).await;
+            sqlx::query("COMMIT").execute(&mut locker).await.unwrap();
+            locker.close().await.unwrap();
+        });
+
+        let db = connect(&config)
+            .await
+            .expect("connect must not fail on a lock that busy_timeout can wait out");
+        release.await.unwrap();
+        assert_eq!(get_value(&db, "PRAGMA journal_mode").await, "wal");
     }
 
     #[cfg(feature = "db-sqlite")]
