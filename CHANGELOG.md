@@ -128,6 +128,17 @@ subcommand.
   original as `source()`, and does the same for `Option`; `.or_err_with(||
   ...)` builds the message lazily. Named so it never clashes with
   `anyhow::Context`. (#1751)
+- **OAuth2 sign-in, signed cookies and `CurrentUser`** (#1884). Three
+  opt-in features. `auth_session` gives `SignedCookies`, a cookie-backed
+  `Session`, and `CurrentUser<U>` / `MaybeCurrentUser<U>` over
+  `SessionUser`, keyed off `auth.session.secret`; production refuses the
+  development default and `loco doctor` reports a missing or short secret.
+  `auth_session_encrypted` adds `EncryptedCookies`. `auth_oauth` adds
+  `/auth/{provider}`, its callback and `/auth/sign_out` for GitHub, Google
+  and generic providers, with PKCE, a per-provider state cookie, a same-site
+  `return_to` and an `OAuthHandler` trait (`on_sign_in`, `on_failure`).
+  `cargo loco generate oauth <provider>` writes and mounts the controller
+  and adds the provider to every environment's config.
 - **Server-side sessions and remember me** (#1842). `auth.session.store` is
   `cookie` (default, nothing changes), `database` or `redis`. A server-side
   store keeps the data on the server and puts only a signed random id in the
@@ -258,6 +269,18 @@ subcommand.
 - **The scheduler stops on SIGTERM.**
 - **Overwriting an in-memory cache key kept its old expiry.** A plain
   `insert` over a key set with `insert_with_expiry` now keeps it for good.
+- **S3, Azure and GCS requests failed** with "default HTTP transport is not
+  installed". OpenDAL 0.58 moved its HTTP client behind features; the
+  `storage_*` features now enable it. (@mccormickt)
+- **`generate model` and `generate scaffold` without `sea-orm-cli`** applied
+  the migration and then failed before writing the entity, so a rerun added
+  a second migration for the same table. They check for the CLI first and
+  write nothing if it is missing. (@tomersein)
+- **Redis enqueue timed out after an idle spell.** The producer connection
+  kept redis's 1s connect and 500ms response defaults, so a slow reconnect
+  failed a request that had already committed. It now has explicit
+  timeouts, like the worker's. (@mikosco4real)
+- **Job dumps keep arbitrary-precision numbers.** (@wheregmis)
 
 ## 1.2.0 - 2026-09-22
 
