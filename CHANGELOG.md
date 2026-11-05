@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.3.1 - 2026-11-05
+
+### Fixed
+
+- **SQLite apps could fail to boot with `PoolTimedOut`.** 1.3.0 runs the
+  PRAGMAs on every new connection, and some of them read the database file,
+  so opening a connection waits on any other connection's lock for up to
+  `busy_timeout`. That wait counted against `connect_timeout` (500ms in
+  generated test configs), so a busy file failed boot instead of waiting.
+  SQLite pools now allow `busy_timeout` on top of the acquire timeout. Seen
+  as intermittent test failures, mostly on CI and Windows.
+
 ## 1.3.0 - 2026-11-04
 
 Cuts what a generated app compiles. On a SQLite app with auth, workers and
