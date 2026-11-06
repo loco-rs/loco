@@ -16,6 +16,9 @@ to the exact `loco-rs` version in `Cargo.toml`:
 | `.claude/skills/loco/api-index.md` | every public `loco_rs` symbol, generated from rustdoc — **check here before guessing an API name** |
 | `.claude/skills/loco/recipes/` | how to add a model, endpoint, worker, task, mailer, middleware, auth, tests |
 
+The same skill is also copied to **`.agents/skills/loco/`**, where Zed, Cursor and
+other Agent Skills clients look for it; the two copies are identical.
+
 If your tool supports Agent Skills, it will load `SKILL.md` automatically. If
 not, read it directly — it is a normal markdown file.
 

@@ -77,6 +77,7 @@ impl Generator {
             .register_fn("copy_files", Self::copy_files)
             .register_fn("copy_dir", Self::copy_dir)
             .register_fn("copy_dirs", Self::copy_dirs)
+            .register_fn("copy_dir_to", Self::copy_dir_to)
             .register_fn("copy_template", Self::copy_template)
             .register_fn("copy_template_dir", Self::copy_template_dir);
 
@@ -174,6 +175,25 @@ impl Generator {
                 err.into(),
             ))
         })
+    }
+
+    /// Copies an entire directory from the specified path to a different
+    /// destination path in the generated app.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the directory copy operation fails.
+    pub fn copy_dir_to(&mut self, from: &str, to: &str) -> Result<(), Box<rhai::EvalAltResult>> {
+        let span = tracing::info_span!("copy_dir_to", from, to);
+        let _guard = span.enter();
+        self.executer
+            .copy_dir_to(Path::new(from), Path::new(to))
+            .map_err(|err| {
+                Box::new(rhai::EvalAltResult::ErrorSystem(
+                    "copy_dir_to".to_string(),
+                    err.into(),
+                ))
+            })
     }
 
     /// Copies list of directories from the specified path.
@@ -318,6 +338,22 @@ mod tests {
 
         let g = Generator::new(Arc::new(executor), settings::Settings::default());
         let script_res = g.run_from_script(r#"gen.copy_dir("test");"#);
+
+        assert!(script_res.is_ok());
+    }
+
+    #[test]
+    pub fn can_copy_dir_to() {
+        let mut executor = MockExecuter::new();
+
+        executor
+            .expect_copy_dir_to()
+            .with(eq(Path::new("test")), eq(Path::new("other")))
+            .times(1)
+            .returning(|_, _| Ok(()));
+
+        let g = Generator::new(Arc::new(executor), settings::Settings::default());
+        let script_res = g.run_from_script(r#"gen.copy_dir_to("test", "other");"#);
 
         assert!(script_res.is_ok());
     }

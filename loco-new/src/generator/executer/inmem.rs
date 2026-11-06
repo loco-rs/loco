@@ -66,6 +66,19 @@ impl Executer for Inmem {
         Ok(())
     }
 
+    fn copy_dir_to(&self, from: &Path, to: &Path) -> super::Result<()> {
+        let directory_content = fs_extra::dir::get_dir_content(from)?;
+        for file in directory_content.files {
+            let file = PathBuf::from(file);
+            let target = file
+                .strip_prefix(from)
+                .map_or_else(|_| file.clone(), |rel| to.join(rel));
+            let mut store = self.file_store.lock().unwrap();
+            store.insert(target, fs_extra::file::read_to_string(&file)?);
+        }
+        Ok(())
+    }
+
     fn copy_template(&self, file_path: &Path, settings: &Settings) -> super::Result<()> {
         let copied_path = self.copy_file(file_path)?;
 

@@ -10,7 +10,10 @@ gen.copy_files([".gitignore", ".rustfmt.toml", "README.md", "AGENTS.md"]);
 // The `loco` agent skill: doctrine, the generated API index, and task recipes.
 // Kept in sync with the repo's `skills/loco/` by `cargo xtask agent-skill` —
 // never edit the copy under `base_template/` directly.
+// Shipped twice from the one source tree: Claude Code reads `.claude/skills/`,
+// while Zed, Cursor and other Agent Skills clients read `.agents/skills/`.
 gen.copy_dir(".claude");
+gen.copy_dir_to(".claude/skills", ".agents/skills");
 
 gen.copy_template_dir(".cargo");
 
