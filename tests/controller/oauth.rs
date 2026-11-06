@@ -212,7 +212,7 @@ async fn app_with(store: SessionStoreKind, configure: impl FnOnce(&mut OAuthConf
         .add_route(Routes::new().add("/me", get(me)).add("/maybe", get(maybe)))
         .to_router::<AppHook>(ctx, axum::Router::new())
         .unwrap();
-    let server = TestServer::builder().save_cookies().build(router).unwrap();
+    let server = TestServer::builder().save_cookies().build(router);
     App { server, fake }
 }
 

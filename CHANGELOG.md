@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Breaking
+
+- `axum-test` is upgraded to 21. `TestServer::build()` and `TestServer::new_with_config()` no longer return a `Result`. `RequestConfig` and `RequestConfigBuilder` lose `default_scheme`.
+
 ### Changed
 
 - Generated apps also get the skill under `.agents/skills/loco/`, alongside `.claude/skills/loco/`, for Zed, Cursor and other Agent Skills clients (#1857, @paoValle).

@@ -107,7 +107,7 @@ async fn app(configure: impl FnOnce(&mut SessionConfig)) -> App {
         )
         .to_router::<AppHook>(ctx.clone(), axum::Router::new())
         .unwrap();
-    let server = TestServer::builder().save_cookies().build(router).unwrap();
+    let server = TestServer::builder().save_cookies().build(router);
     App { server, ctx }
 }
 
