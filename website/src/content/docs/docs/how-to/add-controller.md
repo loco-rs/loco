@@ -45,6 +45,46 @@ pub fn routes() -> Routes {
 
 Edit the handler bodies and route methods (`get`/`post`/`put`/`delete`, etc.) to fit your endpoint. Controllers return JSON by default; if you'd rather render server-side HTML, see [Render server-side views](/docs/how-to/render-views).
 
+### Keep every route in one file (`src/routes.rs`)
+
+Rails keeps the whole route table in `config/routes.rb`. If you prefer that layout, add a `src/routes.rs` that builds the `AppRoutes` and call it from `Hooks::routes`:
+
+```rust
+// src/routes.rs
+use loco_rs::{controller::AppRoutes, prelude::*};
+
+pub fn all() -> AppRoutes {
+    AppRoutes::with_default_routes()
+}
+```
+
+```rust
+// src/app.rs
+fn routes(_ctx: &AppContext) -> AppRoutes {
+    crate::routes::all()
+}
+```
+
+The file is the opt-in — there is no flag. While it exists, `generate controller` and `generate scaffold` leave `src/app.rs` alone and write the route block into `src/routes.rs` instead, right after the line containing `AppRoutes::`:
+
+```rust
+// src/routes.rs, after `cargo loco generate controller notes list show`
+pub fn all() -> AppRoutes {
+    AppRoutes::with_default_routes()
+        .add_route(
+            Routes::new()
+                .prefix("api/notes/")
+                .add("/", get(crate::controllers::notes::index))
+                .add("list", get(crate::controllers::notes::list))
+                .add("show", get(crate::controllers::notes::show))
+        )
+}
+```
+
+The generated controller then holds only the handlers (`pub`, so the routes file can reach them) and no `routes()` function. Delete the file and the generators go back to the per-controller `routes()` shown above.
+
+Keep a line containing `AppRoutes::` in the file. If none matches, the generator stops before writing anything, prints the block it could not place, and asks you to restore the anchor — nothing is left behind, so re-running after the fix does the whole job.
+
 ## 2. Confirm the routes are registered
 
 ```sh

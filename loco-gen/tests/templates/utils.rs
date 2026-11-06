@@ -108,3 +108,13 @@ export function Home() {
   )
 }
 ";
+
+/// A Rails-style single routes file. Its presence at `src/routes.rs` switches
+/// the controller and scaffold generators to inject the route block here, with
+/// the same `AppRoutes::` anchor `app.rs` uses.
+pub const ROUTES_RS: &str = r"use loco_rs::{controller::AppRoutes, prelude::*};
+
+pub fn all() -> AppRoutes {
+    AppRoutes::with_default_routes()
+}
+";

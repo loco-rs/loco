@@ -55,6 +55,8 @@ After generating a `migration`, apply it and regenerate entities: `cargo loco db
 
 **There is no kind flag.** The 1.0 generators are adaptive: `controller` always generates a JSON API controller, and `scaffold` generates the JSON API plus — when the app has a `frontend/` (a clientside React SPA) — typed React Query hooks and pages for the resource. Headless apps get the backend only. Scaffold detects this from `frontend/src/routes.tsx` (`src/cli.rs`, `Component::Scaffold { frontend }`). For what the frontend half generates and how the TypeScript types stay in sync with your Rust DTOs, see [Build a typed React SPA](/docs/how-to/build-a-spa).
 
+Both kinds also adapt to a Rails-style single routes file. When the app has a `src/routes.rs` (`AppInfo::has_routes_file`, `loco-gen/src/lib.rs`), the route block is injected there after the line matching `AppRoutes::`, `src/app.rs` is not touched, the handlers are generated `pub`, and the controller carries no `routes()` function. Without the file the output is unchanged: a `routes()` in the controller and an `.add_route(...)` line in `src/app.rs`. The file is the only switch; there is no flag. A `src/routes.rs` with no `AppRoutes::` line fails the generation before any file is written. See [Keep every route in one file](/docs/how-to/add-controller#keep-every-route-in-one-file-srcroutesrs).
+
 ### Authentication on generated routes
 
 A **scaffold is authenticated by default**: all five CRUD handlers take an `auth::JWT` extractor, so an anonymous request answers `401 Unauthorized`. This is deliberate — a scaffolded resource is backed by a real table, and shipping it open by accident is the more expensive mistake. Pass **`--no-auth`** to generate the same controller with public routes:

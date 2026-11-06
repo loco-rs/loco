@@ -1,0 +1,16 @@
+---
+source: loco-gen/tests/templates/controller.rs
+expression: "fs::read_to_string(tree_fs.root.join(\"src/routes.rs\")).expect(\"routes.rs injection failed\")"
+---
+use loco_rs::{controller::AppRoutes, prelude::*};
+
+pub fn all() -> AppRoutes {
+    AppRoutes::with_default_routes()
+        .add_route(
+            Routes::new()
+                .prefix("api/movies/")
+                .add("/", get(crate::controllers::movie::index))
+                .add("list", get(crate::controllers::movie::list))
+                .add("create", post(crate::controllers::movie::create))
+        )
+}
