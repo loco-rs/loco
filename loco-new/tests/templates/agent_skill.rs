@@ -1,6 +1,6 @@
 //! Coverage for the agent material every generated app ships.
 //!
-//! `setup.rhai` copies `.agents/` and `AGENTS.md` unconditionally, and nothing
+//! `setup.rhai` copies `.claude/`, `.agents/` and `AGENTS.md` unconditionally, and nothing
 //! asserted it. Drop that one line and every new app silently loses the skill
 //! that makes a coding agent fluent in Loco — no test fails, no gate goes red,
 //! and the loss is invisible until someone notices an agent guessing again.
@@ -14,7 +14,7 @@ use rstest::rstest;
 use super::*;
 use crate::assertion;
 
-/// Every file under `base_template/.agents/skills/loco/`. Listed rather than
+/// Every file under `base_template/.claude/skills/loco/`. Listed rather than
 /// globbed: a new file has to be added here deliberately, and a deleted one has
 /// to fail.
 const SKILL_FILES: [&str; 17] = [
@@ -54,18 +54,26 @@ fn every_app_ships_the_whole_loco_skill(
     let generator = run_generator(asset);
 
     for file in SKILL_FILES {
-        let path = generator.path(&format!(".agents/skills/loco/{file}"));
-        assert!(
-            path.exists(),
-            "{file} is missing from a generated app — an agent working in it \
-             loses that material entirely"
-        );
-        assert!(
-            !std::fs::read_to_string(&path)
-                .expect("read skill file")
-                .trim()
-                .is_empty(),
-            "{file} ships empty"
+        // `.claude/` is read by Claude Code; `.agents/` by Zed, Cursor and
+        // other Agent Skills clients. Both must carry identical content.
+        let mut copies = Vec::new();
+        for dir in [".claude", ".agents"] {
+            let path = generator.path(&format!("{dir}/skills/loco/{file}"));
+            assert!(
+                path.exists(),
+                "{dir}/skills/loco/{file} is missing from a generated app — an \
+                 agent working in it loses that material entirely"
+            );
+            let content = std::fs::read_to_string(&path).expect("read skill file");
+            assert!(
+                !content.trim().is_empty(),
+                "{dir}/skills/loco/{file} ships empty"
+            );
+            copies.push(content);
+        }
+        assert_eq!(
+            copies[0], copies[1],
+            "{file} differs between .claude/ and .agents/"
         );
     }
 }
@@ -80,5 +88,6 @@ fn every_app_ships_agents_md(
 
     // The entry point has to point at the skill, or the skill is only found by
     // an agent that already went looking for it.
+    assertion::string::assert_contains(&content, ".claude/skills/loco");
     assertion::string::assert_contains(&content, ".agents/skills/loco");
 }

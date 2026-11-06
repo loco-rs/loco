@@ -59,6 +59,15 @@ pub trait Executer: Send + Sync {
     /// is invalid or if a file system error occurs.
     fn copy_dir(&self, path: &Path) -> Result<()>;
 
+    /// Copies an entire directory from the specified source path to a different
+    /// destination path in the generated app.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the directory cannot be copied, such as if the path
+    /// is invalid or if a file system error occurs.
+    fn copy_dir_to(&self, from: &Path, to: &Path) -> Result<()>;
+
     /// Copies a template file from the specified path, applying settings.
     ///
     /// # Errors

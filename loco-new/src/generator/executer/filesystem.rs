@@ -121,6 +121,20 @@ impl Executer for FileSystem {
         Ok(())
     }
 
+    fn copy_dir_to(&self, from: &Path, to: &Path) -> super::Result<()> {
+        let source_path = self.source_dir.join(from);
+        let target_path = self.target_dir.join(to);
+
+        let span = tracing::error_span!("", source_path = %source_path.display(), target_path = %target_path.display());
+        let _guard = span.enter();
+
+        tracing::debug!("starting directory copy operation");
+        let copy_options = fs_extra::dir::CopyOptions::new().copy_inside(true);
+        fs_extra::dir::copy(source_path, target_path, &copy_options)?;
+        tracing::debug!("directory copy completed successfully");
+        Ok(())
+    }
+
     fn copy_template(&self, file_path: &Path, settings: &Settings) -> super::Result<()> {
         let span = tracing::error_span!("copy_template", file_path = %file_path.display());
         let _guard: tracing::span::Entered<'_> = span.enter();
@@ -217,6 +231,20 @@ mod tests {
             fs_extra::file::read_to_string(copied_path_2).expect("read content"),
             "crate: {{settings.package_name}}"
         );
+    }
+
+    #[test]
+    fn can_copy_dir_to() {
+        let (fs, _tree_fs) = init_filesystem();
+        assert!(fs
+            .copy_dir_to(&PathBuf::from("test"), &PathBuf::from("other"))
+            .is_ok());
+        let copied_path = fs.target_dir.join("other").join("foo.txt");
+        assert_eq!(
+            fs_extra::file::read_to_string(copied_path).expect("read content"),
+            "bar"
+        );
+        assert!(!fs.target_dir.join("test").exists());
     }
 
     #[test]

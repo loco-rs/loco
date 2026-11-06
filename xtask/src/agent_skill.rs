@@ -58,12 +58,11 @@ const CRATES: &[(&str, &str, &str, bool)] = &[
 
 /// Where `loco new` picks the skill up from, relative to the project root.
 ///
-/// `.agents/skills/` is the Agent Skills standard's cross-tool location — each
-/// client still owns a directory of its own (`.claude/skills/` for Claude
-/// Code), but `.agents/skills/` is the one Zed, Cursor and friends read. The
-/// generated app's `AGENTS.md` points at it, so a tool that scans neither
-/// still finds it.
-const SHIPPED_DIR: &str = "loco-new/base_template/.agents/skills/loco";
+/// `.claude/skills/` is the Agent Skills convention for Claude Code. `loco new`
+/// also copies it to `.agents/skills/` (the location Zed, Cursor and other
+/// clients read), so this is the only tree kept in the repo; the generated
+/// app's `AGENTS.md` points at both.
+const SHIPPED_DIR: &str = "loco-new/base_template/.claude/skills/loco";
 
 /// Items whose paths start with these segments are implementation surface that
 /// an app author never names directly.
@@ -139,7 +138,8 @@ fn root_agents_md(project_dir: &Path, check: bool) -> eyre::Result<()> {
          <https://loco.rs/skills/loco/api-index.md>.\n\n\
          They also live in `skills/loco/` in the \
          [loco repository](https://github.com/loco-rs/loco), and `loco new` writes\n\
-         them into every generated app under `.agents/skills/loco/`, matched to that\n\
+         them into every generated app under `.claude/skills/loco/` (Claude Code) and\n\
+         `.agents/skills/loco/` (Zed, Cursor and other Agent Skills clients), matched to that\n\
          app's `loco-rs` version. If you are working inside a Loco app, prefer that\n\
          local copy — it cannot be out of step with the crate the app compiles\n\
          against.\n"
