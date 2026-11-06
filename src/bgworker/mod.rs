@@ -626,6 +626,42 @@ impl Queue {
         Ok(())
     }
 
+    /// Register a worker with a retry policy decided at runtime (for example
+    /// read from config) instead of by [`BackgroundWorker::max_retries`].
+    ///
+    /// Best effort: on a provider without automatic retries this logs a
+    /// warning and the worker's jobs run once, rather than failing boot the
+    /// way [`Queue::register`] does for a worker whose `max_retries` is set.
+    /// Meant for framework-provided workers that every app registers.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if registering the handler fails.
+    pub async fn register_with_retry_policy<
+        A: Serialize + Send + Sync + 'static + for<'de> serde::Deserialize<'de>,
+        W: BackgroundWorker<A> + 'static,
+    >(
+        &self,
+        worker: W,
+        policy: RetryPolicy,
+    ) -> Result<()> {
+        tracing::info!(worker = W::class_name(), "Registering background worker");
+        let name = W::class_name();
+        self.0
+            .register_handler(name.clone(), erase_worker(worker))
+            .await?;
+        if policy.max_retries > 0
+            && let Err(err) = self.0.set_retry_policy(name.clone(), policy).await
+        {
+            tracing::warn!(
+                worker = name,
+                err = err.to_string(),
+                "queue provider does not retry; jobs run once"
+            );
+        }
+        Ok(())
+    }
+
     /// Add a job unless one with the same `class` and `key` is already
     /// queued; then return the queued job's ID and add nothing.
     ///
@@ -716,7 +752,7 @@ impl Queue {
         self.0.shutdown()
     }
 
-    async fn get_jobs(
+    pub(crate) async fn get_jobs(
         &self,
         status: Option<&Vec<JobStatus>>,
         age_days: Option<i64>,
@@ -786,14 +822,16 @@ impl Queue {
         self.0.retry_failed(id).await
     }
 
-    /// Dumps the list of jobs to a YAML file at the specified path.
+    /// Dumps the list of jobs to a YAML-compatible JSON file at the specified path.
     ///
     /// This function retrieves jobs from the queue, optionally filtered by their
-    /// status, and writes the job data to a YAML file.
+    /// status, and writes the job data as JSON, a subset of YAML. This preserves
+    /// numeric payloads when `serde_json/arbitrary_precision` is enabled. The
+    /// `.yaml` extension is retained for compatibility with existing tooling.
     ///
     /// # Errors
     /// - If the specified path cannot be created, an error will be returned.
-    /// - If the job retrieval or YAML serialization fails, an error will be returned.
+    /// - If the job retrieval or JSON serialization fails, an error will be returned.
     /// - If there is an issue creating the dump file, an error will be returned
     pub async fn dump(
         &self,
@@ -815,21 +853,21 @@ impl Queue {
 
         let jobs = self.get_jobs(status, age_days).await?;
 
-        let data = serde_yaml::to_string(&serde_json::to_value(jobs)?)?;
+        let data = serde_json::to_vec_pretty(&jobs)?;
         let mut file = File::create(&dump_file)?;
-        file.write_all(data.as_bytes())?;
+        file.write_all(&data)?;
 
         tracing::info!(file = %dump_file.display(), "Jobs successfully dumped to file");
         Ok(dump_file)
     }
 
-    /// Imports jobs from a YAML file into the configured queue provider.
+    /// Imports jobs from a JSON or legacy YAML file into the configured queue provider.
     ///
-    /// This function reads job data from a YAML file located at the specified `path` and imports
+    /// This function reads job data from a file located at the specified `path` and imports
     /// the jobs into the queue.
     ///
     /// # Errors
-    /// - If there is an issue opening or reading the YAML file, an error will be returned.
+    /// - If there is an issue opening, reading, or deserializing the file, an error will be returned.
     /// - If any issues occur while enqueuing the jobs, the function will return an error.
     pub async fn import(&self, path: &Path) -> Result<()> {
         tracing::info!(path = %path.display(), "Importing jobs from file");
@@ -837,7 +875,10 @@ impl Queue {
         // Read the file asynchronously rather than blocking the runtime on a
         // synchronous `File`/`from_reader`.
         let import_bytes = tokio::fs::read(path).await?;
-        let jobs: Vec<Job> = serde_yaml::from_slice(&import_bytes)?;
+        let jobs: Vec<Job> = match serde_json::from_slice(&import_bytes) {
+            Ok(jobs) => jobs,
+            Err(_) => serde_yaml::from_slice(&import_bytes)?,
+        };
         for job in jobs {
             self.enqueue(
                 job.name.clone(),
@@ -1115,6 +1156,7 @@ pub async fn converge(queue: &Queue, config: &QueueConfig) -> Result<()> {
             num_workers: _,
             min_connections: _,
             reaper: _,
+            retention: _,
         }) => {
             if *dangerously_flush {
                 tracing::warn!("Flush mode enabled - clearing all jobs from queue");
@@ -1145,6 +1187,8 @@ pub async fn converge(queue: &Queue, config: &QueueConfig) -> Result<()> {
             num_workers: _,
             min_connections: _,
             reaper: _,
+            retention: _,
+            pragmas: _,
         }) => {
             if *dangerously_flush {
                 tracing::warn!("Flush mode enabled - clearing all jobs from queue");
@@ -1232,6 +1276,8 @@ mod tests {
             poll_interval_sec: 1,
             num_workers: 1,
             reaper: None,
+            retention: None,
+            pragmas: std::collections::BTreeMap::new(),
         }
     }
 
@@ -1306,6 +1352,8 @@ mod tests {
             .unwrap();
 
         assert_eq!(count, 14);
+        let jobs = queue.get_jobs(None, None).await.expect("get legacy jobs");
+        assert!(jobs.iter().all(|job| job.priority == 0));
     }
 
     async fn sqlite_queue(db_path: &Path) -> Queue {
@@ -1314,6 +1362,49 @@ mod tests {
             .expect("create sqlite queue");
         queue.setup().await.expect("setup sqlite db");
         queue
+    }
+
+    #[tokio::test]
+    async fn can_dump_and_import_numeric_jobs() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .drop(true)
+            .create()
+            .expect("create temp folder");
+        let queue = sqlite_queue(tree_fs.root.as_path()).await;
+        let data: serde_json::Value = serde_json::from_str(
+            r#"{"integer":18446744073709551615,"nested":[{"amount":12345678901234567890.1234567890123456789}]}"#,
+        )
+        .expect("parse numeric payload");
+        let tags = Some(vec!["archive".to_string()]);
+        queue
+            .enqueue(
+                "NumericJob".to_string(),
+                None,
+                data.clone(),
+                tags.clone(),
+                Some(7),
+            )
+            .await
+            .expect("enqueue numeric job");
+
+        let dump_file = queue
+            .dump(tree_fs.root.as_path(), None, None)
+            .await
+            .expect("dump numeric job");
+        let original_dump = std::fs::read(&dump_file).expect("read dump");
+        queue.clear().await.expect("clear queue");
+        queue.import(&dump_file).await.expect("import numeric job");
+
+        let jobs = queue.get_jobs(None, None).await.expect("get imported jobs");
+        assert_eq!(jobs.len(), 1);
+        assert_eq!(jobs[0].name, "NumericJob");
+        assert_eq!(jobs[0].data, data);
+        assert_eq!(jobs[0].priority, 7);
+        assert_eq!(jobs[0].tags, tags);
+        assert_eq!(
+            std::fs::read(&dump_file).expect("read imported dump"),
+            original_dump
+        );
     }
 
     #[tokio::test]

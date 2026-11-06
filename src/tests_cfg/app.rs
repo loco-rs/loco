@@ -23,6 +23,7 @@ pub async fn get_app_context() -> AppContext {
         db: super::db::dummy_connection().await,
         queue_provider: None,
         config: test_config(),
+        #[cfg(feature = "mailer")]
         mailer: None,
         storage: Storage::single(storage::drivers::mem::new()).into(),
         cache: cache.into(),

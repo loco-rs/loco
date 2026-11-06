@@ -1,6 +1,27 @@
 # Changelog
 
-## Unreleased
+## 1.3.1 - 2026-11-05
+
+### Fixed
+
+- **SQLite apps could fail to boot with `PoolTimedOut`.** 1.3.0 runs the
+  PRAGMAs on every new connection, and some of them read the database file,
+  so opening a connection waits on any other connection's lock for up to
+  `busy_timeout`. That wait counted against `connect_timeout` (500ms in
+  generated test configs), so a busy file failed boot instead of waiting.
+  SQLite pools now allow `busy_timeout` on top of the acquire timeout. Seen
+  as intermittent test failures, mostly on CI and Windows.
+
+## 1.3.0 - 2026-11-04
+
+Cuts what a generated app compiles. On a SQLite app with auth, workers and
+mail, a clean `cargo build` does 31% less compiler work (rustc instructions,
+1550 → 1072 billion), the first `cargo test` after it 34% less, the graph
+drops from 460 to 333 crates and `target/` from 2.7 GB to 1.9 GB. The
+no-database starter does 44% less on a clean build (1039 → 580) and goes
+from 336 to 210 crates. Six dependencies are replaced by
+small native code, each run side by side with the crate it replaces on a
+generated corpus before the crate went.
 
 **Upgrading:** nothing to do if you use `loco-rs`'s default features. If your
 `Cargo.toml` sets `default-features = false`, add whichever of the new
@@ -22,6 +43,13 @@ subcommand.
 
 ### Breaking
 
+- **Scheduler `shell: false` jobs no longer go through a shell.** The binary
+  is run directly, so there is no shell expansion, and `run` is split into
+  arguments with POSIX quoting (backslashes in Windows paths must be
+  quoted). A line with unbalanced quotes is an error at scheduler start.
+- **`task::Vars` is `#[non_exhaustive]`.** It gained a private field for the
+  raw arguments, so build it with `Vars::from_cli_args`, `Vars::from_args` or
+  `Vars::default()` rather than a struct literal. `Task::run` is unchanged.
 - **Compression builds gzip only by default.** The `compression` middleware
   used to speak brotli, deflate, gzip and zstd. Enable `compression-full` to
   keep all four.
@@ -39,9 +67,109 @@ subcommand.
   `hash::random_string` does not.
 - **`cargo_config` needs `with-db`.** It only served `cargo loco db
   entities`.
+- **Storage.** The local and in-memory drivers run on `tokio::fs` and a map;
+  OpenDAL comes in only with `storage_opendal`, which `storage_aws_s3`,
+  `storage_azure` and `storage_gcp` turn on. `drivers::opendal_adapter` and
+  `Store` exist only with it. `StorageError` gains an `Io` variant.
+- **New default-on `mailer` feature.** It carries the mailer and lettre.
+  With `default-features = false`, list it if you send mail. Configuring a
+  mailer without it fails at boot with a message naming the feature.
+- **In-memory cache.** `Inmem::new(max_capacity)` replaces
+  `Inmem::from(moka::Cache)`; `InMemExpiry` and `Expiration` are gone.
+  `max_capacity` counts entries, as it always did; the docs said bytes.
+
+- **`cargo loco jobs purge` spares unfinished jobs.** Without `--status` it
+  used to delete old `queued` jobs too. It now deletes only completed, failed
+  and cancelled ones; pass `--status queued` (or `processing`) to purge those.
+- **Queue ids are unique.** `pg_loco_queue` and `sqlt_loco_queue` get a
+  primary key on `id` (a unique index on an existing SQLite table). Setup
+  stops with a message naming the id if an existing table holds duplicates.
 
 ### Added
 
+- **Notifications** (#1889), behind the `notifications` feature.
+  - A `Notifier` trait with Slack, signed-webhook and email (with `mailer`)
+    channels. `deliver_later` enqueues on the background queue and retries
+    with exponential backoff; `deliver_now` sends inline. Webhooks are signed
+    with HMAC-SHA256 over `"{timestamp}.{body}"`, and `verify_signature`
+    checks them on the receiving side.
+  - A permanent 4xx (other than 408 and 429) is logged and dropped rather
+    than retried. Secrets and Slack URLs print `<redacted>` in `Debug`.
+  - `cargo loco generate notifier <name>`, and `notifications.stub` to record
+    deliveries in tests instead of sending them.
+  - `Queue::register_with_retry_policy` registers a worker with its own
+    retry policy (Postgres and SQLite queues).
+
+- **SQLite in production, the Rails 8 way** (#1832).
+  - The SQLite PRAGMAs now apply to every pooled connection, for the app
+    database and for the SQLite queue's own pool. Before, they ran once on
+    whichever connection the pool handed out, so `busy_timeout`,
+    `synchronous` and `foreign_keys` were missing on the rest. The defaults
+    are `journal_mode=WAL` (skipped for `:memory:`), `synchronous=NORMAL`,
+    `busy_timeout=5000`, `foreign_keys=ON`, `journal_size_limit`, `mmap_size`
+    and `cache_size`.
+  - `database.sqlite.pragmas` and `queue.pragmas` override or add PRAGMAs.
+    `database.run_on_start` still runs, after the defaults, but no longer
+    replaces them.
+  - **`cache.kind: Database`**, a cache in the app database (Postgres or
+    SQLite) with TTLs and batched sweeping of expired rows, in a `loco_cache`
+    table Loco creates itself. With the SQL queue it means a one-server app
+    needs no Redis.
+  - New how-to, "Run SQLite in production": the defaults, the single-writer
+    caveat and backups with Litestream.
+
+- **Task arguments are passed through raw.** `cargo loco task import *.csv
+  --dry-run` no longer fails on tokens that are not `key:value`. Every token
+  reaches the task through `Vars::args()` (feed it to `clap`, or use it as a
+  file list); `key:value` tokens still fill `vars.cli` and `cli_arg`.
+  (#1730, @pweaver)
+- **`.or_err("message")` in the prelude.** Turns a `Result` with any
+  `std::error::Error` into a `loco_rs::Result` with your message, keeping the
+  original as `source()`, and does the same for `Option`; `.or_err_with(||
+  ...)` builds the message lazily. Named so it never clashes with
+  `anyhow::Context`. (#1751)
+- **OAuth2 sign-in, signed cookies and `CurrentUser`** (#1884). Three
+  opt-in features. `auth_session` gives `SignedCookies`, a cookie-backed
+  `Session`, and `CurrentUser<U>` / `MaybeCurrentUser<U>` over
+  `SessionUser`, keyed off `auth.session.secret`; production refuses the
+  development default and `loco doctor` reports a missing or short secret.
+  `auth_session_encrypted` adds `EncryptedCookies`. `auth_oauth` adds
+  `/auth/{provider}`, its callback and `/auth/sign_out` for GitHub, Google
+  and generic providers, with PKCE, a per-provider state cookie, a same-site
+  `return_to` and an `OAuthHandler` trait (`on_sign_in`, `on_failure`).
+  `cargo loco generate oauth <provider>` writes and mounts the controller
+  and adds the provider to every environment's config.
+- **Server-side sessions and remember me** (#1842). `auth.session.store` is
+  `cookie` (default, nothing changes), `database` or `redis`. A server-side
+  store keeps the data on the server and puts only a signed random id in the
+  cookie, so `session.clear()` really ends a session and
+  `auth::session_store::sign_out_everywhere` ends all of a user's. The
+  `database` store creates `loco_sessions` and `loco_remember_tokens` itself
+  on first use and stores only a SHA-256 of the id (`with-db`; Postgres and
+  SQLite); `redis` needs `cache_redis`. A server-side session lives
+  `auth.session.ttl` (default one day, sliding) and its cookie has no
+  `Max-Age`; `max_age` applies to the cookie store only. Writes to an
+  existing session never recreate it, so a request in flight cannot undo a
+  sign-out, and a new user id rotates the session id by itself.
+  `Session::remember()?` and `auth.session.remember_for` add Devise-style
+  remember me: a rotating token with theft detection that tolerates parallel
+  requests and a lost response; the series keeps the lifetime it was
+  created with, and a replayed token revokes every session and series the
+  user has. The `redis` store needs a single node (no Cluster). `ttl: 0`,
+  a `remember_for` over 400 days or not longer than `ttl`
+  and equal cookie names are boot errors. Remember me with the `cookie` store is a boot
+  error (and `remember()` returns an error; `?remember=1` is ignored).
+  `Session`, `CurrentUser` and OAuth sign-in work unchanged on every store;
+  `?remember=1` on `/auth/{provider}` and `SignIn::remember()` opt in. A
+  server-side store needs the new `auth_session` middleware, which the
+  default stack includes. `Session::from_parts` is now `async`.
+- **Storage from config** (#1840, @robertazzopardi). A `storage:` block
+  picks the default driver: `kind: Local` (with `path`), `Aws`, `Gcp` or
+  `Azure`, behind their `storage_*` features. `Aws` takes an `endpoint` for
+  MinIO or R2, works without keys, and treats empty key strings as unset so
+  env-templated blanks fall back to environment or instance credentials.
+  Secrets print `<redacted>` in `Debug`. With no block, storage stays
+  `Null`, as before, and `Hooks::after_context` can still replace it.
 - **`db-postgres`, `compression` and `generators` features**, on by
   default, plus `compression-full`, so apps built with
   `default-features = false` can leave out dependencies they never use. The
@@ -68,12 +196,28 @@ subcommand.
   one hour. The defaults keep failing on the first error.
 - **Heartbeats.** A running job refreshes `updated_at`, so the reaper only
   requeues jobs whose worker died.
+- **Queue indexes (#1849).** The Postgres and SQLite queues create a partial
+  index for the dequeue scan and a `(status, updated_at)` index for the
+  reaper and retention, plus the primary key above. Dequeue and
+  complete/fail no longer scan the whole table. On Postgres, setup runs in
+  one transaction under an advisory lock, so apps starting together are
+  safe; on an existing table it takes a brief write lock while the primary
+  key and indexes build, longer the more rows the table holds (purge old
+  jobs first on a very large one).
+- **`queue.retention` (#1850).** Opt-in deletion of finished jobs on the
+  Postgres and SQLite queues, next to `reaper`: `completed_days`,
+  `cancelled_days`, `failed_days` (each optional; a status left out is kept)
+  and `interval_seconds` (default 3600). Age counts from when the job
+  finished (`updated_at`); rows go in batches of 1000, and queued and
+  processing jobs are never touched. Off unless set.
 - `initialize_database` adds the `attempts` and `unique_key` columns to an
   existing queue table on Postgres and SQLite.
 - **`testing-core`**: the request, mailer and database test helpers without
   the HTML selector assertions (`testing-html`). `testing` is both.
   Generated apps use `testing-core`, which saves recompiling about 60 crates
   on the first `cargo test`.
+- **`app::serve_router`**, the body of the default `Hooks::serve`, for an
+  app that overrides `serve` and still wants the stock server.
 
 ### Build
 
@@ -95,9 +239,26 @@ subcommand.
 - argon2 compiles only with `auth`.
 - Gone from the graph: cargo-lock and its second toml stack. `loco doctor`
   reads `Cargo.lock` line by line.
+- OpenDAL compiles only with the storage features that use it.
+- lettre compiles only with `mailer`.
+- byte-unit is gone; `body_limit` and the `number_to_human_size` filter parse
+  and format sizes in Loco.
+- moka is gone from the graph.
+- The default `Hooks::serve` and `logger::init` compile once in Loco rather
+  than in every app crate; the app binary generates half the code it did.
 
 ### Fixed
 
+- **Fallback page hint.** The default 404 page told you to look for a
+  `fallback:` setting that generated configs do not contain; it now shows
+  `server.middlewares.fallback.enable: false`. (#1852)
+- **A `fallback.file` page answered 200.** The `fallback` middleware served
+  its file through `ServeFile`, which reports 200 for a file it finds, so an
+  unmatched route set to `assets/static/404.html` answered 200 and the
+  `code` setting did nothing. It now answers with `code` (404 unless set).
+  If you pointed `fallback.file` at an SPA's `index.html` and relied on the
+  200, set `code: 200`, or use the `static` middleware's `fallback`, which
+  is the documented way to serve an SPA.
 - **A new Postgres app with a Postgres queue pointed the queue at a database
   that did not exist.** `queue.uri` in the generated development and test
   config defaulted to `loco_development` / `loco_test`; it now uses the app
@@ -106,6 +267,20 @@ subcommand.
   one-connection pool stalled any code that held a transaction while another
   query or a job needed a connection. SQLite keeps 1.
 - **The scheduler stops on SIGTERM.**
+- **Overwriting an in-memory cache key kept its old expiry.** A plain
+  `insert` over a key set with `insert_with_expiry` now keeps it for good.
+- **S3, Azure and GCS requests failed** with "default HTTP transport is not
+  installed". OpenDAL 0.58 moved its HTTP client behind features; the
+  `storage_*` features now enable it. (@mccormickt)
+- **`generate model` and `generate scaffold` without `sea-orm-cli`** applied
+  the migration and then failed before writing the entity, so a rerun added
+  a second migration for the same table. They check for the CLI first and
+  write nothing if it is missing. (@tomersein)
+- **Redis enqueue timed out after an idle spell.** The producer connection
+  kept redis's 1s connect and 500ms response defaults, so a slow reconnect
+  failed a request that had already committed. It now has explicit
+  timeouts, like the worker's. (@mikosco4real)
+- **Job dumps keep arbitrary-precision numbers.** (@wheregmis)
 
 ## 1.2.0 - 2026-09-22
 

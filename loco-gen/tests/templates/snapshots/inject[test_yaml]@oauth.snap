@@ -1,0 +1,22 @@
+---
+source: loco-gen/tests/templates/oauth.rs
+expression: "read(&tree, \"config/test.yaml\")"
+---
+server:
+  port: 5150
+
+# Authentication Configuration
+auth:
+  session:
+    # Signs the session cookie. Production reads it from SESSION_SECRET;
+    # generate one with `openssl rand -base64 64`.
+    secret: test-session-secret-change-me-0123456789abcdef
+    # Where sessions live: `cookie` (the cookie holds the data), or `database` /
+    # `redis` for server-side sessions you can revoke, with remember-me.
+    store: cookie
+  # OAuth sign-in (`cargo loco generate oauth <provider>`)
+  oauth:
+    providers:
+      github:
+        client_id: test-client-id
+        client_secret: test-client-secret

@@ -102,6 +102,12 @@ static NONBLOCKING_WORK_GUARD_KEEP: OnceLock<WorkerGuard> = OnceLock::new();
 /// Fails if cannot initialize logger or set up an appender (in case the option
 /// is enabled)
 pub fn init<H: Hooks>(config: &config::Logger) -> Result<()> {
+    init_for_app(H::app_name(), config)
+}
+
+// The body lives outside the generic so each app does not compile its own
+// copy of the subscriber stack.
+fn init_for_app(app_name: &str, config: &config::Logger) -> Result<()> {
     let mut layers: Vec<Box<dyn Layer<Registry> + Sync + Send>> = Vec::new();
 
     if let Some(file_appender_config) = config.file_appender.as_ref()
@@ -165,7 +171,8 @@ pub fn init<H: Hooks>(config: &config::Logger) -> Result<()> {
     }
 
     if !layers.is_empty() {
-        let env_filter = init_env_filter::<H>(config.override_filter.as_ref(), &config.level);
+        let env_filter =
+            env_filter_for_app(app_name, config.override_filter.as_ref(), &config.level);
         tracing_subscriber::registry()
             .with(layers)
             .with(env_filter)
@@ -190,6 +197,14 @@ pub fn init<H: Hooks>(config: &config::Logger) -> Result<()> {
 /// validated [`LogLevel`], so the constructed filter always parses.
 #[must_use]
 pub fn init_env_filter<H: Hooks>(override_filter: Option<&String>, level: &LogLevel) -> EnvFilter {
+    env_filter_for_app(H::app_name(), override_filter, level)
+}
+
+fn env_filter_for_app(
+    app_name: &str,
+    override_filter: Option<&String>,
+    level: &LogLevel,
+) -> EnvFilter {
     EnvFilter::try_from_default_env()
         .or_else(|_| {
             // user wanted a specific filter, don't care about our internal whitelist
@@ -200,7 +215,7 @@ pub fn init_env_filter<H: Hooks>(override_filter: Option<&String>, level: &LogLe
                         MODULE_WHITELIST
                             .iter()
                             .map(|m| format!("{m}={level}"))
-                            .chain(std::iter::once(format!("{}={}", H::app_name(), level)))
+                            .chain(std::iter::once(format!("{app_name}={level}")))
                             .collect::<Vec<_>>()
                             .join(","),
                     )

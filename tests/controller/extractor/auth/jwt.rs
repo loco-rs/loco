@@ -26,6 +26,7 @@ async fn can_extract_jwt_with_valid_token() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
     let jwt = loco_rs::auth::jwt::JWT::new(&secret);
     let token = jwt
@@ -60,6 +61,7 @@ async fn can_handle_invalid_jwt_token() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     let port = get_available_port().await;
@@ -88,6 +90,7 @@ async fn can_handle_missing_jwt_token() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     let port = get_available_port().await;
@@ -115,6 +118,7 @@ async fn can_handle_expired_jwt_token() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
     let jwt = loco_rs::auth::jwt::JWT::new(&secret);
     let token = jwt
@@ -148,6 +152,7 @@ async fn can_handle_malformed_authorization_header() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     let port = get_available_port().await;
@@ -204,6 +209,7 @@ async fn can_extract_jwt_from_cookie() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     // Create a valid JWT token
@@ -248,6 +254,7 @@ async fn can_extract_jwt_from_query() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     // Create a valid JWT token
@@ -294,6 +301,7 @@ async fn can_extract_jwt_with_multiple_locations_cookie_fallback() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     // Create a valid JWT token
@@ -338,6 +346,7 @@ async fn can_extract_jwt_with_multiple_locations_query_fallback() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     // Create a valid JWT token
@@ -385,6 +394,7 @@ async fn can_handle_multiple_locations_all_fail() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     let port = get_available_port().await;
@@ -419,6 +429,7 @@ async fn can_handle_cookie_location_missing_cookie() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     let port = get_available_port().await;
@@ -453,6 +464,7 @@ async fn can_handle_query_location_missing_param() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     let port = get_available_port().await;
@@ -481,6 +493,7 @@ async fn can_handle_jwt_with_wrong_algorithm() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     // Create a JWT with different secret (simulating wrong algorithm)
@@ -517,6 +530,7 @@ async fn can_handle_jwt_with_invalid_signature() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     // Create a valid JWT then modify it to have invalid signature
@@ -558,6 +572,7 @@ async fn can_handle_malformed_jwt_structure() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     let port = get_available_port().await;
@@ -592,6 +607,7 @@ async fn can_extract_jwt_from_cookie_with_special_chars() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     // Create a valid JWT token
@@ -636,6 +652,7 @@ async fn can_handle_cookie_with_empty_value() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     let port = get_available_port().await;
@@ -670,6 +687,7 @@ async fn can_extract_jwt_from_query_with_special_chars() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     // Create a valid JWT token
@@ -713,6 +731,7 @@ async fn can_handle_query_with_empty_value() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     let port = get_available_port().await;
@@ -746,6 +765,7 @@ async fn can_handle_query_with_spaces() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     let port = get_available_port().await;
@@ -776,6 +796,7 @@ async fn can_validate_error_message_for_missing_token() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     let port = get_available_port().await;
@@ -808,6 +829,7 @@ async fn can_validate_error_message_for_invalid_token() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     let port = get_available_port().await;
@@ -841,6 +863,7 @@ async fn can_validate_error_message_for_malformed_header() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     let port = get_available_port().await;
@@ -874,6 +897,7 @@ async fn can_handle_jwt_expired_one_second_ago() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     // Create a JWT that expired 1 second ago
@@ -912,6 +936,7 @@ async fn can_handle_jwt_expires_in_one_second() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     // Create a JWT that expires in 5 seconds to account for test setup time
@@ -951,6 +976,7 @@ async fn can_handle_jwt_with_missing_exp_claim() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     // Create a JWT manually without exp claim
@@ -987,6 +1013,7 @@ async fn can_handle_jwt_with_invalid_exp_claim() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     // Create a JWT with invalid exp claim format
@@ -1023,6 +1050,7 @@ async fn can_handle_jwt_with_distant_future_expiration() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     // Create a JWT that expires in 10 years (very distant future)

@@ -1,0 +1,18 @@
+---
+source: loco-gen/tests/templates/oauth.rs
+expression: "read(&tree, \"Cargo.toml\")"
+---
+[workspace]
+
+[package]
+name = "tester"
+
+[workspace.dependencies]
+loco-rs = { version = "1.2" }
+
+[dependencies]
+loco-rs = { workspace = true, features = ["auth_oauth"] }
+serde = "1"
+
+[dev-dependencies]
+loco-rs = { workspace = true, features = ["testing"] }

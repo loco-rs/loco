@@ -85,6 +85,9 @@ jobs:
         with:
           tool: cargo-hack
       - run: cargo hack check --each-feature
+      # Pairs that --each-feature cannot see: the Redis session store needs
+      # cache_redis alone to bring in everything it compiles against.
+      - run: cargo check --lib --no-default-features --features auth_session,cache_redis
 
   build:
     needs: [check]
@@ -122,6 +125,9 @@ jobs:
 
       - name: Run cargo test
         run: cargo test --all-features --workspace --exclude loco-gen --exclude loco
+
+      - name: Test queue dumps with arbitrary-precision JSON
+        run: cargo test -p loco-rs --lib --features serde_json/arbitrary_precision bgworker::tests
 
   # `--all-features` turns `embedded_assets` ON, which `#[cfg]`s out
   # `controller/views/engine.rs` in favour of `engine_embedded.rs`. That file's

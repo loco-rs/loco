@@ -3,7 +3,7 @@
 //! application and its dependencies.
 
 use super::{format, routes::Routes};
-#[cfg(any(feature = "cache_inmem", feature = "cache_redis"))]
+#[cfg(any(feature = "cache_inmem", feature = "cache_redis", feature = "with-db"))]
 use crate::config;
 use crate::{app::AppContext, Result};
 use axum::{
@@ -64,7 +64,7 @@ pub async fn readiness(State(ctx): State<AppContext>) -> (StatusCode, Response) 
     }
 
     // Check cache connection
-    #[cfg(any(feature = "cache_inmem", feature = "cache_redis"))]
+    #[cfg(any(feature = "cache_inmem", feature = "cache_redis", feature = "with-db"))]
     {
         match ctx.config.cache {
             #[cfg(feature = "cache_inmem")]
@@ -87,6 +87,9 @@ pub async fn readiness(State(ctx): State<AppContext>) -> (StatusCode, Response) 
                     );
                 }
             }
+            // The database itself is checked above.
+            #[cfg(feature = "with-db")]
+            config::CacheConfig::Database(_) => (),
             config::CacheConfig::Null => (),
         }
     }

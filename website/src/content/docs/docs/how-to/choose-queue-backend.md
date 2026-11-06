@@ -80,6 +80,8 @@ queue:
   # remaining keys identical to Postgres
 ```
 
+Running one server on SQLite? See [Run SQLite in production](/docs/how-to/run-sqlite-in-production) for the connection defaults (WAL, `busy_timeout`) the queue's pool gets, how to override them with `queue.pragmas`, and how to back the file up.
+
 Requires the `worker` Cargo feature (on by default) — the same flag that gates the Postgres backend above; both share the `sqlx`-based provider and are picked between at runtime by `queue.kind`. Uses `sqlt_loco_queue` (+ a lock table, since SQLite has no `SELECT ... FOR UPDATE SKIP LOCKED`).
 
 The upshot: `worker` covers Postgres and SQLite queues (already in the default feature set), while `worker_redis` adds the Redis queue on top. Which backend actually runs is a runtime choice — `queue.kind: Postgres | Sqlite | Redis` — not a per-database feature flag. For the exhaustive key list (defaults included), see [Configuration reference → queue](/docs/reference/configuration#queue). For flag names and how to trim the default feature set, see [Feature flags reference](/docs/reference/feature-flags).
@@ -112,7 +114,7 @@ Once `worker` (Postgres/SQLite) or `worker_redis` (Redis) is enabled, `cargo loc
 ```sh
 cargo loco jobs cancel --name <NAME>
 cargo loco jobs tidy                 # delete completed/cancelled jobs
-cargo loco jobs purge --max-age 90    # delete old failed/cancelled jobs
+cargo loco jobs purge --max-age 90    # delete old completed/failed/cancelled jobs (add --status queued to include unfinished ones)
 cargo loco jobs dump -f <folder>
 cargo loco jobs import -f <file>
 cargo loco jobs requeue --from-age 0  # move stuck "processing" jobs back to "queued"
@@ -135,6 +137,23 @@ queue:
 ```
 
 Leaving `reaper` unset (the default) keeps prior behavior unchanged — no background sweep runs, and stranded jobs stay in `processing` until you run `cargo loco jobs requeue` yourself.
+
+### Automatic cleanup (retention)
+
+The Postgres and SQLite queues keep finished jobs forever, so the table grows with every job. To have the running worker process delete them, opt in with a `retention` block. Each status is optional, and one you leave out is kept; `queued` and `processing` jobs are never deleted:
+
+```yaml
+queue:
+  kind: Postgres
+  # ...
+  retention:
+    completed_days: 7 # delete completed jobs 7 days after they finished
+    cancelled_days: 7
+    failed_days: 30 # keep failures longer, you may want `jobs retry`
+    interval_seconds: 3600 # optional, default 3600
+```
+
+Leaving `retention` unset (the default) deletes nothing. Redis does not need it.
 
 ## Choosing between the three
 

@@ -6,7 +6,10 @@ use super::{
     sql::{to_job, Driver},
     JobHandler, JobStatus, Queue, QueueProvider, RetryPolicy,
 };
-use crate::{config::PostgresQueueConfig, Result};
+use crate::{
+    config::{PostgresQueueConfig, RetentionConfig},
+    Result,
+};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 pub use sqlx::PgPool;
@@ -163,6 +166,23 @@ impl QueueProvider for PgQueue {
                 }
             });
         }
+        if let Some(retention) = self.run_opts.retention.clone() {
+            let pool = self.pool.clone();
+            let token = self.token.clone();
+            tokio::spawn(async move {
+                let interval = std::time::Duration::from_secs(retention.interval_seconds);
+                loop {
+                    tokio::select! {
+                        () = token.cancelled() => break,
+                        () = tokio::time::sleep(interval) => {
+                            if let Err(err) = apply_retention(&pool, &retention).await {
+                                tracing::error!(error = %err, "retention: failed to delete finished jobs");
+                            }
+                        }
+                    }
+                }
+            });
+        }
         let handles = self.registry.lock().await.run::<PgDriver>(
             &self.pool,
             &self.run_opts,
@@ -252,6 +272,15 @@ async fn connect(cfg: &PostgresQueueConfig) -> Result<PgPool> {
 pub async fn initialize_database(pool: &PgPool) -> Result<()> {
     debug!("Initializing job database tables");
 
+    // One transaction under an advisory lock: apps starting together queue up
+    // here, and the ones that wait find the work done. Postgres DDL is
+    // transactional, so a failure leaves nothing half-applied.
+    let mut tx = pool.begin().await?;
+    sqlx::query("SELECT pg_advisory_xact_lock($1)")
+        .bind(SETUP_LOCK_KEY)
+        .execute(&mut *tx)
+        .await?;
+
     // Check if the table already exists.
     let table_exists: bool = sqlx::query_scalar(
         "SELECT EXISTS (
@@ -259,7 +288,7 @@ pub async fn initialize_database(pool: &PgPool) -> Result<()> {
             WHERE table_name = 'pg_loco_queue'
         )",
     )
-    .fetch_one(pool)
+    .fetch_one(&mut *tx)
     .await?;
 
     if table_exists {
@@ -271,20 +300,20 @@ pub async fn initialize_database(pool: &PgPool) -> Result<()> {
                 AND column_name = 'priority'
             )",
         )
-        .fetch_one(pool)
+        .fetch_one(&mut *tx)
         .await?;
 
         if !priority_exists {
             debug!("Adding priority column to existing pg_loco_queue table");
             sqlx::query("ALTER TABLE pg_loco_queue ADD COLUMN priority INT NOT NULL DEFAULT 0")
-                .execute(pool)
+                .execute(&mut *tx)
                 .await?;
         }
     } else {
         sqlx::raw_sql(AssertSqlSafe(format!(
             r"
                 CREATE TABLE pg_loco_queue (
-                    id VARCHAR NOT NULL,
+                    id VARCHAR NOT NULL PRIMARY KEY,
                     name VARCHAR NOT NULL,
                     task_data JSONB NOT NULL,
                     status VARCHAR NOT NULL DEFAULT '{}',
@@ -298,11 +327,38 @@ pub async fn initialize_database(pool: &PgPool) -> Result<()> {
                 ",
             JobStatus::Queued
         )))
-        .execute(pool)
+        .execute(&mut *tx)
         .await?;
     }
 
-    // Columns and index added after the first release, on new and existing
+    // Tables created before the primary key existed.
+    let has_primary_key: bool = sqlx::query_scalar(
+        "SELECT EXISTS (
+            SELECT FROM pg_constraint
+            WHERE conrelid = 'pg_loco_queue'::regclass AND contype = 'p'
+        )",
+    )
+    .fetch_one(&mut *tx)
+    .await?;
+    if !has_primary_key {
+        let duplicate: Option<String> = sqlx::query_scalar(
+            "SELECT id FROM pg_loco_queue GROUP BY id HAVING COUNT(*) > 1 LIMIT 1",
+        )
+        .fetch_optional(&mut *tx)
+        .await?;
+        if let Some(id) = duplicate {
+            return Err(crate::Error::string(&format!(
+                "cannot add a primary key to pg_loco_queue: job id '{id}' appears more than \
+                 once. Remove the duplicate rows (keep one per id) and start again"
+            )));
+        }
+        debug!("Adding primary key to existing pg_loco_queue table");
+        sqlx::query("ALTER TABLE pg_loco_queue ADD PRIMARY KEY (id)")
+            .execute(&mut *tx)
+            .await?;
+    }
+
+    // Columns and indexes added after the first release, on new and existing
     // tables alike.
     sqlx::raw_sql(AssertSqlSafe(format!(
         r"
@@ -310,13 +366,22 @@ pub async fn initialize_database(pool: &PgPool) -> Result<()> {
             ALTER TABLE pg_loco_queue ADD COLUMN IF NOT EXISTS unique_key VARCHAR;
             CREATE UNIQUE INDEX IF NOT EXISTS pg_loco_queue_unique_queued
                 ON pg_loco_queue (name, unique_key) WHERE {UNIQUE_QUEUED};
+            CREATE INDEX IF NOT EXISTS pg_loco_queue_dequeue
+                ON pg_loco_queue (priority DESC, run_at, id) WHERE status = 'queued';
+            CREATE INDEX IF NOT EXISTS pg_loco_queue_status_updated_at
+                ON pg_loco_queue (status, updated_at);
         "
     )))
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
 
+    tx.commit().await?;
     Ok(())
 }
+
+/// Key of the advisory lock that serializes [`initialize_database`] across
+/// processes.
+const SETUP_LOCK_KEY: i64 = 0x6C6F_636F_7175_6575;
 
 /// Predicate of the partial unique index behind `enqueue_unique`. The
 /// `ON CONFLICT` target must repeat it verbatim.
@@ -525,18 +590,20 @@ pub async fn enqueue_batch(
 async fn dequeue(client: &PgPool, worker_tags: &[String]) -> Result<Option<Job>> {
     let mut tx = client.begin().await?;
 
+    // `status` is a literal, not a bind: a generic plan cannot prove a bound
+    // value matches the partial index behind this query.
     let mut query = String::from(
-        "SELECT id, name, task_data, status, run_at, interval, tags, priority FROM pg_loco_queue WHERE status = $1 AND run_at <= NOW() ",
+        "SELECT id, name, task_data, status, run_at, interval, tags, priority FROM pg_loco_queue WHERE status = 'queued' AND run_at <= NOW() ",
     );
 
     // An untagged worker takes only untagged jobs; a tagged one takes any job
     // carrying at least one of its tags. `?` is jsonb's "array contains this
-    // string" operator, one bind per tag starting at $2.
+    // string" operator, one bind per tag starting at $1.
     if worker_tags.is_empty() {
         query.push_str("AND (tags IS NULL) ");
     } else {
         let any_tag_matches = (0..worker_tags.len())
-            .map(|i| format!("(tags)::jsonb ? ${}", i + 2))
+            .map(|i| format!("(tags)::jsonb ? ${}", i + 1))
             .collect::<Vec<_>>()
             .join(" OR ");
         query.push_str("AND (tags IS NOT NULL) AND (");
@@ -547,7 +614,7 @@ async fn dequeue(client: &PgPool, worker_tags: &[String]) -> Result<Option<Job>>
     query.push_str(" ORDER BY priority DESC, run_at, id LIMIT 1 FOR UPDATE SKIP LOCKED");
 
     // Create the query
-    let mut db_query = sqlx::query(AssertSqlSafe(query)).bind(JobStatus::Queued.to_string());
+    let mut db_query = sqlx::query(AssertSqlSafe(query));
 
     // Bind tag parameters
     for tag in worker_tags {
@@ -716,6 +783,46 @@ pub async fn clear_jobs_older_than(
     Ok(())
 }
 
+/// Deletes up to `batch` jobs in `status` that finished more than `age_days`
+/// days ago, returning how many it deleted.
+async fn delete_finished_batch(
+    pool: &PgPool,
+    status: &JobStatus,
+    age_days: i64,
+    batch: i64,
+) -> Result<u64> {
+    let result = sqlx::query(
+        "DELETE FROM pg_loco_queue WHERE id IN (
+            SELECT id FROM pg_loco_queue
+            WHERE status = $1 AND updated_at < NOW() - INTERVAL '1 day' * $2
+            LIMIT $3
+        )",
+    )
+    .bind(status.to_string())
+    .bind(age_days)
+    .bind(batch)
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected())
+}
+
+/// Runs one retention sweep: deletes finished jobs older than the ages in
+/// `config`, a batch at a time. Never touches queued or processing jobs.
+///
+/// # Errors
+///
+/// This function will return an error if it fails
+pub async fn apply_retention(pool: &PgPool, config: &RetentionConfig) -> Result<u64> {
+    let deleted = super::sql::sweep_retention(config, |status, age_days, batch| async move {
+        delete_finished_batch(pool, &status, age_days, batch).await
+    })
+    .await?;
+    if deleted > 0 {
+        debug!(deleted, "retention: deleted finished jobs");
+    }
+    Ok(deleted)
+}
+
 /// Requeues jobs from [`JobStatus::Processing`] to [`JobStatus::Queued`].
 ///
 /// This function updates the status of all jobs that are currently in the [`JobStatus::Processing`] state
@@ -873,6 +980,7 @@ async fn build_provider(qcfg: &PostgresQueueConfig) -> Result<PgQueue> {
             num_workers: qcfg.num_workers,
             poll_interval_sec: qcfg.poll_interval_sec,
             reaper: qcfg.reaper.clone(),
+            retention: qcfg.retention.clone(),
         },
         token, // Pass the token
     })
@@ -1506,7 +1614,7 @@ mod tests {
              ('job2', 'Test Job 2', '{}', 'processing', NOW(),NOW(), NOW() - INTERVAL '5 minutes'),
              ('job3', 'Test Job 3', '{}', 'completed', NOW(),NOW(),NOW() - INTERVAL '5 minutes'),
              ('job4', 'Test Job 4', '{}', 'queued', NOW(),NOW(), NOW()),
-             ('job4', 'Test Job 5', '{}', 'processing', NOW(), NOW(), NOW())"
+             ('job5', 'Test Job 5', '{}', 'processing', NOW(), NOW(), NOW())"
         )
         .execute(&pool)
         .await
@@ -1562,6 +1670,7 @@ mod tests {
                 age_minutes: 5,
                 interval_seconds: 30,
             }),
+            retention: None,
         };
 
         let provider = build_provider(&qcfg).await.expect("build provider");
@@ -1587,6 +1696,7 @@ mod tests {
             poll_interval_sec: 1,
             num_workers: 1,
             reaper: None,
+            retention: None,
         };
 
         let provider = build_provider(&qcfg).await.expect("build provider");
@@ -1672,6 +1782,7 @@ mod tests {
             num_workers: 1,
             poll_interval_sec: 1,
             reaper: None,
+            retention: None,
         };
         let token = CancellationToken::new();
         let handles = registry.run::<PgDriver>(&pool, &opts, &token, &[]);
@@ -2055,6 +2166,7 @@ mod tests {
             num_workers: 1,
             poll_interval_sec: 1,
             reaper: None,
+            retention: None,
         };
         let token = CancellationToken::new();
         let handles = registry.run::<PgDriver>(pool, &opts, &token, &[]);
@@ -2163,5 +2275,179 @@ mod tests {
 
         requeue(&pool, &30).await.unwrap();
         assert_eq!(get_job(&pool, &id).await.status, JobStatus::Queued);
+    }
+
+    const OLD_TABLE: &str = "CREATE TABLE pg_loco_queue (id VARCHAR NOT NULL, name VARCHAR NOT \
+        NULL, task_data JSONB NOT NULL, status VARCHAR NOT NULL DEFAULT 'queued', run_at \
+        TIMESTAMPTZ NOT NULL, interval BIGINT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), \
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), tags JSONB, priority INT NOT NULL \
+        DEFAULT 0)";
+
+    async fn index_names(pool: &PgPool) -> Vec<String> {
+        sqlx::query_scalar(
+            "SELECT indexname::text FROM pg_indexes WHERE tablename = 'pg_loco_queue' ORDER BY 1",
+        )
+        .fetch_all(pool)
+        .await
+        .unwrap()
+    }
+
+    async fn has_primary_key(pool: &PgPool) -> bool {
+        sqlx::query_scalar(
+            "SELECT EXISTS (SELECT FROM pg_constraint WHERE conrelid = 'pg_loco_queue'::regclass \
+             AND contype = 'p')",
+        )
+        .fetch_one(pool)
+        .await
+        .unwrap()
+    }
+
+    #[tokio::test]
+    async fn setup_creates_the_primary_key_and_indexes_and_is_idempotent() {
+        let (pool, _container) = setup_pg_test().await;
+        initialize_database(&pool).await.unwrap();
+
+        assert!(has_primary_key(&pool).await);
+        let names = index_names(&pool).await;
+        for expected in [
+            "pg_loco_queue_dequeue",
+            "pg_loco_queue_status_updated_at",
+            "pg_loco_queue_unique_queued",
+        ] {
+            assert!(
+                names.iter().any(|n| n == expected),
+                "missing {expected}: {names:?}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn setup_adds_the_primary_key_to_an_existing_table() {
+        let (pg_url, _container) = setup_postgres_database().await;
+        let pool = PgPool::connect(&pg_url).await.unwrap();
+        sqlx::query(OLD_TABLE).execute(&pool).await.unwrap();
+        let id = enqueue_now(&pool, "Old").await;
+        assert!(!has_primary_key(&pool).await);
+
+        initialize_database(&pool).await.unwrap();
+        initialize_database(&pool).await.unwrap();
+
+        assert!(has_primary_key(&pool).await);
+        assert!(index_names(&pool)
+            .await
+            .contains(&"pg_loco_queue_dequeue".to_string()));
+        assert_eq!(get_job(&pool, &id).await.name, "Old");
+    }
+
+    #[tokio::test]
+    async fn setup_fails_clearly_on_duplicate_ids() {
+        let (pg_url, _container) = setup_postgres_database().await;
+        let pool = PgPool::connect(&pg_url).await.unwrap();
+        sqlx::query(OLD_TABLE).execute(&pool).await.unwrap();
+        for _ in 0..2 {
+            sqlx::query(
+                "INSERT INTO pg_loco_queue (id, name, task_data, run_at) VALUES ('dup', 'A', \
+                 '{}', NOW())",
+            )
+            .execute(&pool)
+            .await
+            .unwrap();
+        }
+
+        let err = initialize_database(&pool).await.unwrap_err().to_string();
+        assert!(err.contains("'dup' appears more than once"), "{err}");
+        assert!(!has_primary_key(&pool).await);
+    }
+
+    #[tokio::test]
+    async fn concurrent_setup_calls_all_succeed() {
+        let (pg_url, _container) = setup_postgres_database().await;
+        let pool = PgPool::connect(&pg_url).await.unwrap();
+        let results =
+            futures_util::future::join_all((0..4).map(|_| initialize_database(&pool))).await;
+        for result in results {
+            result.unwrap();
+        }
+        assert!(has_primary_key(&pool).await);
+    }
+
+    async fn insert_job(pool: &PgPool, id: &str, status: JobStatus, age_days: i64) {
+        sqlx::query(
+            "INSERT INTO pg_loco_queue (id, name, task_data, status, run_at, updated_at) VALUES \
+             ($1, 'J', '{}', $2, NOW(), NOW() - INTERVAL '1 day' * $3)",
+        )
+        .bind(id)
+        .bind(status.to_string())
+        .bind(age_days)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    async fn remaining_ids(pool: &PgPool) -> Vec<String> {
+        sqlx::query_scalar("SELECT id FROM pg_loco_queue ORDER BY id")
+            .fetch_all(pool)
+            .await
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn retention_deletes_only_old_finished_jobs_with_an_age() {
+        let (pool, _container) = setup_pg_test().await;
+        insert_job(&pool, "completed_old", JobStatus::Completed, 10).await;
+        insert_job(&pool, "completed_new", JobStatus::Completed, 1).await;
+        insert_job(&pool, "cancelled_old", JobStatus::Cancelled, 10).await;
+        insert_job(&pool, "failed_old", JobStatus::Failed, 10).await;
+        insert_job(&pool, "queued_old", JobStatus::Queued, 100).await;
+        insert_job(&pool, "processing_old", JobStatus::Processing, 100).await;
+
+        let config = RetentionConfig {
+            completed_days: Some(7),
+            cancelled_days: Some(7),
+            failed_days: None,
+            interval_seconds: 3600,
+        };
+        let deleted = apply_retention(&pool, &config).await.unwrap();
+
+        assert_eq!(deleted, 2);
+        assert_eq!(
+            remaining_ids(&pool).await,
+            [
+                "completed_new",
+                "failed_old",
+                "processing_old",
+                "queued_old"
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn retention_without_ages_deletes_nothing() {
+        let (pool, _container) = setup_pg_test().await;
+        insert_job(&pool, "completed_old", JobStatus::Completed, 1000).await;
+        let deleted = apply_retention(&pool, &RetentionConfig::default())
+            .await
+            .unwrap();
+        assert_eq!(deleted, 0);
+        assert_eq!(remaining_ids(&pool).await, ["completed_old"]);
+    }
+
+    #[tokio::test]
+    async fn retention_loops_over_batches() {
+        let (pool, _container) = setup_pg_test().await;
+        sqlx::query(
+            "INSERT INTO pg_loco_queue (id, name, task_data, status, run_at, updated_at) SELECT \
+             'job' || g, 'J', '{}', 'completed', NOW(), NOW() - INTERVAL '30 days' FROM \
+             generate_series(1, 2500) g",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        let config = RetentionConfig {
+            completed_days: Some(7),
+            ..RetentionConfig::default()
+        };
+        assert_eq!(apply_retention(&pool, &config).await.unwrap(), 2500);
+        assert!(remaining_ids(&pool).await.is_empty());
     }
 }

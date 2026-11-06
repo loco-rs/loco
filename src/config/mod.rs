@@ -36,8 +36,10 @@ mod cache;
 mod database;
 mod logger;
 mod mailer;
+mod notifications;
 mod queue;
 mod server;
+mod storage;
 mod template;
 
 pub use auth::*;
@@ -45,8 +47,10 @@ pub use cache::*;
 pub use database::*;
 pub use logger::*;
 pub use mailer::*;
+pub use notifications::*;
 pub use queue::*;
 pub use server::*;
+pub use storage::*;
 
 use crate::{environment::Environment, scheduler, Error, Result};
 
@@ -68,11 +72,16 @@ pub struct Config {
     pub database: Database,
     #[serde(default)]
     pub cache: CacheConfig,
+    #[serde(default)]
+    pub storage: StorageConfig,
     pub queue: Option<QueueConfig>,
     pub auth: Option<Auth>,
     #[serde(default)]
     pub workers: Workers,
     pub mailer: Option<Mailer>,
+    /// Notification channels and delivery retries; see [`Notifications`].
+    #[serde(default)]
+    pub notifications: Option<Notifications>,
     pub initializers: Option<Initializers>,
 
     /// Custom app settings

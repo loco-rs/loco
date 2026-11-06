@@ -1,0 +1,6 @@
+---
+source: loco-gen/tests/templates/oauth.rs
+expression: "run(&tree, \"github\").unwrap()"
+---
+* OAuth sign-in was added: `/auth/github` starts it, `/auth/sign_out` ends it. Read the user back with `CurrentUser<String>`, then make `on_sign_in` in src/controllers/oauth.rs create your user.
+* Register an OAuth app with github whose callback URL is <your app URL>/auth/github/callback, then set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET (and SESSION_SECRET in production).

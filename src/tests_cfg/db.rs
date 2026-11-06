@@ -135,7 +135,7 @@ impl Hooks for AppHook {
         environment: &Environment,
         config: Config,
     ) -> Result<BootResult> {
-        create_app::<Self, Migrator>(mode, environment, config).await
+        Box::pin(create_app::<Self, Migrator>(mode, environment, config)).await
     }
 
     async fn connect_workers(_ctx: &AppContext, _q: &Queue) -> Result<()> {

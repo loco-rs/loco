@@ -20,6 +20,8 @@ mod infer;
 mod migration;
 #[cfg(feature = "with-db")]
 mod model;
+mod notifier;
+mod oauth;
 #[cfg(feature = "with-db")]
 mod scaffold;
 pub mod template;
@@ -145,12 +147,22 @@ pub enum Component {
         /// Name of the thing to generate
         name: String,
     },
+    /// A notification type delivered to Slack, webhooks and email.
+    Notifier {
+        /// Name of the thing to generate
+        name: String,
+    },
     Data {
         /// Name of the thing to generate
         name: String,
     },
     Deployment {
         kind: DeploymentKind,
+    },
+    /// OAuth sign-in for one provider (`github`, `google`, or a generic one).
+    OAuth {
+        /// The provider's name; also its key under `auth.oauth.providers`.
+        provider: String,
     },
 }
 
@@ -226,6 +238,8 @@ pub fn generate(rrgen: &RRgen, component: Component, appinfo: &AppInfo) -> Resul
             let vars = json!({ "name": name });
             render_template(rrgen, Path::new("mailer"), &vars)?
         }
+        Component::Notifier { name } => notifier::generate(rrgen, &name, appinfo)?,
+        Component::OAuth { provider } => oauth::generate(rrgen, &provider, appinfo)?,
         Component::Deployment { kind } => match kind {
             DeploymentKind::Docker {
                 copy_paths,

@@ -34,6 +34,7 @@ pub fn test_config() -> Config {
             mode: config::WorkerMode::ForegroundBlocking,
         },
         mailer: None,
+        notifications: None,
         initializers: None,
         settings: None,
         scheduler: Some(scheduler::Config {
@@ -59,6 +60,7 @@ pub fn test_config() -> Config {
         // If cache_inmem is not enabled, use null cache
         #[cfg(not(feature = "cache_inmem"))]
         cache: config::CacheConfig::Null,
+        storage: config::StorageConfig::Null,
     }
 }
 
@@ -72,6 +74,7 @@ pub fn get_database_config() -> config::Database {
         connect_timeout: 500,
         idle_timeout: 500,
         acquire_timeout: None,
+        sqlite: crate::config::SqliteConfig::default(),
         auto_migrate: false,
         dangerously_truncate: false,
         dangerously_recreate: false,

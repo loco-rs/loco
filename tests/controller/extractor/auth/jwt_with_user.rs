@@ -74,6 +74,7 @@ async fn can_extract_jwt_with_user_valid_token() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     // Create a valid JWT token with known PID
@@ -117,6 +118,7 @@ async fn can_handle_jwt_with_user_invalid_token() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     let port = get_available_port().await;
@@ -149,6 +151,7 @@ async fn can_handle_jwt_with_user_nonexistent_user() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     // Create a valid JWT token with unknown PID
@@ -187,6 +190,7 @@ async fn can_handle_jwt_with_user_missing_token() {
             secret: secret.clone(),
             expiration: 3600,
         }),
+        ..Default::default()
     });
 
     let port = get_available_port().await;

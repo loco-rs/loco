@@ -258,4 +258,5 @@ pub const LOCO_DEFAULT_FEATURES: &[&str] = &[
     "db-postgres",
     "compression",
     "generators",
+    "mailer",
 ];

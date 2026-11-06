@@ -5,7 +5,9 @@ use {sea_orm::DatabaseConnection, std::path::Path};
 
 use std::{
     any::{Any, TypeId},
+    future::Future,
     net::SocketAddr,
+    pin::Pin,
     sync::Arc,
 };
 
@@ -13,6 +15,9 @@ use async_trait::async_trait;
 use axum::extract::FromRef;
 use axum::Router as AxumRouter;
 use dashmap::DashMap;
+
+#[cfg(feature = "mailer")]
+use crate::mailer::EmailSender;
 
 use crate::{
     bgworker::{self, Queue},
@@ -24,7 +29,6 @@ use crate::{
         AppRoutes,
     },
     environment::Environment,
-    mailer::EmailSender,
     storage::{self, Storage},
     task::Tasks,
     Result,
@@ -264,6 +268,7 @@ pub struct AppContext {
     /// Configuration settings for the application
     pub config: Config,
     /// An optional email sender component that can be used to send email.
+    #[cfg(feature = "mailer")]
     pub mailer: Option<EmailSender>,
     // An optional storage instance for the application
     pub storage: Arc<Storage>,
@@ -287,6 +292,7 @@ pub struct AppContextBuilder {
     db: DatabaseConnection,
     config: Config,
     queue_provider: Option<Arc<bgworker::Queue>>,
+    #[cfg(feature = "mailer")]
     mailer: Option<EmailSender>,
     storage: Option<Arc<Storage>>,
     cache: Option<Arc<cache::Cache>>,
@@ -306,6 +312,7 @@ impl AppContext {
             db,
             config,
             queue_provider: None,
+            #[cfg(feature = "mailer")]
             mailer: None,
             storage: None,
             cache: None,
@@ -320,6 +327,7 @@ impl AppContext {
             environment,
             config,
             queue_provider: None,
+            #[cfg(feature = "mailer")]
             mailer: None,
             storage: None,
             cache: None,
@@ -354,6 +362,7 @@ impl AppContext {
             db: self.db,
             config: self.config,
             queue_provider: self.queue_provider,
+            #[cfg(feature = "mailer")]
             mailer: self.mailer,
             storage: Some(self.storage),
             cache: Some(self.cache),
@@ -369,6 +378,7 @@ impl AppContextBuilder {
         self
     }
     /// Set the email sender (default: none).
+    #[cfg(feature = "mailer")]
     pub fn mailer(mut self, mailer: EmailSender) -> Self {
         self.mailer = Some(mailer);
         self
@@ -398,6 +408,7 @@ impl AppContextBuilder {
             db: self.db,
             queue_provider: self.queue_provider,
             config: self.config,
+            #[cfg(feature = "mailer")]
             mailer: self.mailer,
             storage: self
                 .storage
@@ -469,25 +480,13 @@ pub trait Hooks: Send {
     /// # Returns
     /// A Result indicating success () or an error if the server fails to start.
     async fn serve(app: AxumRouter, ctx: &AppContext, serve_params: &ServeParams) -> Result<()> {
-        let listener = tokio::net::TcpListener::bind(&format!(
-            "{}:{}",
-            serve_params.binding, serve_params.port
-        ))
-        .await?;
-
-        let cloned_ctx = ctx.clone();
-        axum::serve(
-            listener,
-            app.into_make_service_with_connect_info::<SocketAddr>(),
+        let ctx = ctx.clone();
+        serve_router(
+            app,
+            serve_params,
+            Box::pin(async move { Self::on_shutdown(&ctx).await }),
         )
-        .with_graceful_shutdown(async move {
-            shutdown_signal().await;
-            tracing::info!("shutting down...");
-            Self::on_shutdown(&cloned_ctx).await;
-        })
-        .await?;
-
-        Ok(())
+        .await
     }
 
     /// Override and return `Ok(true)` to provide an alternative logging and
@@ -635,6 +634,36 @@ pub trait Initializer: Sync + Send {
     }
 }
 // </snip>
+
+/// Serves `app` until a shutdown signal arrives, then runs `on_shutdown`.
+///
+/// The default [`Hooks::serve`] calls this. It takes the hook as a boxed
+/// future so the server stack compiles once in Loco instead of once per app.
+///
+/// # Errors
+/// Fails if the listener cannot bind or the server fails.
+pub async fn serve_router(
+    app: AxumRouter,
+    serve_params: &ServeParams,
+    on_shutdown: Pin<Box<dyn Future<Output = ()> + Send>>,
+) -> Result<()> {
+    let listener =
+        tokio::net::TcpListener::bind(&format!("{}:{}", serve_params.binding, serve_params.port))
+            .await?;
+
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .with_graceful_shutdown(async move {
+        shutdown_signal().await;
+        tracing::info!("shutting down...");
+        on_shutdown.await;
+    })
+    .await?;
+
+    Ok(())
+}
 
 #[cfg(test)]
 mod tests {
@@ -878,7 +907,10 @@ mod tests {
     #[tokio::test]
     async fn into_builder_carries_every_component_over() {
         let mut ctx = get_app_context().await;
-        ctx.mailer = Some(crate::mailer::EmailSender::stub());
+        #[cfg(feature = "mailer")]
+        {
+            ctx.mailer = Some(crate::mailer::EmailSender::stub());
+        }
         ctx.shared_store.insert(TestService {
             name: "attached-at-boot".to_string(),
             value: 7,
@@ -905,6 +937,7 @@ mod tests {
             Arc::ptr_eq(&before.shared_store, &after.shared_store),
             "shared store was dropped"
         );
+        #[cfg(feature = "mailer")]
         assert!(after.mailer.is_some(), "mailer was dropped");
         assert_eq!(after.environment, before.environment);
         assert!(

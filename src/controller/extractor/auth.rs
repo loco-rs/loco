@@ -897,6 +897,7 @@ mod tests {
                 secret: secret.clone(),
                 expiration: 3600,
             }),
+            ..Default::default()
         });
 
         let token = auth::jwt::JWT::new(&secret)

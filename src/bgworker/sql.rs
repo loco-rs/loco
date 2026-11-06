@@ -13,7 +13,10 @@ use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, trace};
 
 pub use super::{Job, JobData, JobHandler, JobId, RetryPolicy};
-use crate::{config::ReaperConfig, Error, Result};
+use crate::{
+    config::{ReaperConfig, RetentionConfig},
+    Error, Result,
+};
 
 /// Pings the job queue database by selecting a single row's `id` from the
 /// given `table`, shared between the Postgres and `SQLite` backends (which
@@ -99,6 +102,39 @@ pub struct RunOpts {
     /// Opt-in visibility-timeout reaper settings, populated from the queue
     /// config. `None` disables the reaper (default, backward-compatible).
     pub reaper: Option<ReaperConfig>,
+    /// Opt-in deletion of finished jobs, populated from the queue config.
+    /// `None` keeps every job forever (default, backward-compatible).
+    pub retention: Option<RetentionConfig>,
+}
+
+/// Rows a retention sweep deletes per statement, so a large backlog never
+/// holds one long lock.
+pub const RETENTION_BATCH: i64 = 1000;
+
+/// Deletes finished jobs past their retention age, one status at a time and
+/// in batches of [`RETENTION_BATCH`] until a batch comes back short. `delete`
+/// removes up to `batch` rows of a status older than `age_days` and returns
+/// how many it removed. Returns the total removed.
+///
+/// # Errors
+///
+/// Returns the first error `delete` returns.
+pub async fn sweep_retention<F, Fut>(config: &RetentionConfig, mut delete: F) -> Result<u64>
+where
+    F: FnMut(super::JobStatus, i64, i64) -> Fut,
+    Fut: std::future::Future<Output = Result<u64>>,
+{
+    let mut total = 0;
+    for (status, age_days) in config.ages() {
+        loop {
+            let deleted = delete(status.clone(), age_days, RETENTION_BATCH).await?;
+            total += deleted;
+            if i64::try_from(deleted).unwrap_or(i64::MAX) < RETENTION_BATCH {
+                break;
+            }
+        }
+    }
+    Ok(total)
 }
 
 /// Abstracts the backend-coupled operations of the SQL-based job queue

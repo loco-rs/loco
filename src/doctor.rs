@@ -271,6 +271,29 @@ pub fn check_production_safety(config: &Config) -> Check {
         problems.push("the queue is configured to flush all jobs on startup.".to_string());
     }
 
+    #[cfg(feature = "auth_session")]
+    {
+        let secret = config
+            .auth
+            .as_ref()
+            .and_then(|a| a.session.as_ref())
+            .and_then(|s| s.secret.as_deref());
+        if crate::auth::cookies::uses_default_secret(config) {
+            problems.push(
+                "auth.session.secret is not set, so session and OAuth cookies would be signed \
+                 with the public development default (and are refused in production). Set it \
+                 from the environment, e.g. `secret: {{ get_env(name=\"SESSION_SECRET\") }}`."
+                    .to_string(),
+            );
+        } else if secret.is_some_and(|s| s.len() < 32) {
+            problems.push(
+                "auth.session.secret is shorter than 32 characters; use a long random value \
+                 (`openssl rand -base64 64`)."
+                    .to_string(),
+            );
+        }
+    }
+
     if problems.is_empty() {
         Check {
             status: CheckStatus::Ok,
@@ -488,6 +511,9 @@ database:
   auto_migrate: true
   dangerously_truncate: false
   dangerously_recreate: false
+auth:
+  session:
+    secret: a-long-random-production-secret-0123456789abcdef
 {overrides}"
         );
         serde_yaml::from_str(&base).expect("test config parses")
@@ -550,5 +576,34 @@ database:
             .description
             .expect("problems are described");
         assert_eq!(description.lines().count(), 3, "got:\n{description}");
+    }
+
+    #[cfg(feature = "auth_session")]
+    #[test]
+    fn a_missing_short_or_default_session_secret_is_reported() {
+        use crate::config::DEV_SESSION_SECRET;
+
+        let with_secret = |secret: Option<&str>| {
+            let mut cfg = config("");
+            cfg.auth.as_mut().unwrap().session.as_mut().unwrap().secret =
+                secret.map(str::to_string);
+            check_production_safety(&cfg)
+        };
+
+        for secret in [None, Some(""), Some(DEV_SESSION_SECRET)] {
+            let check = with_secret(secret);
+            assert_eq!(check.status, CheckStatus::NotOk, "{secret:?}");
+            assert!(check
+                .description
+                .unwrap()
+                .contains("auth.session.secret is not set"));
+        }
+        let check = with_secret(Some("short"));
+        assert_eq!(check.status, CheckStatus::NotOk);
+        assert!(check.description.unwrap().contains("shorter than 32"));
+
+        let mut cfg = config("");
+        cfg.auth = None;
+        assert_eq!(check_production_safety(&cfg).status, CheckStatus::NotOk);
     }
 }

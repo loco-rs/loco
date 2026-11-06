@@ -12,7 +12,7 @@ sidebar:
 ```toml
 default = [
     "auth", "cli", "with-db", "cache_inmem", "worker",
-    "db-sqlite", "db-postgres", "compression", "generators",
+    "db-sqlite", "db-postgres", "compression", "generators", "mailer",
 ]
 ```
 
@@ -23,6 +23,9 @@ A plain `loco-rs = "..."` dependency (no `default-features = false`) pulls in JW
 | Flag | Default | Enables (deps / sub-features) | Purpose |
 |---|---|---|---|
 | `auth` | **ON** | `dep:hmac`, `dep:sha2`, `dep:base64`, `dep:argon2` | JWT authentication (HS256/HS384/HS512) and `hash::hash_password` / `hash::verify_password`. Pure Rust, so the flag stays self-contained and needs no C toolchain, even when enabled alone with `default-features = false`. |
+| `auth_session` | off | `auth`, `axum-extra/cookie-signed`, `dep:cookie` | Signed cookies (`SignedCookies`), the cookie-backed `Session`, and the `CurrentUser<U>` / `MaybeCurrentUser<U>` extractors, all keyed off `auth.session.secret`. Adds no crypto beyond what `auth` already compiles. `auth.session.store: database` needs `with-db`, `redis` needs `cache_redis`. See [Sign in with GitHub, Google or OAuth2](/docs/how-to/oauth-sign-in). |
+| `auth_session_encrypted` | off | `auth_session`, `axum-extra/cookie-private` | `EncryptedCookies`: AES-256-GCM cookies the browser can neither read nor change. Adds `aes-gcm`. |
+| `auth_oauth` | off | `auth_session`, `dep:reqwest` (rustls) | OAuth2 / OpenID Connect sign-in: `/auth/{provider}` routes, `OAuthHandler`, `Identity`, GitHub and Google presets plus generic providers, and `cargo loco generate oauth <provider>`. |
 | `cli` | **ON** | `dep:clap` | Enables the `cargo loco` runtime CLI (`src/cli.rs`). |
 | `with-db` | **ON** | `dep:sea-orm`, `dep:sea-orm-migration`, `dep:sqlx`, `loco-gen?/with-db` | Sea-ORM 2.0 database support. Gates the `db` CLI subcommand and the DB-dependent generators (`model`, `migration`, `scaffold`). Needs a driver: `db-postgres`, `db-sqlite`, or both. |
 | `db-sqlite` | **ON** | `sea-orm?/sqlx-sqlite`, `sea-orm-migration?/sqlx-sqlite`, `sqlx?/sqlite` | SQLite SeaORM/sqlx drivers and the SQLite queue worker backend. Disable with `default-features = false` on Postgres-only apps to skip `libsqlite3-sys` compile cost. |
@@ -30,17 +33,20 @@ A plain `loco-rs = "..."` dependency (no `default-features = false`) pulls in JW
 | `compression` | **ON** | `tower-http/compression-gzip` | The `compression` middleware, gzip only. Enough for the clients that send `Accept-Encoding: gzip`, which is practically all of them. |
 | `compression-full` | off | `compression`, `tower-http/compression-full` | The `compression` middleware with brotli, deflate, gzip and zstd. zstd is a C build of libzstd. |
 | `generators` | **ON** | `dep:loco-gen` | `cargo loco generate` (debug builds only). `loco-gen` brings a second, Tera 1, template engine through `rrgen`; leaving the feature out keeps it out of the build. |
+| `mailer` | **ON** | `dep:lettre`, `dep:include_dir` | The `Mailer` trait, SMTP and stub delivery, and the `mailer` queue worker. An app that sends no mail leaves it off to skip lettre and its SMTP parser and rustls stack. A config that enables a mailer (`stub: true` or an enabled `smtp` block) fails at boot without it. |
+| `notifications` | off | `dep:reqwest` (rustls), `dep:hmac`, `dep:sha2` | The `Notifier` trait (in the prelude), Slack, signed-webhook and email channels, the `notifications` queue worker, and `cargo loco generate notifier <name>`. The email channel also needs `mailer`. See [Send notifications](/docs/how-to/send-notifications). |
 | `multi-tenancy` | off | `with-db` | Explicit tenant scoping through `TenantEntity`, `TenantQueryExt`, and `TenantActiveModelExt`. See [Add row-level multi-tenancy](/docs/how-to/multi-tenancy). |
 | `testing` | off | `dep:axum-test`, `dep:scraper`, `dep:tree-fs` | Test harness utilities. Enabled alongside `multi-tenancy` for docs.rs, and used by the crate's own `dev-dependencies`. |
-| `cache_inmem` | **ON** | `dep:moka` | In-memory cache backend. |
+| `cache_inmem` | **ON** | none | In-memory cache backend: a map in the process, entries expire, and the least recently used entry goes when `max_capacity` is reached. |
 | `cache_redis` | off | `dep:bb8-redis`, `dep:bb8` | Redis-backed cache pool. |
 | `worker` | **ON** | `dep:sqlx`, `dep:ulid` | Background job queue/workers: the Postgres backend with `db-postgres`, the SQLite backend with `db-sqlite`. Which one runs is chosen at runtime by `queue.kind` in config (`Postgres` or `Sqlite`), not by a separate feature per database. |
 | `worker_redis` | off | `worker`, `dep:redis` | Adds the Redis-backed queue backend on top of `worker` (implies it). Enable this if your app's `queue.kind` is `Redis`. |
 | `redis_tls` | off | `redis/tokio-rustls-comp`, `redis/tls-rustls-webpki-roots`, `dep:rustls` | Redis over TLS (`rediss://` URLs) for managed providers such as ElastiCache, Upstash, or Azure Cache. Arms both the worker and the cache Redis paths at once — they share the same `redis` crate — with webpki-bundled roots, so it stays portable to slim/distroless images. Enable it alongside `worker_redis`/`cache_redis` and point the config at a `rediss://` URL; no code changes are needed. |
 | `all_storage` | off | `storage_aws_s3` + `storage_azure` + `storage_gcp` | Umbrella flag — turns on every cloud storage backend at once. |
-| `storage_aws_s3` | off | `opendal/services-s3` | AWS S3 storage backend. |
-| `storage_azure` | off | `opendal/services-azblob` | Azure Blob storage backend. |
-| `storage_gcp` | off | `opendal/services-gcs` | Google Cloud Storage backend. |
+| `storage_opendal` | off | `dep:opendal` | `drivers::opendal_adapter`, for wrapping any OpenDAL service. The cloud backends imply it; the local and in-memory drivers do not need it. |
+| `storage_aws_s3` | off | `storage_opendal`, `opendal/services-s3` | AWS S3 storage backend. |
+| `storage_azure` | off | `storage_opendal`, `opendal/services-azblob` | Azure Blob storage backend. |
+| `storage_gcp` | off | `storage_opendal`, `opendal/services-gcs` | Google Cloud Storage backend. |
 | `embedded_assets` | off | (empty — build-time flag) | Embeds the app's `assets/` directory into the compiled binary and swaps the view-engine's asset-loading path accordingly, instead of reading assets from disk at runtime. |
 
 Source: root `Cargo.toml:41-109`.

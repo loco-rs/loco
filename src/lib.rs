@@ -11,6 +11,7 @@ pub use self::errors::Error;
 
 mod banner;
 pub mod bgworker;
+mod byte_size;
 mod depcheck;
 pub mod initializers;
 pub mod prelude;
@@ -24,6 +25,8 @@ pub mod db;
 pub mod model;
 #[cfg(feature = "with-db")]
 pub mod schema;
+#[cfg(all(feature = "db-sqlite", any(feature = "with-db", feature = "worker")))]
+pub(crate) mod sqlite_pragmas;
 mod tera;
 
 pub mod app;
@@ -39,7 +42,10 @@ pub mod environment;
 pub mod errors;
 pub mod hash;
 pub mod logger;
+#[cfg(feature = "mailer")]
 pub mod mailer;
+#[cfg(feature = "notifications")]
+pub mod notifications;
 pub mod scheduler;
 pub mod task;
 #[cfg(feature = "testing-core")]

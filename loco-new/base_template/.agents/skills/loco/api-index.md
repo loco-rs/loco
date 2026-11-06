@@ -11,7 +11,7 @@ since they restate the trait's own API.
 
 `use loco_rs::prelude::*;` brings these into scope. They are already available — importing them again is redundant.
 
-`ActiveModelBehavior`, `ActiveModelTrait`, `ActiveValue`, `AppContext`, `Authenticable`, `BackgroundWorker`, `ColumnTrait`, `Condition`, `ConnectionTrait`, `DatabaseConnection`, `Date`, `DateTime`, `DateTimeUtc`, `DateTimeWithTimeZone`, `DbErr`, `Decimal`, `Dir`, `EntityTrait`, `Error`, `Expr`, `Form`, `Format`, `Initializer`, `IntoActiveModel`, `IntoResponse`, `Json`, `JsonValidate`, `JsonValidateWithMessage`, `Mailer`, `MiddlewareStackExt`, `ModelError`, `ModelResult`, `ModelTrait`, `Multipart`, `Order`, `Pager`, `PagerMeta`, `PaginatorTrait`, `Path`, `Query`, `QueryFilter`, `QueryOrder`, `QuerySelect`, `Queue`, `RemoteIP`, `RespondTo`, `Response`, `Result`, `Routes`, `Set`, `SharedStore`, `State`, `Task`, `TaskInfo`, `TenantActiveModelExt`, `TenantEntity`, `TenantQueryExt`, `TeraView`, `TransactionTrait`, `Uuid`, `Validatable`, `Validate`, `ValidatorTrait`, `ViewEngine`, `ViewRenderer`, `async_trait`, `auth`, `bad_request`, `cookie`, `data`, `debug_handler`, `delete`, `format`, `get`, `head`, `include_dir`, `mailer`, `not_found`, `options`, `patch`, `post`, `prelude`, `put`, `query`, `task`, `trace`, `unauthorized`, `validation`
+`ActiveModelBehavior`, `ActiveModelTrait`, `ActiveValue`, `AppContext`, `Authenticable`, `BackgroundWorker`, `ColumnTrait`, `Condition`, `ConnectionTrait`, `CurrentUser`, `DatabaseConnection`, `Date`, `DateTime`, `DateTimeUtc`, `DateTimeWithTimeZone`, `DbErr`, `Decimal`, `Dir`, `EncryptedCookies`, `EntityTrait`, `Error`, `Expr`, `Form`, `Format`, `Identity`, `Initializer`, `IntoActiveModel`, `IntoResponse`, `Json`, `JsonValidate`, `JsonValidateWithMessage`, `Mailer`, `MaybeCurrentUser`, `MiddlewareStackExt`, `ModelError`, `ModelResult`, `ModelTrait`, `Multipart`, `Notifier`, `OAuthFailure`, `OAuthHandler`, `OrErr`, `Order`, `Pager`, `PagerMeta`, `PaginatorTrait`, `Path`, `Query`, `QueryFilter`, `QueryOrder`, `QuerySelect`, `Queue`, `RemoteIP`, `RespondTo`, `Response`, `Result`, `Routes`, `Session`, `SessionUser`, `Set`, `SharedStore`, `SignIn`, `SignedCookies`, `State`, `Task`, `TaskInfo`, `TenantActiveModelExt`, `TenantEntity`, `TenantQueryExt`, `TeraView`, `TransactionTrait`, `Uuid`, `Validatable`, `Validate`, `ValidatorTrait`, `ViewEngine`, `ViewRenderer`, `async_trait`, `auth`, `bad_request`, `cookie`, `data`, `debug_handler`, `delete`, `format`, `get`, `head`, `include_dir`, `mailer`, `not_found`, `notifications`, `options`, `patch`, `post`, `prelude`, `put`, `query`, `task`, `trace`, `unauthorized`, `validation`
 
 ## `loco_rs::testing::prelude`
 
@@ -36,6 +36,7 @@ since they restate the trait's own API.
 - `trait` **Initializer** — An initializer
 - `struct` **RefGuard**
 - `struct` **SharedStore** — Type-safe heterogeneous storage for arbitrary application data
+- `fn` **serve_router**`(app: Router, serve_params: &ServeParams, on_shutdown: Pin<Box<dyn Future + Send>>) -> Result<()>` — Serves `app` until a shutdown signal arrives, then runs `on_shutdown`
 
 ### `AppContext`
 
@@ -87,6 +88,44 @@ since they restate the trait's own API.
 - `fn` **get_ref**`(self: &Self) -> Option<RefGuard<T>>` — Get a reference to a value of type T from the shared store
 - `fn` **insert**`(self: &Self, val: T)` — Insert a value of type T into the shared store
 - `fn` **remove**`(self: &Self) -> Option<T>` — Remove a value of type T from the shared store
+## `auth::cookies`
+
+- `struct` **CookieOptions**` { secure: bool, max_age: Option<u64> }` — Cookie attributes Loco applies to the cookies it sets: `Path=/`,
+- `const` **DEFAULT_SESSION_COOKIE** — Default session cookie name
+- `const` **DEFAULT_SESSION_MAX_AGE** — Default session lifetime: 30 days
+- `struct` **EncryptedCookies** — An encrypted (AES-256-GCM) cookie jar keyed off `auth.session.secret`:
+- `struct` **SignedCookies** — A signed cookie jar keyed off `auth.session.secret`
+- `fn` **derive_key**`(secret: &str) -> Key` — Derives the cookie [`Key`] from a secret of any length
+- `fn` **key**`(ctx: &AppContext) -> Result<Key>` — The cookie key for this app
+- `fn` **key_for**`(config: &Config, environment: &Environment) -> Result<Key>` — [`key`] from a config and environment, for code without an `AppContext`
+- `fn` **seal**`(value: &T, ttl_seconds: u64) -> Result<String>` — Encodes `value` with an expiry `ttl_seconds` from now, as cookie-safe
+- `fn` **unseal**`(text: &str) -> Option<T>` — Reads a value written by [`seal`], or `None` when it is malformed or
+- `fn` **uses_default_secret**`(config: &Config) -> bool` — Whether `config` leaves the session secret at its development default
+
+### `CookieOptions`
+
+- `fn` **cookie**`(self: &Self, name: impl Trait, value: impl Trait) -> Cookie` — A cookie carrying these attributes
+- `fn` **from_config**`(config: &Config) -> Self` — The options `config` asks for, with `max_age` from
+- `fn` **removal**`(self: &Self, name: impl Trait) -> Cookie` — A cookie that deletes `name` (empty value, `Max-Age=0`), with the same
+- `fn` **with_max_age**`(self: Self, max_age: Option<u64>) -> Self` — Same options with another `Max-Age`
+
+### `EncryptedCookies`
+
+- `fn` **add**`(self: Self, cookie: impl Trait) -> Self` — Encrypts and adds `cookie`
+- `fn` **from_headers**`(headers: &HeaderMap, key: Key, options: CookieOptions) -> Self` — A jar over `headers`' cookies, decrypted with `key`
+- `fn` **get**`(self: &Self, name: &str) -> Option<Cookie>` — The decrypted cookie `name`, if present and authentic
+- `fn` **into_inner**`(self: Self) -> PrivateCookieJar` — The underlying axum-extra jar
+- `fn` **options**`(self: &Self) -> &CookieOptions` — The app's cookie attributes
+- `fn` **remove**`(self: Self, name: &str) -> Self` — Removes the cookie `name`
+
+### `SignedCookies`
+
+- `fn` **add**`(self: Self, cookie: impl Trait) -> Self` — Signs and adds `cookie`
+- `fn` **from_headers**`(headers: &HeaderMap, key: Key, options: CookieOptions) -> Self` — A jar over `headers`' cookies, verified with `key`
+- `fn` **get**`(self: &Self, name: &str) -> Option<Cookie>` — The verified cookie `name`, if present and untampered
+- `fn` **into_inner**`(self: Self) -> SignedCookieJar` — The underlying axum-extra jar
+- `fn` **options**`(self: &Self) -> &CookieOptions` — The app's cookie attributes, for building cookies to [`add`](Self::add)
+- `fn` **remove**`(self: Self, name: &str) -> Self` — Removes the cookie `name`, using the app's cookie attributes so the
 ## `auth::jwt`
 
 - `struct` **Header**` { typ: Option<String>, alg: JWTAlgorithm }` — The JOSE header of a token
@@ -120,6 +159,119 @@ since they restate the trait's own API.
 - `variant` **InvalidSignature**
 - `variant` **InvalidToken**
 - `variant` **Json**
+## `auth::oauth`
+
+- `struct` **CallbackParams**` { code: Option<String>, state: Option<String>, error: Option<String>, error_description: Option<String> }` — Query of `/auth/{provider}/callback`
+- `enum` **FailureKind** — Why a sign-in did not complete
+- `struct` **OAuthFailure**` { provider: String, kind: FailureKind, detail: Option<String>, retry_path: String }` — A failed sign-in, handed to [`OAuthHandler::on_failure`]
+- `trait` **OAuthHandler** — The app side of the sign-in flow
+- `struct` **SignIn**` { user_id: String, redirect_to: Option<String>, remember: bool }` — What [`OAuthHandler::on_sign_in`] decided
+- `struct` **StartParams**` { return_to: Option<String>, remember: Option<String> }` — Query of `/auth/{provider}`
+- `fn` **default_failure**`(ctx: &AppContext, failure: &OAuthFailure) -> Result<Response>` — [`OAuthHandler::on_failure`]'s default
+- `fn` **routes**`() -> Routes` — The routes for handler `H`, under `/auth`. Add your own with `.add(..)` or
+
+### `FailureKind`
+
+- `variant` **Cancelled** — The user declined at the provider (`error=access_denied`)
+- `variant` **Configuration** — The provider is unknown or misconfigured
+- `variant` **Denied** — [`OAuthHandler::on_sign_in`] returned [`Error::Unauthorized`]
+- `variant` **InvalidState** — The state cookie was missing, expired or did not match: a stale tab,
+- `variant` **MissingCode** — The callback had neither `code` nor `error`
+- `variant` **Profile** — The profile could not be fetched or had no account id
+- `variant` **ProviderError** — The provider redirected back with another `error`
+- `variant` **TokenExchange** — The token endpoint refused the code or could not be reached
+- `fn` **as_str**`(self: Self) -> &str` — A stable identifier (`cancelled`, `invalid_state`, …), used as
+- `fn` **message**`(self: Self) -> &str` — A sentence fit to show the user
+
+### `OAuthHandler`
+
+- `fn` **after_sign_out_path**`(ctx: &AppContext) -> String` — Where `/auth/sign_out` lands. Default
+- `fn` **on_failure**`(ctx: &AppContext, failure: &OAuthFailure) -> Pin<Box<dyn Future + Send>>` — The response for a failed sign-in. Default: redirect to
+- `fn` **on_sign_in**`(ctx: &AppContext, identity: &Identity) -> Pin<Box<dyn Future + Send>>` — Find or create the user for `identity` and return their session id
+
+### `SignIn`
+
+- `fn` **new**`(user_id: impl Trait) -> Self` — Sign in the user with session id `user_id`
+- `fn` **redirect_to**`(self: Self, path: impl Trait) -> Self` — Land on `path` unless the flow carried a `return_to`
+- `fn` **remember**`(self: Self) -> Self` — Remember this sign-in, whatever the sign-in link asked for
+## `auth::oauth::provider`
+
+- `struct` **Identity**` { provider: String, uid: String, login: Option<String>, name: Option<String>, email: Option<String>, email_verified: Option<bool>, avatar_url: Option<String>, access_token: String, refresh_token: Option<String>, expires_at: Option<DateTime<Utc>>, scope: Option<String>, raw: Value }` — A user as an OAuth provider describes them, normalized across providers
+- `struct` **Provider**` { name: String, strategy: OAuthStrategy, client_id: String, client_secret: String, scopes: Vec<String>, authorize_url: String, token_url: String, userinfo_url: String, emails_url: Option<String>, redirect_uri: Option<String>, authorize_params: BTreeMap<String, String>, pkce: bool, token_auth: OAuthTokenAuth }` — A provider's configuration with its preset filled in
+- `struct` **Tokens**` { access_token: String, refresh_token: Option<String>, expires_in: Option<i64>, scope: Option<String> }` — The token endpoint's answer
+- `fn` **exchange_code**`(provider: &Provider, code: &str, redirect_uri: &str, code_verifier: Option<&str>) -> Result<Tokens, String>` — Exchanges an authorization `code` for tokens
+- `fn` **fetch_identity**`(provider: &Provider, tokens: Tokens) -> Result<Identity, String>` — Fetches the profile for `tokens` and normalizes it
+- `fn` **normalize**`(provider: &Provider, profile: Value, github_emails: Option<&Value>, tokens: Tokens, now: DateTime<Utc>) -> Result<Identity, String>` — Normalizes a profile (and, for GitHub, its `/user/emails` list) into an
+- `fn` **parse_token_response**`(body: &str) -> Result<Tokens, String>` — Reads a token response body. GitHub answers form-encoded unless asked for
+
+### `Provider`
+
+- `fn` **authorize_url**`(self: &Self, redirect_uri: &str, state: &str, code_challenge: Option<&str>) -> Result<String, String>` — The URL to send the browser to
+- `fn` **resolve**`(name: &str, config: &OAuthProviderConfig) -> Result<Self, String>` — Resolves `config` for the provider called `name`
+## `auth::oauth::state`
+
+- `struct` **FlowState**` { state: String, verifier: Option<String>, return_to: Option<String>, remember: bool }` — What the start of the flow leaves for the callback
+- `const` **STATE_TTL_SECONDS** — How long a user has to finish at the provider: 10 minutes
+- `fn` **cookie_name**`(provider: &str) -> String` — The state cookie for `provider`. One per provider, so two tabs signing in
+- `fn` **pkce_challenge**`(verifier: &str) -> String` — `BASE64URL(SHA256(verifier))` (RFC 7636 S256)
+- `fn` **random_token**`() -> String` — 32 random bytes, base64url
+- `fn` **safe_return_to**`(value: &str) -> Option<String>` — `value` if it is a path on this site, else `None`
+
+### `FlowState`
+
+- `fn` **challenge**`(self: &Self) -> Option<String>` — The PKCE S256 challenge for the verifier
+- `fn` **matches**`(self: &Self, state: &str) -> bool` — Whether `state` (from the callback query) matches, in constant time
+- `fn` **new**`(pkce: bool, return_to: Option<&str>) -> Self` — A fresh state (and verifier, when `pkce`)
+## `auth::session`
+
+- `struct` **CurrentUser** — The signed-in user; rejects signed-out requests
+- `struct` **MaybeCurrentUser** — The signed-in user, or `None`. Never rejects for being signed out
+- `struct` **Session** — The session. See the [module docs](self)
+- `trait` **SessionUser** — How [`CurrentUser`] loads the signed-in user from the id in the session
+- `const` **USER_ID_KEY** — The session key holding the signed-in user's id
+- `fn` **encode**`(value: &str) -> String` — Percent-encodes `value` for a query string
+
+### `Session`
+
+- `fn` **clear**`(self: Self) -> Self` — Ends the session: empties it and deletes its cookie. On a server-side
+- `fn` **cookie_name**`(ctx: &AppContext) -> String` — The session cookie name configured for `ctx`
+- `fn` **from_jar**`(jar: SignedCookies, name: impl Trait) -> Self` — Reads a cookie-store session from a signed jar
+- `fn` **from_parts**`(parts: &Parts, ctx: &AppContext) -> Result<Self>` — The session for a request, outside an extractor
+- `fn` **get**`(self: &Self, key: &str) -> Option<T>` — The value at `key`, if present and of type `T`
+- `fn` **insert**`(self: Self, key: impl Trait, value: &T) -> Result<Self>` — Stores `value` at `key`
+- `fn` **into_jar**`(self: Self) -> Result<SignedCookies>` — Hands back the signed jar, with this session's changes written to it
+- `fn` **is_empty**`(self: &Self) -> bool` — Whether the session holds no values
+- `fn` **map_jar**`(self: Self, f: impl Trait) -> Self` — Applies a change to the jar this session writes (e.g. removing a
+- `fn` **remember**`(self: Self) -> Result<Self>` — Remember this sign-in across browser restarts, Devise's `remember_me`:
+- `fn` **remember_cookie_name**`(ctx: &AppContext) -> String` — The remember-me cookie name configured for `ctx`
+- `fn` **remove**`(self: Self, key: &str) -> Self` — Removes `key`
+- `fn` **renew**`(self: Self) -> Self` — Empties the session so a sign-in starts from a fresh one rather than
+- `fn` **set_user_id**`(self: Self, id: impl Trait) -> Self` — Signs `id` in
+- `fn` **user_id**`(self: &Self) -> Option<String>` — The signed-in user's id
+
+### `SessionUser`
+
+- `fn` **find_by_session_id**`(ctx: &AppContext, id: &str) -> Pin<Box<dyn Future + Send>>` — Loads the user whose session id is `id`
+## `auth::session_store`
+
+- `const` **DEFAULT_REMEMBER_COOKIE** — Default remember-me cookie name
+- `const` **DEFAULT_REMEMBER_FOR** — Remember-me lifetime when `auth.session.remember_for` is unset: 14 days
+- `const` **DEFAULT_TTL** — Idle lifetime of a server-side session when `auth.session.ttl` is unset: a
+- `const` **MAX_REMEMBER_FOR** — Browsers cap a cookie's lifetime at 400 days; a longer `remember_for` would
+- `struct` **SessionStore** — The configured server-side store
+- `fn` **is_server_side**`(ctx: &AppContext) -> bool` — Whether `ctx` is configured with a server-side session store
+- `fn` **of**`(ctx: &AppContext) -> Result<Arc<SessionStore>>` — The store `ctx` is configured with, built on first use
+- `fn` **random_token**`() -> String` — A fresh 256-bit random value, base64url. `rand::rng()` is a CSPRNG seeded
+- `fn` **sign_out_everywhere**`(ctx: &AppContext, user_id: &str) -> Result<u64>` — Ends every session and remember-me token of `user_id`: "sign out of all
+- `fn` **validate**`(config: &Config) -> Result<()>` — Rejects configurations that cannot work
+
+### `SessionStore`
+
+- `fn` **kind**`(self: &Self) -> SessionStoreKind` — Which store this is
+- `fn` **purge_expired**`(self: &Self) -> Result<u64>` — Deletes expired rows now (a no-op for Redis, which expires keys
+- `fn` **remember_for**`(self: &Self) -> u64` — Seconds a remember-me series lives
+- `fn` **revoke_user**`(self: &Self, user: &str) -> Result<u64>` — Ends every session and remember-me series of `user`
+- `fn` **ttl**`(self: &Self) -> u64` — Seconds an idle session lives; it slides on use
 ## `bgworker`
 
 - `trait` **BackgroundWorker**
@@ -133,7 +285,7 @@ since they restate the trait's own API.
 - `struct` **Queue** — A handle to a background job queue
 - `trait` **QueueProvider** — Object-safe interface implemented by every queue backend (Postgres,
 - `struct` **RetryPolicy**` { max_retries: u32, backoff: Duration }` — How a queue provider retries a worker's failed jobs. Built from
-- `struct` **RunOpts**` { num_workers: u32, poll_interval_sec: u32, reaper: Option<ReaperConfig> }`
+- `struct` **RunOpts**` { num_workers: u32, poll_interval_sec: u32, reaper: Option<ReaperConfig>, retention: Option<RetentionConfig> }`
 - `fn` **converge**`(queue: &Queue, config: &QueueConfig) -> Result<()>` — Initialize the system according to configuration
 - `fn` **create_queue_provider**`(config: &Config) -> Result<Option<Arc<Queue>>>` — Create a provider from the `queue` config when `workers.mode` is
 
@@ -185,15 +337,16 @@ since they restate the trait's own API.
 - `fn` **clear_by_status**`(self: &Self, status: Vec<JobStatus>) -> Result<()>` — Clears jobs based on their status for the configured queue provider
 - `fn` **clear_jobs_older_than**`(self: &Self, age_days: i64, status: &Vec<JobStatus>) -> Result<()>` — Clears jobs older than a specified number of days for the configured queue provider
 - `fn` **describe**`(self: &Self) -> String`
-- `fn` **dump**`(self: &Self, path: &Path, status: Option<&Vec<JobStatus>>, age_days: Option<i64>) -> Result<PathBuf>` — Dumps the list of jobs to a YAML file at the specified path
+- `fn` **dump**`(self: &Self, path: &Path, status: Option<&Vec<JobStatus>>, age_days: Option<i64>) -> Result<PathBuf>` — Dumps the list of jobs to a YAML-compatible JSON file at the specified path
 - `fn` **empty**`() -> Self` — A [`Queue`] with no configured provider. Replaces the old
 - `fn` **enqueue**`(self: &Self, class: String, queue: Option<String>, args: A, tags: Option<Vec<String>>, priority: Option<i32>) -> Result<Option<String>>` — Add a job to the queue
 - `fn` **enqueue_batch**`(self: &Self, class: String, queue: Option<String>, jobs: Vec<(A, Option<i32>)>, tags: Option<Vec<String>>) -> Result<Vec<JobId>>` — Add multiple jobs to the queue in a single batch operation, returning
 - `fn` **enqueue_unique**`(self: &Self, class: String, queue: Option<String>, args: A, tags: Option<Vec<String>>, priority: Option<i32>, key: String) -> Result<Option<String>>` — Add a job unless one with the same `class` and `key` is already
 - `fn` **from_provider**`(provider: Arc<dyn QueueProvider>) -> Self` — Wraps a third-party (or built-in) [`QueueProvider`] as a [`Queue`]
-- `fn` **import**`(self: &Self, path: &Path) -> Result<()>` — Imports jobs from a YAML file into the configured queue provider
+- `fn` **import**`(self: &Self, path: &Path) -> Result<()>` — Imports jobs from a JSON or legacy YAML file into the configured queue provider
 - `fn` **ping**`(self: &Self) -> Result<()>` — Returns a ping of this [`Queue`]
 - `fn` **register**`(self: &Self, worker: W) -> Result<()>` — Register a worker
+- `fn` **register_with_retry_policy**`(self: &Self, worker: W, policy: RetryPolicy) -> Result<()>` — Register a worker with a retry policy decided at runtime (for example
 - `fn` **requeue**`(self: &Self, age_minutes: &i64) -> Result<()>` — Requeued job with the given minutes ages
 - `fn` **retry_failed**`(self: &Self, id: Option<&str>) -> Result<u64>` — Moves failed jobs back to [`JobStatus::Queued`], returning how many
 - `fn` **run**`(self: &Self, tags: Vec<String>) -> Result<()>` — Runs the worker loop for this [`Queue`]
@@ -228,6 +381,7 @@ since they restate the trait's own API.
 
 - `struct` **PgDriver** — [`Driver`] implementation delegating to the Postgres-specific
 - `struct` **PgQueue**` { pool: PgPool, registry: Arc<Mutex<JobRegistry>>, run_opts: RunOpts, token: CancellationToken }` — The Postgres [`QueueProvider`]
+- `fn` **apply_retention**`(pool: &PgPool, config: &RetentionConfig) -> Result<u64>` — Runs one retention sweep: deletes finished jobs older than the ages in
 - `fn` **cancel_jobs_by_name**`(pool: &PgPool, name: &str) -> Result<()>` — Cancels jobs in the `pg_loco_queue` table by their name
 - `fn` **clear**`(pool: &PgPool) -> Result<()>` — Clear all jobs
 - `fn` **clear_by_status**`(pool: &PgPool, status: Vec<JobStatus>) -> Result<()>` — Deletes jobs from the `pg_loco_queue` table based on their status
@@ -271,6 +425,7 @@ since they restate the trait's own API.
 
 - `struct` **SqliteDriver** — [`Driver`] implementation delegating to the `SQLite`-specific
 - `struct` **SqliteQueue**` { pool: SqlitePool, registry: Arc<Mutex<JobRegistry>>, run_opts: RunOpts, token: CancellationToken }` — The `SQLite` [`QueueProvider`]
+- `fn` **apply_retention**`(pool: &SqlitePool, config: &RetentionConfig) -> Result<u64>` — Runs one retention sweep: deletes finished jobs older than the ages in
 - `fn` **cancel_jobs_by_name**`(pool: &SqlitePool, name: &str) -> Result<()>` — Cancels jobs in the `sqlt_loco_queue` table by their name
 - `fn` **clear**`(pool: &SqlitePool) -> Result<()>` — Clear all jobs
 - `fn` **clear_by_status**`(pool: &SqlitePool, status: Vec<JobStatus>) -> Result<()>` — Deletes jobs from the `sqlt_loco_queue` table based on their status
@@ -327,6 +482,7 @@ since they restate the trait's own API.
 - `enum` **CacheError** — Errors related to cache operations
 - `type` **CacheResult**
 - `fn` **create_cache_provider**`(config: &Config) -> Result<Arc<Cache>>` — Create a provider
+- `fn` **create_cache_provider_with_db**`(config: &Config, db: &DatabaseConnection) -> Result<Arc<Cache>>` — Create a provider, giving the database cache the app's connection
 
 ### `Cache`
 
@@ -344,6 +500,7 @@ since they restate the trait's own API.
 ### `CacheError`
 
 - `variant` **Any**
+- `variant` **Database**
 - `variant` **Deserialization**
 - `variant` **Redis**
 - `variant` **RedisConnectionError**
@@ -361,22 +518,24 @@ since they restate the trait's own API.
 - `fn` **insert_with_expiry**`(self: &Self, key: &str, value: &str, duration: Duration) -> Pin<Box<dyn Future + Send>>` — Inserts a key-value pair into the cache that expires after the
 - `fn` **ping**`(self: &Self) -> Pin<Box<dyn Future + Send>>` — Pings the cache to check if it is reachable
 - `fn` **remove**`(self: &Self, key: &str) -> Pin<Box<dyn Future + Send>>` — Removes a key-value pair from the cache
+## `cache::drivers::db`
+
+- `struct` **Database** — Represents the database cache driver
+- `const` **TABLE** — Name of the table holding the cache entries
+- `fn` **new**`(config: &DatabaseCacheConfig, db: &DatabaseConnection) -> Cache` — Creates a new instance of the database cache driver on top of `db`
+
+### `Database`
+
+- `fn` **new**`(db: DatabaseConnection, sweep_every: u64, sweep_batch: u64) -> Self` — Constructs the driver. `sweep_every` is the number of writes between
+- `fn` **sweep**`(self: &Self) -> CacheResult<u64>` — Deletes up to `sweep_batch` expired rows and returns how many went
 ## `cache::drivers::inmem`
 
-- `enum` **Expiration**
-- `struct` **InMemExpiry**
 - `struct` **Inmem** — Represents the in-memory cache driver
 - `fn` **new**`(config: &InMemCacheConfig) -> Cache` — Creates a new instance of the in-memory cache driver, with a default Loco
 
-### `Expiration`
-
-- `variant` **AfterDuration**
-- `variant` **Never**
-- `fn` **as_duration**`(self: &Self) -> Option<Duration>`
-
 ### `Inmem`
 
-- `fn` **from**`(cache: Cache<String, (Expiration, String)>) -> Box<dyn CacheDriver>` — Constructs a new [`Inmem`] instance from a given cache
+- `fn` **new**`(max_capacity: u64) -> Self` — Constructs an empty cache that holds at most `max_capacity` entries
 ## `cache::drivers::null`
 
 - `struct` **Null** — Represents the in-memory cache driver
@@ -412,28 +571,47 @@ since they restate the trait's own API.
 - `variant` **Nginx**
 ## `config`
 
-- `struct` **Auth**` { jwt: Option<JWT> }` — User authentication configuration
+- `struct` **Auth**` { jwt: Option<JWT>, session: Option<SessionConfig>, oauth: Option<OAuthConfig> }` — User authentication configuration
+- `struct` **AwsStorageConfig**` { bucket: String, region: String, endpoint: Option<String>, access_key_id: Option<String>, secret_access_key: Option<String>, session_token: Option<String> }`
+- `struct` **AzureStorageConfig**` { container: String, account_name: String, access_key: String, endpoint: String }`
 - `enum` **CacheConfig** — Cache configurations for the application
-- `struct` **Config**` { logger: Logger, server: Server, database: Database, cache: CacheConfig, queue: Option<QueueConfig>, auth: Option<Auth>, workers: Workers, mailer: Option<Mailer>, initializers: Option<Initializers>, settings: Option<Value>, scheduler: Option<Config> }` — Main application configuration structure
-- `struct` **Database**` { uri: String, enable_logging: bool, min_connections: u32, max_connections: u32, connect_timeout: u64, idle_timeout: u64, acquire_timeout: Option<u64>, auto_migrate: bool, dangerously_truncate: bool, dangerously_recreate: bool, run_on_start: Option<String> }` — Database configuration
+- `struct` **Config**` { logger: Logger, server: Server, database: Database, cache: CacheConfig, storage: StorageConfig, queue: Option<QueueConfig>, auth: Option<Auth>, workers: Workers, mailer: Option<Mailer>, notifications: Option<Notifications>, initializers: Option<Initializers>, settings: Option<Value>, scheduler: Option<Config> }` — Main application configuration structure
+- `const` **DEV_SESSION_SECRET** — The secret every signed cookie is keyed off when `auth.session.secret` is
+- `struct` **Database**` { uri: String, enable_logging: bool, min_connections: u32, max_connections: u32, connect_timeout: u64, idle_timeout: u64, acquire_timeout: Option<u64>, auto_migrate: bool, dangerously_truncate: bool, dangerously_recreate: bool, run_on_start: Option<String>, sqlite: SqliteConfig }` — Database configuration
+- `struct` **DatabaseCacheConfig**` { sweep_every: u64, sweep_batch: u64 }` — Settings of the database cache (`cache.kind: Database`). Both fields have
+- `struct` **EmailNotifications**` { to: Vec<String>, from: Option<String> }` — Default email destination
+- `struct` **GcpStorageConfig**` { bucket: String, credential_path: String }`
 - `struct` **InMemCacheConfig**` { max_capacity: u64 }`
 - `type` **Initializers** — Initializers configuration
 - `struct` **JWT**` { location: Option<JWTLocationConfig>, secret: String, expiration: u64 }` — JWT configuration structure
 - `enum` **JWTLocation** — Defines the authentication mechanism for middleware
 - `enum` **JWTLocationConfig** — Configuration for JWT location(s) - supports both single location and multiple locations
+- `struct` **LocalStorageConfig**` { path: Option<String> }`
 - `struct` **Logger**` { enable: bool, pretty_backtrace: bool, level: LogLevel, format: Format, override_filter: Option<String>, file_appender: Option<LoggerFileAppender> }` — Logger configuration
 - `struct` **LoggerFileAppender**` { enable: bool, non_blocking: bool, level: LogLevel, format: Format, rotation: Rotation, dir: Option<String>, filename_prefix: Option<String>, filename_suffix: Option<String>, max_log_files: usize }`
 - `struct` **Mailer**` { smtp: Option<SmtpMailer>, stub: bool }` — Mailer configuration
 - `struct` **MailerAuth**` { user: String, password: String }` — Authentication details for the mailer
 - `enum` **MailerTls** — TLS mode for the SMTP connection
-- `struct` **PostgresQueueConfig**` { uri: String, dangerously_flush: bool, enable_logging: bool, max_connections: u32, min_connections: u32, connect_timeout: u64, idle_timeout: u64, poll_interval_sec: u32, num_workers: u32, reaper: Option<ReaperConfig> }`
+- `struct` **Notifications**` { slack: Option<SlackNotifications>, webhook: Option<WebhookNotifications>, email: Option<EmailNotifications>, max_retries: u32, retry_backoff_secs: u64, timeout_secs: u64, stub: bool }` — Notifications configuration: the default destination of each channel and
+- `struct` **OAuthConfig**` { base_url: Option<String>, after_sign_in_path: Option<String>, after_sign_out_path: Option<String>, failure_path: Option<String>, providers: BTreeMap<String, OAuthProviderConfig> }` — `OAuth2` / `OpenID` Connect sign-in, `OmniAuth`-style
+- `struct` **OAuthProviderConfig**` { strategy: Option<OAuthStrategy>, client_id: String, client_secret: String, scopes: Option<Vec<String>>, base_url: Option<String>, api_url: Option<String>, authorize_url: Option<String>, token_url: Option<String>, userinfo_url: Option<String>, emails_url: Option<String>, redirect_uri: Option<String>, authorize_params: BTreeMap<String, String>, pkce: Option<bool>, token_auth: Option<OAuthTokenAuth> }` — One OAuth provider. Every URL is overridable, for GitHub Enterprise,
+- `enum` **OAuthStrategy** — Which provider preset a configured provider uses
+- `enum` **OAuthTokenAuth** — How the client authenticates to the token endpoint
+- `struct` **PostgresQueueConfig**` { uri: String, dangerously_flush: bool, enable_logging: bool, max_connections: u32, min_connections: u32, connect_timeout: u64, idle_timeout: u64, poll_interval_sec: u32, num_workers: u32, reaper: Option<ReaperConfig>, retention: Option<RetentionConfig> }`
 - `enum` **QueueConfig**
 - `struct` **ReaperConfig**` { age_minutes: i64, interval_seconds: u64 }` — Configuration for an opt-in visibility-timeout reaper
 - `struct` **RedisCacheConfig**` { uri: String, max_size: u32 }`
 - `struct` **RedisQueueConfig**` { uri: String, dangerously_flush: bool, queues: Option<Vec<String>>, num_workers: u32, reaper: Option<ReaperConfig> }`
+- `struct` **RetentionConfig**` { completed_days: Option<i64>, cancelled_days: Option<i64>, failed_days: Option<i64>, interval_seconds: u64 }` — Configuration for opt-in retention of finished jobs
 - `struct` **Server**` { binding: String, port: i32, host: String, ident: Option<String>, middlewares: Config }` — Server configuration structure
+- `struct` **SessionConfig**` { secret: Option<String>, cookie_name: Option<String>, max_age: Option<u64>, secure: Option<bool>, sign_in_path: Option<String>, store: SessionStoreKind, ttl: Option<u64>, remember_for: Option<u64>, remember_cookie_name: Option<String>, redis_uri: Option<String> }` — Signed cookies and the cookie session, Rails' `secret_key_base` plus its
+- `enum` **SessionStoreKind** — Where [`SessionConfig::store`] keeps the session
+- `struct` **SlackNotifications**` { webhook_url: String }` — Default Slack destination
 - `struct` **SmtpMailer**` { enable: bool, host: String, port: u16, secure: bool, tls: Option<MailerTls>, auth: Option<MailerAuth>, hello_name: Option<String> }` — SMTP mailer configuration structure
-- `struct` **SqliteQueueConfig**` { uri: String, dangerously_flush: bool, enable_logging: bool, max_connections: u32, min_connections: u32, connect_timeout: u64, idle_timeout: u64, poll_interval_sec: u32, num_workers: u32, reaper: Option<ReaperConfig> }`
+- `struct` **SqliteConfig**` { pragmas: BTreeMap<String, String> }` — `SQLite` settings shared by the database and the `SQLite` queue
+- `struct` **SqliteQueueConfig**` { uri: String, dangerously_flush: bool, enable_logging: bool, max_connections: u32, min_connections: u32, connect_timeout: u64, idle_timeout: u64, poll_interval_sec: u32, num_workers: u32, reaper: Option<ReaperConfig>, retention: Option<RetentionConfig>, pragmas: BTreeMap<String, String> }`
+- `enum` **StorageConfig** — Storage configuration for the application
+- `struct` **WebhookNotifications**` { url: String, secret: Option<String>, headers: BTreeMap<String, String> }` — Default webhook destination
 - `enum` **WorkerMode** — Worker mode configuration
 - `struct` **Workers**` { mode: WorkerMode }` — Background worker configuration
 - `fn` **db_connect_timeout**`() -> u64`
@@ -443,6 +621,7 @@ since they restate the trait's own API.
 
 ### `CacheConfig`
 
+- `variant` **Database** — Cache stored in the application database (Postgres or `SQLite`)
 - `variant` **InMem** — In-memory cache
 - `variant` **Null** — Null cache
 - `variant` **Redis** — Redis cache
@@ -471,6 +650,17 @@ since they restate the trait's own API.
 - `variant` **None** — No transport security (cleartext). For local sinks like Mailpit only
 - `variant` **Starttls** — Opportunistic TLS: connect in cleartext, then upgrade with `STARTTLS`
 
+### `OAuthStrategy`
+
+- `variant` **Generic** — Any `OAuth2` / OIDC provider; `authorize_url`, `token_url` and
+- `variant` **Github** — github.com, or GitHub Enterprise with `base_url`/`api_url`
+- `variant` **Google** — Google (`OpenID` Connect)
+
+### `OAuthTokenAuth`
+
+- `variant` **Basic** — HTTP Basic auth (`client_secret_basic`)
+- `variant` **Post** — `client_id`/`client_secret` in the form body (`client_secret_post`)
+
 ### `QueueConfig`
 
 - `variant` **Postgres** — Postgres queue (requires `db-postgres` feature)
@@ -478,15 +668,40 @@ since they restate the trait's own API.
 - `variant` **Sqlite** — Sqlite queue (requires `db-sqlite` feature)
 - `fn` **dangerously_flush**`(self: &Self) -> bool` — Whether this queue is configured to discard all jobs on startup,
 
+### `RetentionConfig`
+
+- `fn` **ages**`(self: &Self) -> Vec<(JobStatus, i64)>` — The finished statuses that have an age set, with that age in days
+
 ### `Server`
 
 - `fn` **full_url**`(self: &Self) -> String`
+
+### `SessionConfig`
+
+- `field` **remember_for** — Lifetime of the remember-me cookie and its server-side token, in
+- `field` **store** — Where the session data lives. Default [`SessionStoreKind::Cookie`]
+- `field` **ttl** — How long an idle server-side session lives, in seconds; each use
+
+### `SessionStoreKind`
+
+- `variant` **Cookie** — The whole session in one signed cookie. Stateless; cannot be revoked
+- `variant` **Database** — A `loco_sessions` table in the app database (`with-db`)
+- `variant` **Redis** — Redis keys with a TTL (`cache_redis` feature)
+- `fn` **is_server_side**`(self: Self) -> bool` — Whether the session data lives on the server
 
 ### `SmtpMailer`
 
 - `field` **secure** — Enable TLS
 - `field` **tls** — Explicit TLS mode. When set, overrides [`SmtpMailer::secure`]. Use
 - `fn` **tls_mode**`(self: &Self) -> MailerTls` — Resolve the effective TLS mode: explicit [`SmtpMailer::tls`] when set,
+
+### `StorageConfig`
+
+- `variant` **Aws** — AWS S3 storage
+- `variant` **Azure** — Azure Blob storage
+- `variant` **Gcp** — Google Cloud Storage
+- `variant` **Local** — Local filesystem storage
+- `variant` **Null** — Null storage: every operation errors. The default when no `storage:`
 
 ### `WorkerMode`
 
@@ -616,6 +831,13 @@ since they restate the trait's own API.
 - `fn` **insert_after**`(self: &mut Self, name: &str, middleware: Box<dyn MiddlewareLayer>) -> &mut Self` — Insert `middleware` immediately after the first middleware named `name`
 - `fn` **insert_before**`(self: &mut Self, name: &str, middleware: Box<dyn MiddlewareLayer>) -> &mut Self` — Insert `middleware` immediately before the first middleware named `name`
 - `fn` **replace**`(self: &mut Self, name: &str, middleware: Box<dyn MiddlewareLayer>) -> &mut Self` — Replace the first middleware named `name` with `middleware`
+## `controller::middleware::auth_session`
+
+- `struct` **AuthSession**` { enable: bool }` — The `auth_session` middleware
+
+### `AuthSession`
+
+- `fn` **new**`(ctx: &AppContext) -> Self` — Enabled when the configured session store is server-side
 ## `controller::middleware::catch_panic`
 
 - `struct` **CatchPanic**` { enable: bool }`
@@ -836,6 +1058,7 @@ since they restate the trait's own API.
 ## `errors`
 
 - `enum` **Error** — Application-wide error type
+- `trait` **OrErr** — Turn a foreign `Result` or `Option` into a [`crate::Result`] with a message
 
 ### `Error`
 
@@ -878,6 +1101,11 @@ since they restate the trait's own API.
 - `fn` **msg**`(err: impl Trait) -> Self`
 - `fn` **string**`(s: &str) -> Self`
 - `fn` **wrap**`(err: impl Trait) -> Self`
+
+### `OrErr`
+
+- `fn` **or_err**`(self: Self, msg: impl Trait) -> Result<T>` — # Errors
+- `fn` **or_err_with**`(self: Self, f: impl Trait) -> Result<T>` — Like [`OrErr::or_err`], but the message is built only on failure
 ## `hash`
 
 - `fn` **hash_password**`(pass: &str) -> Result<String>` — Hashes a plain text password and returns the hashed result
@@ -1056,6 +1284,92 @@ since they restate the trait's own API.
 - `variant` **Asc**
 - `variant` **Desc**
 - `fn` **order**`(self: &Self) -> Order` — Returns the corresponding `Order` enum variant based on the current
+## `notifications`
+
+- `enum` **Channel** — Where a notification goes. Returned by [`super::Notifier::channels`]
+- `struct` **Delivery**` { id: String, event: String, target: Target }` — A rendered notification for one channel: the job payload of
+- `struct` **Field**` { name: String, value: String }` — One `name: value` line of a [`Message`]
+- `struct` **Message**` { title: String, body: Option<String>, url: Option<String>, fields: Vec<Field> }` — What a notification says, independent of channel. Each channel renders
+- `struct` **NotificationWorker** — Sends one [`Delivery`]
+- `trait` **Notifier** — A notification type. Implement it on a `Serialize` struct holding the
+- `const` **QUEUE** — The queue notification deliveries are enqueued on
+- `struct` **Report**` { accepted: usize, skipped: usize, failed: usize }` — What a single [`Notifier::deliver_later`] call did, per channel
+- `enum` **Target** — A rendered destination. `None` destinations are resolved from the
+
+### `Channel`
+
+- `variant` **Email** — Email through the app's mailer. Empty `to` uses
+- `variant` **Slack** — A Slack incoming webhook. `None` uses `notifications.slack.webhook_url`
+- `variant` **Webhook** — A JSON `POST`. `None` uses `notifications.webhook.url` together with
+- `fn` **and_to**`(self: Self, recipient: impl Trait) -> Self` — Add another email recipient. No effect on other channels
+- `fn` **email**`() -> Self` — Email the default recipients from `notifications.email.to`
+- `fn` **email_to**`(to: impl Trait) -> Self` — Email a specific recipient. Chain [`Channel::and_to`] for more
+- `fn` **from**`(self: Self, sender: impl Trait) -> Self` — Set the email sender. No effect on other channels
+- `fn` **header**`(self: Self, name: impl Trait, value: impl Trait) -> Self` — Add a request header to a webhook. No effect on other channels
+- `fn` **name**`(self: &Self) -> &str` — The channel's name in logs and job payloads
+- `fn` **signed**`(self: Self, with: impl Trait) -> Self` — Sign webhook requests with HMAC-SHA256 under `secret` (see
+- `fn` **slack**`() -> Self` — The default Slack webhook from `notifications.slack.webhook_url`
+- `fn` **slack_url**`(url: impl Trait) -> Self` — A specific Slack incoming-webhook URL, e.g. one stored per team or
+- `fn` **webhook**`() -> Self` — The default webhook from `notifications.webhook`
+- `fn` **webhook_url**`(url: impl Trait) -> Self` — A specific webhook URL, unsigned unless [`Channel::signed`] is added
+
+### `Message`
+
+- `fn` **body**`(self: Self, body: impl Trait) -> Self`
+- `fn` **field**`(self: Self, name: impl Trait, value: impl Trait) -> Self`
+- `fn` **new**`(title: impl Trait) -> Self`
+- `fn` **url**`(self: Self, url: impl Trait) -> Self`
+
+### `Notifier`
+
+- `fn` **channels**`(self: &Self, ctx: &AppContext) -> Vec<Channel>` — Where to deliver it. Decided per notification, so it can depend on
+- `fn` **deliver_later**`(self: &Self, ctx: &AppContext) -> Pin<Box<dyn Future + Send>>` — Delivers to every channel in the background, through the
+- `fn` **deliver_now**`(self: &Self, ctx: &AppContext) -> Pin<Box<dyn Future + Send>>` — Delivers to every channel now, in this task, bypassing the queue and
+- `fn` **deliveries**`(self: &Self, ctx: &AppContext) -> Result<(Vec<Delivery>, usize)>` — Renders one [`Delivery`] per deliverable channel
+- `fn` **email**`(self: &Self, message: &Message) -> Result<EmailContent>` — The email's parts. Defaults to [`EmailContent::from_message`]; use
+- `fn` **event**`() -> String` — The event name sent to webhooks (`X-Loco-Event`). Defaults to the
+- `fn` **message**`(self: &Self) -> Message` — The notification's content
+- `fn` **priority**`() -> Option<i32>` — Background-queue priority for the deliveries
+- `fn` **slack_payload**`(self: &Self, message: &Message) -> Value` — The JSON sent to a Slack incoming webhook. Defaults to
+- `fn` **webhook_payload**`(self: &Self, payload: Value) -> Value` — The JSON body of a webhook. Receives the default payload (`id`,
+
+### `Target`
+
+- `variant` **Email**
+- `variant` **Slack**
+- `variant` **Webhook**
+- `fn` **name**`(self: &Self) -> &str`
+## `notifications::email`
+
+- `struct` **EmailContent**` { subject: String, text: String, html: String }` — The rendered parts of a notification email
+
+### `EmailContent`
+
+- `fn` **from_message**`(message: &Message) -> Self` — Plain email built from the message: the title as subject, then the
+- `fn` **from_template**`(dir: &Dir, locals: &impl Trait) -> Result<Self>` — Renders a mailer template directory (`subject.t`, `text.t`,
+## `notifications::slack`
+
+- `fn` **escape**`(text: &str) -> String` — Escapes the three characters Slack's `mrkdwn` treats as control
+- `fn` **payload**`(message: &Message) -> Value` — The default Slack payload for `message`
+## `notifications::testing`
+
+- `struct` **Recorded**` { id: String, event: String, channel: String, to: Vec<String>, payload: Value, headers: BTreeMap<String, String>, signed: bool }` — One delivery as it would have been sent
+- `fn` **clear**`(ctx: &AppContext)` — Forgets the deliveries recorded on `ctx`; recording stays on
+- `fn` **deliveries**`(ctx: &AppContext) -> Vec<Recorded>` — Every delivery recorded on `ctx` so far, oldest first. Empty when
+- `fn` **is_recording**`(ctx: &AppContext) -> bool` — Whether deliveries on `ctx` are recorded instead of sent
+- `fn` **record**`(ctx: &AppContext)` — Turns recording on for `ctx`, as `notifications.stub: true` does. Has no
+
+### `Recorded`
+
+- `fn` **text**`(self: &Self) -> String` — The human-readable text of the delivery, to assert on regardless of
+## `notifications::webhook`
+
+- `const` **DELIVERY_HEADER** — Header carrying the delivery ID
+- `const` **EVENT_HEADER** — Header carrying the event name
+- `const` **SIGNATURE_HEADER** — Header carrying the `sha256=<hex>` signature
+- `const` **TIMESTAMP_HEADER** — Header carrying the attempt's Unix timestamp
+- `fn` **sign**`(secret: &str, timestamp: &str, body: &[u8]) -> String` — The `X-Loco-Signature` value for `body` sent at `timestamp`
+- `fn` **verify_signature**`(secret: &str, timestamp: &str, body: &[u8], signature: &str) -> bool` — Checks a received `X-Loco-Signature` header in constant time. For apps
 ## `scheduler`
 
 - `struct` **Config**` { jobs: HashMap<String, Job>, output: Output }` — Configuration structure for the scheduler
@@ -1078,11 +1392,11 @@ since they restate the trait's own API.
 
 ### `Job`
 
-- `fn` **prepare_command**`(self: &Self, binary_path: &Path, default_output: &Output, environment: &Environment) -> JobDescription` — Prepares the command for execution based on the job's configuration
+- `fn` **prepare_command**`(self: &Self, binary_path: &Path, default_output: &Output, environment: &Environment) -> JobDescription` — Prepares a command description based on the job's configuration
 
 ### `JobDescription`
 
-- `fn` **run**`(self: &Self) -> Result<Output>` — Executes the job command and returns the output
+- `fn` **run**`(self: &Self) -> Result<Output>` — Executes this command string through the platform shell
 
 ### `Output`
 
@@ -1261,6 +1575,7 @@ since they restate the trait's own API.
 - `struct` **Storage**` { stores: BTreeMap<String, Box<dyn StoreDriver>>, strategy: Box<dyn StorageStrategy> }`
 - `enum` **StorageError**
 - `type` **StorageResult**
+- `fn` **create_storage_provider**`(config: &Config) -> StorageResult<Storage>` — Builds the default [`Storage`] from `config.storage`
 
 ### `Storage`
 
@@ -1296,6 +1611,7 @@ since they restate the trait's own API.
 ### `StorageError`
 
 - `variant` **Any**
+- `variant` **Io**
 - `variant` **Multi**
 - `variant` **Store**
 - `variant` **StoreNotFound**
@@ -1348,6 +1664,7 @@ since they restate the trait's own API.
 - `fn` **new**`(bucket_name: &str, region: &str) -> StorageResult<Box<dyn StoreDriver>>` — Create new AWS s3 storage with bucket and region
 - `fn` **with_credentials**`(bucket_name: &str, region: &str, credentials: Credential) -> StorageResult<Box<dyn StoreDriver>>` — Create new AWS s3 storage with bucket, region and credentials
 - `fn` **with_credentials_and_endpoint**`(bucket_name: &str, region: &str, endpoint: &str, credentials: Credential) -> StorageResult<Box<dyn StoreDriver>>` — Create new AWS s3 storage with bucket, region and credentials and URL
+- `fn` **with_endpoint**`(bucket_name: &str, region: &str, endpoint: &str) -> StorageResult<Box<dyn StoreDriver>>` — Create new AWS s3 storage with bucket, region and a custom endpoint (for
 ## `storage::drivers::azure`
 
 - `fn` **new**`(container_name: &str, account_name: &str, access_key: &str, endpoint: &str) -> StorageResult<Box<dyn StoreDriver>>` — Create new Azure storage
@@ -1356,10 +1673,12 @@ since they restate the trait's own API.
 - `fn` **new**`(bucket_name: &str, credential_path: &str) -> StorageResult<Box<dyn StoreDriver>>` — Create new GCP storage
 ## `storage::drivers::local`
 
+- `struct` **LocalStore** — Filesystem storage on `tokio::fs`, rooted at a directory
 - `fn` **new**`() -> Box<dyn StoreDriver>` — Create new filesystem storage rooted at the current working directory
 - `fn` **new_with_prefix**`(prefix: impl Trait) -> StorageResult<Box<dyn StoreDriver>>` — Create new filesystem storage with `prefix` applied to all paths
 ## `storage::drivers::mem`
 
+- `struct` **MemStore** — In-memory storage: a sorted map from key to content
 - `fn` **new**`() -> Box<dyn StoreDriver>` — Create new in-memory storage
 ## `storage::drivers::null`
 
@@ -1445,7 +1764,10 @@ since they restate the trait's own API.
 
 ### `Vars`
 
+- `fn` **args**`(self: &Self) -> &[String]` — Every argument given after the task name, verbatim and in order
+- `field` **cli** — The `key:value` cli arguments
 - `fn` **cli_arg**`(self: &Self, key: &str) -> Result<&str>` — Retrieves the value associated with the given key from the `cli` list
+- `fn` **from_args**`(args: Vec<String>) -> Self` — Create [`Vars`] from the raw tokens given after the task name
 - `fn` **from_cli_args**`(args: Vec<(String, String)>) -> Self` — Create [`Vars`] instance from cli arguments
 ## `testing::db`
 

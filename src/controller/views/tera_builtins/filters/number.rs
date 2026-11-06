@@ -1,4 +1,3 @@
-use byte_unit::Byte;
 use tera::{Kwargs, State, TeraResult, Value};
 
 /// Helper function to add commas as thousands separators
@@ -50,16 +49,9 @@ fn apply_with_delimiter(value: &Value) -> Value {
 
 /// Formatting behind the `number_to_human_size` filter.
 fn apply_to_human_size(value: &Value) -> Value {
-    Byte::parse_str(value.to_string(), true).map_or_else(
+    crate::byte_size::parse(&value.to_string()).map_or_else(
         |_| value.clone(),
-        |byte| {
-            // byte-unit 5 renders full precision by default; `{:.2}` preserves
-            // the 2-decimal formatting that byte-unit 4 produced.
-            Value::from(format!(
-                "{:.2}",
-                byte.get_appropriate_unit(byte_unit::UnitType::Decimal)
-            ))
-        },
+        |bytes| Value::from(crate::byte_size::to_human(bytes)),
     )
 }
 

@@ -1,0 +1,6 @@
+---
+source: loco-gen/tests/templates/oauth.rs
+expression: "read(&tree, \"src/controllers/mod.rs\")"
+---
+
+pub mod oauth;

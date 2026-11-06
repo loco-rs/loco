@@ -154,7 +154,10 @@ pub struct JobDescription {
 }
 
 impl Job {
-    /// Prepares the command for execution based on the job's configuration.
+    /// Prepares a command description based on the job's configuration.
+    ///
+    /// [`JobDescription::run`] executes the description through a shell. The
+    /// scheduler prepares a separate process to execute native tasks directly.
     #[must_use]
     pub fn prepare_command(
         &self,
@@ -182,29 +185,58 @@ impl Job {
             environment: environment.clone(),
         }
     }
+
+    fn task_arguments(&self) -> io::Result<Vec<String>> {
+        shlex::split(&self.run).ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "invalid quoting in scheduler task",
+            )
+        })
+    }
+
+    fn prepare_process(&self, binary_path: &Path) -> io::Result<duct::Expression> {
+        if self.shell {
+            Ok(shell_process(&self.run))
+        } else {
+            Ok(duct::cmd(
+                binary_path,
+                std::iter::once("task".to_string()).chain(self.task_arguments()?),
+            ))
+        }
+    }
 }
 
 impl JobDescription {
-    /// Executes the job command and returns the output.
+    /// Executes this command string through the platform shell.
+    ///
+    /// Native scheduler jobs use a separate direct process path.
     ///
     /// # Errors
     ///
     /// In addition to all the IO errors possible
     pub fn run(&self) -> io::Result<std::process::Output> {
         tracing::info!(command = &self.command, "execute job command");
-        // Run the command through the platform shell (previously `duct_sh`).
-        let shell = if cfg!(windows) {
-            duct::cmd!("cmd.exe", "/C", &self.command)
-        } else {
-            duct::cmd!("/bin/sh", "-c", &self.command)
-        };
-        let mut exec_job = shell.env("LOCO_ENV", self.environment.to_string());
+        self.run_process(&shell_process(&self.command))
+    }
+
+    fn run_process(&self, process: &duct::Expression) -> io::Result<std::process::Output> {
+        let mut exec_job = process.env("LOCO_ENV", self.environment.to_string());
         exec_job = match self.output {
             Output::Silent => exec_job.stdout_null().stderr_null(),
             Output::STDOUT => exec_job,
         };
 
         exec_job.run()
+    }
+}
+
+fn shell_process(command: &str) -> duct::Expression {
+    // Run the command through the platform shell (previously `duct_sh`).
+    if cfg!(windows) {
+        duct::cmd!("cmd.exe", "/C", command)
+    } else {
+        duct::cmd!("/bin/sh", "-c", command)
     }
 }
 
@@ -244,7 +276,8 @@ impl Scheduler {
             if job.shell {
                 jobs.insert(job_name.clone(), job.clone());
             } else {
-                let task_name = job.run.split_whitespace().next().unwrap_or("");
+                let arguments = job.task_arguments()?;
+                let task_name = arguments.first().map_or("", String::as_str);
                 if tasks.names().iter().any(|name| name.as_str() == task_name) {
                     jobs.insert(job_name.clone(), job.clone());
                 } else {
@@ -300,6 +333,16 @@ impl Scheduler {
         for (job_name, job) in self.jobs {
             let job_description =
                 job.prepare_command(&self.binary_path, &self.default_output, &self.environment);
+            // Report exit statuses without including task arguments in process errors.
+            let process = job.prepare_process(&self.binary_path)?.unchecked();
+            // What the logs may say about this job: a shell command as written,
+            // but only the binary for a native task, whose arguments may carry
+            // secrets.
+            let logged_command = if job.shell {
+                job.run.clone()
+            } else {
+                format!("{} task", self.binary_path.display())
+            };
 
             let cron_syntax = if get_re_is_cron_syntax().is_match(&job.cron) {
                 job.cron.clone()
@@ -319,12 +362,12 @@ impl Scheduler {
 
             tasks.spawn(async move {
                 if job.run_on_start {
-                    spawn_job(&job_name, &job_description);
+                    spawn_job(&job_name, &job_description, &process, &logged_command);
                 }
                 while let Some(next) = cron.next_after(chrono::Utc::now()) {
                     let wait = (next - chrono::Utc::now()).to_std().unwrap_or_default();
                     tokio::time::sleep(wait).await;
-                    spawn_job(&job_name, &job_description);
+                    spawn_job(&job_name, &job_description, &process, &logged_command);
                 }
                 tracing::warn!(job_name, "cron has no further occurrences; job stopped");
             });
@@ -340,15 +383,34 @@ impl Scheduler {
 /// Starts a run without waiting for it, so a slow run never delays the next
 /// tick. `job_description.run()` blocks for the whole child-process lifetime,
 /// so it runs off the async runtime's worker threads.
-fn spawn_job(job_name: &str, job_description: &JobDescription) {
+fn spawn_job(
+    job_name: &str,
+    job_description: &JobDescription,
+    process: &duct::Expression,
+    logged_command: &str,
+) {
     let job_name = job_name.to_string();
+    let logged_command = logged_command.to_string();
     let job_description = job_description.clone();
+    let process = process.clone();
     tokio::task::spawn_blocking(move || {
-        execute_job(&job_name, Uuid::new_v4(), &job_description);
+        execute_job(
+            &job_name,
+            Uuid::new_v4(),
+            &job_description,
+            &process,
+            &logged_command,
+        );
     });
 }
 
-fn execute_job(job_name: &str, uuid: Uuid, job_description: &JobDescription) {
+fn execute_job(
+    job_name: &str,
+    uuid: Uuid,
+    job_description: &JobDescription,
+    process: &duct::Expression,
+    logged_command: &str,
+) {
     let task_span = tracing::span!(
         tracing::Level::DEBUG,
         "run_job",
@@ -357,7 +419,15 @@ fn execute_job(job_name: &str, uuid: Uuid, job_description: &JobDescription) {
     );
     let start = Instant::now();
     let _guard = task_span.enter();
-    match job_description.run() {
+    tracing::info!(command = logged_command, "execute job command");
+    match job_description.run_process(process) {
+        Ok(output) if !output.status.success() => {
+            tracing::error!(
+                duration = ?start.elapsed(),
+                status_code = output.status.code(),
+                "failed to execute scheduler job in sub process"
+            );
+        }
         Ok(output) => {
             tracing::debug!(
                 duration = ?start.elapsed(),
@@ -368,6 +438,7 @@ fn execute_job(job_name: &str, uuid: Uuid, job_description: &JobDescription) {
         Err(err) => {
             tracing::error!(
                 duration = ?start.elapsed(),
+                command = logged_command,
                 error = %err,
                 "failed to execute scheduler job in sub process"
             );
@@ -508,6 +579,132 @@ jobs:
             format!("can_prepare_command_[{test_name}]"),
             prepare_command
         );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn native_task_preserves_arguments_on_start_and_later_ticks() {
+        let tree = TreeBuilder::default()
+            .drop(true)
+            .add_file(
+                "probe.rs",
+                include_str!("../tests/fixtures/scheduler_probe.rs"),
+            )
+            .create()
+            .unwrap();
+        let executable = tree.root.join("application with spaces");
+        let compiled = std::process::Command::new("rustc")
+            .arg(tree.root.join("probe.rs"))
+            .arg("-o")
+            .arg(&executable)
+            .output()
+            .unwrap();
+        assert!(
+            compiled.status.success(),
+            "{}",
+            String::from_utf8_lossy(&compiled.stderr)
+        );
+        let output = tree.root.join("native results");
+        let sentinel = tree.root.join("shell-sentinel");
+        let (mut scheduler, _config_tree) = setup_scheduler_config();
+        scheduler.jobs.retain(|name, _| name == "print_task");
+        let job = scheduler.jobs.get_mut("print_task").unwrap();
+        job.run = format!(
+            "foo '{}' 'two words' '' '$LOCO_ENV' ; touch '{}'",
+            output.display(),
+            sentinel.display()
+        );
+        job.run_on_start = true;
+        job.cron = "* * * * * *".to_string();
+        scheduler.binary_path = executable;
+        scheduler.environment = Environment::Test;
+        let handle = tokio::spawn(async move { scheduler.run().await });
+        let completed = time::timeout(Duration::from_secs(5), async {
+            loop {
+                if std::fs::read_to_string(&output)
+                    .is_ok_and(|contents| contents.lines().count() >= 2)
+                {
+                    break;
+                }
+                time::sleep(Duration::from_millis(20)).await;
+            }
+        })
+        .await;
+        handle.abort();
+        let _ = handle.await;
+        assert!(
+            completed.is_ok(),
+            "native scheduler did not invoke its executable on startup and a later tick"
+        );
+        let arguments = [
+            "two words",
+            "",
+            "$LOCO_ENV",
+            ";",
+            "touch",
+            sentinel.to_str().unwrap(),
+        ];
+        let expected = format!("{arguments:?}|test|true");
+        let contents = std::fs::read_to_string(output).unwrap();
+        assert!(
+            contents.lines().all(|line| line == expected),
+            "{contents:?} vs {expected:?}"
+        );
+        assert!(
+            !sentinel.exists(),
+            "native arguments must not execute shell syntax"
+        );
+    }
+
+    #[test]
+    fn native_job_validation_uses_quoted_arguments() {
+        let (scheduler, _tree) = setup_scheduler_config();
+        let mut config = Config {
+            jobs: scheduler.jobs,
+            output: Output::STDOUT,
+        };
+        config.jobs.retain(|name, _| name == "print_task");
+        config.jobs.get_mut("print_task").unwrap().run = "'foo' 'value:two words'".to_string();
+        assert!(Scheduler::new::<AppHook>(&config, &Environment::Test).is_ok());
+        config.jobs.get_mut("print_task").unwrap().run = "foo 'unclosed".to_string();
+        assert!(matches!(
+            Scheduler::new::<AppHook>(&config, &Environment::Test),
+            Err(Error::IO(error)) if error.kind() == io::ErrorKind::InvalidInput
+        ));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn shell_jobs_retain_output_modes_and_unsuccessful_status() {
+        for output in [Output::STDOUT, Output::Silent] {
+            let job = Job {
+                run: "printf stdout; printf stderr >&2; exit 37".to_string(),
+                shell: true,
+                run_on_start: false,
+                cron: "* * * * * *".to_string(),
+                tags: None,
+                output: Some(output.clone()),
+            };
+            let description = job.prepare_command(Path::new("unused"), &output, &Environment::Test);
+            let process = job
+                .prepare_process(Path::new("unused"))
+                .unwrap()
+                .unchecked();
+            let process = if matches!(output, Output::STDOUT) {
+                process.stdout_capture().stderr_capture()
+            } else {
+                process
+            };
+            let result = description.run_process(&process).unwrap();
+            assert_eq!(result.status.code(), Some(37));
+            if matches!(output, Output::Silent) {
+                assert!(result.stdout.is_empty());
+                assert!(result.stderr.is_empty());
+            } else {
+                assert_eq!(result.stdout, b"stdout");
+                assert_eq!(result.stderr, b"stderr");
+            }
+        }
     }
 
     #[tokio::test]

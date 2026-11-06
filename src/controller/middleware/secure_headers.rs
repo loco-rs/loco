@@ -17,7 +17,7 @@ use axum::{
 };
 use futures_util::future::BoxFuture;
 use serde::{Deserialize, Serialize};
-use serde_json::{self, json};
+use serde_json;
 use tower::{Layer, Service};
 
 use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Error, Result};
@@ -87,7 +87,7 @@ pub struct SecureHeader {
 
 impl Default for SecureHeader {
     fn default() -> Self {
-        serde_json::from_value(json!({})).unwrap()
+        super::defaults()
     }
 }
 

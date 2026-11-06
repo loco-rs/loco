@@ -26,6 +26,7 @@ pub use seed::*;
 
 pub(crate) const IGNORED_TABLES: &[&str] = &[
     "seaql_migrations",
+    "loco_cache",
     "pg_loco_queue",
     "sqlt_loco_queue",
     "sqlt_loco_queue_lock",

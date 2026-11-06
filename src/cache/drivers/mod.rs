@@ -7,6 +7,8 @@ use async_trait::async_trait;
 
 use super::CacheResult;
 
+#[cfg(feature = "with-db")]
+pub mod db;
 #[cfg(feature = "cache_inmem")]
 pub mod inmem;
 pub mod null;

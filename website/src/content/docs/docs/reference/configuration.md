@@ -5,7 +5,7 @@ sidebar:
   order: 1
 ---
 
-This page is a dictionary of every key Loco's configuration loader understands. It documents `struct Config` (`src/config/mod.rs`) and its sub-structs (`src/config/{auth,server,database,logger,mailer,queue,cache}.rs`). For a narrative walkthrough of settings and environments, see the-app/your-project.
+This page is a dictionary of every key Loco's configuration loader understands. It documents `struct Config` (`src/config/mod.rs`) and its sub-structs (`src/config/{auth,server,database,logger,mailer,queue,cache,storage}.rs`). For a narrative walkthrough of settings and environments, see the-app/your-project.
 
 ## Loading & precedence
 
@@ -29,25 +29,27 @@ This page is a dictionary of every key Loco's configuration loader understands. 
 
 ## Top-level `Config`
 
-`struct Config` — `src/config/mod.rs:62-92`. Every field is a top-level YAML key.
+`struct Config` — `src/config/mod.rs:66-103`. Every field is a top-level YAML key.
 
 | Key | Type | Required? | Notes |
 |---|---|---|---|
-| `logger` | [`Logger`](#logger) | required | `mod.rs:64` |
-| `server` | [`Server`](#server) | required | `mod.rs:65` |
-| `database` | [`Database`](#database) | required, only when the `with-db` feature is enabled | `#[cfg(feature = "with-db")]`, `mod.rs:66-67` |
-| `cache` | [`CacheConfig`](#cache) | optional — `#[serde(default)]`, defaults to `Null` | `mod.rs:68-69` |
-| `queue` | `Option<`[`QueueConfig`](#queue)`>` | optional | `mod.rs:70` |
-| `auth` | `Option<`[`Auth`](#auth)`>` | optional | `mod.rs:71` |
-| `workers` | [`Workers`](#workers) | optional — `#[serde(default)]` | `mod.rs:72-73` |
-| `mailer` | `Option<`[`Mailer`](#mailer)`>` | optional | `mod.rs:74` |
-| `initializers` | `Option<Initializers>` (= `Option<BTreeMap<String, serde_json::Value>>`) | optional | `mod.rs:75`, type alias at `mod.rs:106` |
-| `settings` | `Option<serde_json::Value>` | optional — `#[serde(default)]` | `mod.rs:88-89`; free-form app settings, surfaced at `ctx.config.settings` |
-| `scheduler` | `Option<scheduler::Config>` | optional | `mod.rs:91`; struct owned by the scheduler area, not detailed here |
+| `logger` | [`Logger`](#logger) | required | `mod.rs:69` |
+| `server` | [`Server`](#server) | required | `mod.rs:70` |
+| `database` | [`Database`](#database) | required, only when the `with-db` feature is enabled | `#[cfg(feature = "with-db")]`, `mod.rs:71-72` |
+| `cache` | [`CacheConfig`](#cache) | optional — `#[serde(default)]`, defaults to `Null` | `mod.rs:73-74` |
+| `storage` | [`StorageConfig`](#storage) | optional — `#[serde(default)]`, defaults to `Null` | `mod.rs:75-76` |
+| `queue` | `Option<`[`QueueConfig`](#queue)`>` | optional | `mod.rs:77` |
+| `auth` | `Option<`[`Auth`](#auth)`>` | optional | `mod.rs:78` |
+| `workers` | [`Workers`](#workers) | optional — `#[serde(default)]` | `mod.rs:79-80` |
+| `mailer` | `Option<`[`Mailer`](#mailer)`>` | optional | `mod.rs:81` |
+| `notifications` | `Option<Notifications>` | optional — `#[serde(default)]` | `mod.rs:83-84`, `notifications.rs`; Slack, webhook and email defaults plus `max_retries`, `retry_backoff_secs`, `timeout_secs`, and `stub` (record instead of send, for tests). See [Send notifications](/docs/how-to/send-notifications#4-configure-the-channels) |
+| `initializers` | `Option<Initializers>` (= `Option<BTreeMap<String, serde_json::Value>>`) | optional | `mod.rs:85`, type alias at `mod.rs:117` |
+| `settings` | `Option<serde_json::Value>` | optional — `#[serde(default)]` | `mod.rs:99-100`; free-form app settings, surfaced at `ctx.config.settings` |
+| `scheduler` | `Option<scheduler::Config>` | optional | `mod.rs:102`; struct owned by the scheduler area, not detailed here |
 
 ## `auth`
 
-`struct Auth` — `src/config/auth.rs:13-17`.
+`struct Auth` — `src/config/auth.rs:28-39`.
 
 ```yaml
 auth:
@@ -60,18 +62,18 @@ auth:
 
 | Key | Type | Required? | Notes |
 |---|---|---|---|
-| `auth.jwt` | `Option<JWT>` | optional | `auth.rs:16` |
-| `auth.jwt.location` | `Option<JWTLocationConfig>` | optional, default: `Bearer` (resolved by `get_jwt_locations`, `src/controller/extractor/auth.rs:181-189`) | `auth.rs:24` |
-| `auth.jwt.secret` | `String` | required | `auth.rs:26`. **Must be valid base64** — the JWT signer/verifier call `EncodingKey`/`DecodingKey::from_base64_secret` (`src/auth/jwt.rs:83,108`); a non-base64 string fails at token generation/validation time, not at config load time |
-| `auth.jwt.expiration` | `u64` (seconds) | required | `auth.rs:28` |
+| `auth.jwt` | `Option<JWT>` | optional | `auth.rs:30` |
+| `auth.jwt.location` | `Option<JWTLocationConfig>` | optional, default: `Bearer` (resolved by `get_jwt_locations`, `src/controller/extractor/auth.rs:181-189`) | `auth.rs:203` |
+| `auth.jwt.secret` | `String` | required | `auth.rs:205`. **Must be valid base64** — the JWT signer/verifier call `EncodingKey`/`DecodingKey::from_base64_secret` (`src/auth/jwt.rs:83,108`); a non-base64 string fails at token generation/validation time, not at config load time |
+| `auth.jwt.expiration` | `u64` (seconds) | required | `auth.rs:207` |
 
-`JWTLocationConfig` (`auth.rs:61-106`) accepts either form:
+`JWTLocationConfig` (`auth.rs:236-280`) accepts either form:
 - `Single(JWTLocation)` — a single location map
 - `Multiple(Vec<JWTLocation>)` — a YAML list of location maps, tried in order until one yields a token
 
 `#[serde(untagged)]` applies to `Serialize` only. `Deserialize` is hand-written and dispatches on the input's shape — a map is a single location, a sequence is a fallback list — so a malformed entry reports the actual reason (a wrong-case `from: cookie`, a `Cookie` missing its `name`) instead of an untagged enum's opaque "did not match any variant".
 
-`JWTLocation` (`#[serde(tag = "from")]`, `auth.rs:35-44`):
+`JWTLocation` (`#[serde(tag = "from")]`, `auth.rs:215-223`):
 
 | Variant | YAML shape | Notes |
 |---|---|---|
@@ -80,6 +82,50 @@ auth:
 | `Cookie { name }` | `from: Cookie`<br>`name: <string>` | reads a cookie |
 
 Related, not YAML-configurable: default signing algorithm is **HS512** (`JWT_ALGORITHM`, `src/auth/jwt.rs:13`), overridable in code via `JWT::algorithm(..)` (`jwt.rs:51`), not via config.
+
+### `auth.session` and `auth.oauth`
+
+Read only with the `auth_session` / `auth_oauth` features (`SessionConfig`, `OAuthConfig`, `OAuthProviderConfig` in `src/config/auth.rs`). See [Sign in with GitHub, Google or OAuth2](/docs/how-to/oauth-sign-in).
+
+```yaml
+auth:
+  session:
+    secret: <%= get_env(name="SESSION_SECRET") %>
+    cookie_name: loco_session   # optional
+    max_age: 2592000            # optional, seconds (cookie store only)
+    secure: true                # optional, default: server.host is https://
+    sign_in_path: /login        # optional
+    store: cookie               # cookie | database | redis
+    ttl: 86400                  # optional, seconds; database or redis
+    remember_for: 1209600       # optional, seconds; needs database or redis
+  oauth:
+    base_url: https://app.example.com
+    after_sign_in_path: /
+    after_sign_out_path: /
+    failure_path: /login
+    providers:
+      github:
+        client_id: <%= get_env(name="GITHUB_CLIENT_ID") %>
+        client_secret: <%= get_env(name="GITHUB_CLIENT_SECRET") %>
+```
+
+| Key | Type | Required? | Notes |
+|---|---|---|---|
+| `auth.session.secret` | `Option<String>` | required in production | Keys every signed and encrypted cookie (SHA-512-derived). Unset in development/test means a public default and a warning; in production cookie extractors fail and `doctor --production` reports it, and also flags secrets under 32 characters |
+| `auth.session.cookie_name` | `Option<String>` | optional, default `loco_session` | |
+| `auth.session.max_age` | `Option<u64>` | optional, default 30 days | Cookie store only: the cookie `Max-Age` and the server-enforced expiry inside the signed value. Server-side stores use `ttl`, and their session cookie has no `Max-Age` |
+| `auth.session.ttl` | `Option<u64>` | optional, default 1 day | Server-side stores only: how long an idle session lives, in seconds, at least 1. It slides on use |
+| `auth.session.secure` | `Option<bool>` | optional | Default: on when `server.host` starts with `https://` |
+| `auth.session.sign_in_path` | `Option<String>` | optional | Where `CurrentUser` redirects signed-out HTML requests (`?return_to=` appended); without it they get `401` |
+| `auth.session.store` | `cookie` \| `database` \| `redis` | optional, default `cookie` | `cookie`: the signed cookie holds the session. `database`: a `loco_sessions` table (Postgres and SQLite, created on first use); `redis`: keys with a TTL. Both server-side stores put only a random id in the cookie. See [Server-side sessions and remember me](/docs/how-to/oauth-sign-in#server-side-sessions-and-remember-me) |
+| `auth.session.remember_for` | `Option<u64>` | optional, default 14 days | Lifetime of a remember-me series, in seconds. Fixed from the sign-in; rotation does not extend it. Unset, it is 14 days, or `ttl` plus one day when `ttl` is 13 days or more. Setting it with `store: cookie`, to no more than `ttl`, or over 400 days is a boot error |
+| `auth.session.remember_cookie_name` | `Option<String>` | optional, default `loco_remember` | Must differ from `cookie_name` |
+| `auth.session.redis_uri` | `Option<String>` | optional | Redis for `store: redis`; default is the `cache` Redis URI |
+| `auth.oauth.base_url` | `Option<String>` | optional | Public origin for callback URLs; default `server.full_url()` |
+| `auth.oauth.after_sign_in_path` | `Option<String>` | optional, default `/` | Used when neither `return_to` nor `SignIn::redirect_to` is set |
+| `auth.oauth.after_sign_out_path` | `Option<String>` | optional, default `/` | |
+| `auth.oauth.failure_path` | `Option<String>` | optional | Default failure handler redirects here with `?error=&provider=`; without it, a minimal `401` page |
+| `auth.oauth.providers.<name>` | `OAuthProviderConfig` | at least one | `strategy` (`github`/`google`/`generic`; inferred from the name for `github`/`google`), `client_id`, `client_secret`, `scopes`, `base_url`, `api_url`, `authorize_url`, `token_url`, `userinfo_url`, `emails_url`, `redirect_uri`, `authorize_params` (map), `pkce` (default `true`), `token_auth` (`post`/`basic`) |
 
 ## `server`
 
@@ -142,6 +188,9 @@ database:
   dangerously_truncate: false# optional, default false
   dangerously_recreate: false# optional, default false
   run_on_start: <sql/pragma> # optional
+  sqlite:                    # optional, SQLite only
+    pragmas:
+      synchronous: FULL      # PRAGMA name: value, merged over the defaults
 ```
 
 | Key | Type | Required? | Notes |
@@ -156,7 +205,8 @@ database:
 | `database.auto_migrate` | `bool` | optional — `#[serde(default)]` | `database.rs:51-52`. Runs pending migrations on boot; recommended for development, discouraged in production |
 | `database.dangerously_truncate` | `bool` | optional — `#[serde(default)]` | `database.rs:56-57`. Deletes row data on boot; typically used in `test` |
 | `database.dangerously_recreate` | `bool` | optional — `#[serde(default)]` | `database.rs:63-64`. Drops and recreates schema on boot |
-| `database.run_on_start` | `Option<String>` | optional | `database.rs:83`. Arbitrary SQL/PRAGMA statements executed once the connection is established. For SQLite, if unset, Loco applies its own PRAGMA defaults (`foreign_keys=ON`, `journal_mode=WAL`, `synchronous=NORMAL`, `mmap_size=134217728`, `journal_size_limit=67108864`, `cache_size=2000`, `busy_timeout=5000`) |
+| `database.run_on_start` | `Option<String>` | optional | `database.rs`. Arbitrary SQL statements executed once, on one connection, after the pool is up. Not a way to set per-connection SQLite PRAGMAs; use `database.sqlite.pragmas` |
+| `database.sqlite.pragmas` | `Map<String, String>` | optional, default empty | SQLite only. Merged over Loco's defaults and applied to **every** connection of the pool: `journal_mode=WAL` (not for `:memory:`), `synchronous=NORMAL`, `busy_timeout=5000`, `foreign_keys=ON`, `journal_size_limit=67108864`, `mmap_size=134217728`, `cache_size=2000`. Names must be plain identifiers. See [Run SQLite in production](/docs/how-to/run-sqlite-in-production) |
 
 Note: the `db_min_conn()=1` / `db_max_conn()=20` / `db_connect_timeout()=500` / `db_idle_timeout()=500` helper functions in `database.rs:86-100` are **not** defaults for `Database` itself (whose numeric fields have no `#[serde(default)]` and are required) — they are reused as the `#[serde(default = ...)]` values for the Postgres/Sqlite [`queue`](#queue) configs below.
 
@@ -275,13 +325,18 @@ queue:
   # reaper:                             # optional, disabled by default (opt-in)
   #   age_minutes: 10                   # requeue jobs stuck in `processing` for longer than this
   #   interval_seconds: 60              # optional, default 60 — how often to sweep
+  # retention:                          # optional, disabled by default (opt-in); finished jobs only
+  #   completed_days: 7                 # delete `completed` jobs this long after they finished
+  #   cancelled_days: 7                 # optional — a status left out is kept forever
+  #   failed_days: 30                   # optional
+  #   interval_seconds: 3600            # optional, default 3600 — how often to sweep
 
 # kind: Sqlite (same shape as Postgres)
 queue:
   kind: Sqlite
   uri: sqlite://...
   poll_interval_sec: 1                  # optional, default 1 (own default fn)
-  # ...remaining keys identical to Postgres, including the optional `reaper`
+  # ...remaining keys identical to Postgres, including the optional `reaper` and `retention`
 ```
 
 | Key | Type | Required? | Notes |
@@ -304,11 +359,18 @@ queue:
 | `queue.poll_interval_sec` | `u32` | optional, default `1` (`pgq_poll_interval()`) | `queue.rs:52-53` |
 | `queue.num_workers` | `u32` | optional, default `2` | `queue.rs:55-56` |
 | `queue.reaper` | `Option<ReaperConfig>` | optional, default `None` (disabled) | `queue.rs:57-59`. See below |
+| `queue.retention` | `Option<RetentionConfig>` | optional, default `None` (disabled) | Postgres and Sqlite only. See below |
 | **Sqlite** (`SqliteQueueConfig`, `queue.rs:59-86`) | | | |
-| — | identical fields to Postgres, including `queue.reaper` | | `poll_interval_sec` defaults via its own `sqlt_poll_interval()=1` (`queue.rs:81-82,92-94`); all other defaults are shared with Postgres via the same `db_*` helper functions |
+| `queue.pragmas` | `Map<String, String>` | optional, default empty | SQLite PRAGMAs merged over the same defaults as `database.sqlite.pragmas`, on every connection of the queue's own pool |
+| — | otherwise identical fields to Postgres, including `queue.reaper` and `queue.retention` | | `poll_interval_sec` defaults via its own `sqlt_poll_interval()=1` (`queue.rs:81-82,92-94`); all other defaults are shared with Postgres via the same `db_*` helper functions |
 | **`ReaperConfig`** (`queue.rs`, all three backends) | | | Opt-in visibility-timeout reaper: when set, the queue provider spawns a background task that periodically requeues jobs stuck in `processing` (e.g. after a worker crash), reusing the same logic as `cargo loco jobs requeue`. Leaving it unset keeps the previous behavior — no automatic requeue. |
 | `queue.reaper.age_minutes` | `i64` | required (only if `reaper` is set) | Requeue jobs that have been `processing` for longer than this many minutes |
 | `queue.reaper.interval_seconds` | `u64` | optional, default `60` (`default_reaper_interval_seconds()`) | How often the reaper sweeps for stale jobs |
+| **`RetentionConfig`** (`queue.rs`, Postgres and Sqlite) | | | Opt-in: when set, a background task deletes finished jobs older than the age set for their status, in batches of 1000. Age counts from when the job finished (`updated_at`). `queued` and `processing` jobs are never deleted. Unset keeps every job, as before. |
+| `queue.retention.completed_days` | `Option<i64>` | optional | Delete `completed` jobs this many days after they completed; unset keeps them |
+| `queue.retention.cancelled_days` | `Option<i64>` | optional | Same, for `cancelled` |
+| `queue.retention.failed_days` | `Option<i64>` | optional | Same, for `failed` (keep these longer if you retry them with `jobs retry`) |
+| `queue.retention.interval_seconds` | `u64` | optional, default `3600` | How often the sweep runs |
 
 ## `cache`
 
@@ -317,7 +379,7 @@ queue:
 ```yaml
 cache:
   kind: InMem              # requires the `cache_inmem` feature
-  max_capacity: 33554432   # optional, default 33554432 bytes (32 MiB)
+  max_capacity: 33554432   # optional, default 33554432 entries
 
 # --- or ---
 cache:
@@ -333,19 +395,89 @@ cache:
 
 | Key | Type | Required? | Notes |
 |---|---|---|---|
-| `cache.kind` | tag: `InMem` \| `Redis` \| `"Null"` | required if `cache` present | `cache.rs:6-16`. `Null` must be written quoted: unquoted, YAML resolves it to null and the tagged enum fails to deserialize |
+| `cache.kind` | tag: `InMem` \| `Database` \| `Redis` \| `"Null"` | required if `cache` present | `cache.rs:6-16`. `Null` must be written quoted: unquoted, YAML resolves it to null and the tagged enum fails to deserialize |
 | **InMem** (`InMemCacheConfig`, `cache.rs:18-22`) — feature-gated on `cache_inmem` | | | |
-| `cache.max_capacity` | `u64` | optional, default `33554432` (`32 * 1024 * 1024`, `cache_in_mem_max_capacity()`) | `cache.rs:20-21,24-26` |
+| `cache.max_capacity` | `u64` | optional, default `33554432` (`32 * 1024 * 1024`, `cache_in_mem_max_capacity()`). Counts entries; when full, the least recently used entry is evicted | `cache.rs:20-21,24-26` |
 | **Redis** (`RedisCacheConfig`, `cache.rs:28-33`) — feature-gated on `cache_redis` | | | |
 | `cache.uri` | `String` | required | `cache.rs:30` |
 | `cache.max_size` | `u32` | required — max pool connections | `cache.rs:32` |
+| **Database** (`DatabaseCacheConfig`, `cache.rs`) — feature-gated on `with-db` | | | Entries live in the `loco_cache` table of the app database (Postgres or SQLite), created on first use |
+| `cache.sweep_every` | `u64` | optional, default `100` | Delete expired rows after this many writes. `0` turns the sweep off |
+| `cache.sweep_batch` | `u64` | optional, default `1000` | The most expired rows one sweep deletes |
 | **Null** | (no fields) | — | default no-op cache |
 
 If the corresponding feature (`cache_inmem` / `cache_redis`) is not compiled in, that `kind` value will fail to deserialize.
 
+## `storage`
+
+`enum StorageConfig` — `src/config/storage.rs:14-30`, `#[serde(tag = "kind")]`. **Default variant: `Null`** (`#[default]`, `storage.rs:28-29`) — this is what `Config.storage`'s `#[serde(default)]` produces when the `storage` key is omitted entirely (the same fallback the framework hardcoded before this field existed).
+
+This produces the single default store at `ctx.storage.as_store("store")`. It does not cover multiple named stores — see [Configure file storage](/docs/how-to/configure-storage) for that.
+
+```yaml
+storage:
+  kind: Local              # no extra feature required
+  path: storage/uploads    # optional, defaults to the process working directory
+
+# --- or ---
+storage:
+  kind: Aws                # requires the `storage_aws_s3` feature
+  bucket: my-app-uploads   # required
+  region: us-east-1        # required
+  endpoint: <%= get_env(name="S3_ENDPOINT", default="") %>              # optional
+  access_key_id: <%= get_env(name="AWS_ACCESS_KEY_ID", default="") %>   # optional; falls back to env/instance profile if omitted
+  secret_access_key: <%= get_env(name="AWS_SECRET_ACCESS_KEY", default="") %> # optional, same fallback
+  session_token: <%= get_env(name="AWS_SESSION_TOKEN", default="") %>   # optional
+
+# --- or ---
+storage:
+  kind: Gcp                 # requires the `storage_gcp` feature
+  bucket: my-app-uploads    # required
+  credential_path: /path/to/service-account.json  # required
+
+# --- or ---
+storage:
+  kind: Azure                # requires the `storage_azure` feature
+  container: my-container    # required
+  account_name: my-account   # required
+  access_key: <%= get_env(name="AZURE_STORAGE_KEY") %>  # required
+  endpoint: https://my-account.blob.core.windows.net    # required
+
+# --- or (default) ---
+storage:
+  kind: "Null"               # no-op storage; used when `storage` key is omitted
+                             # must be quoted — bare Null is YAML's null, not the string
+```
+
+| Key | Type | Required? | Notes |
+|---|---|---|---|
+| `storage.kind` | tag: `Aws` \| `Gcp` \| `Azure` \| `Local` \| `"Null"` | required if `storage` present | `storage.rs:14-30`. `Null` must be written quoted: unquoted, YAML resolves it to null and the tagged enum fails to deserialize |
+| **Local** (`LocalStorageConfig`, `storage.rs:32-37`) | | | |
+| `storage.path` | `Option<String>` | optional | Root directory for stored files; defaults to the process working directory (`drivers::local::new()`) when omitted, otherwise `drivers::local::new_with_prefix(path)` |
+| **Aws** (`AwsStorageConfig`, `storage.rs:39-47`) — feature-gated on `storage_aws_s3` | | | |
+| `storage.bucket` | `String` | required | |
+| `storage.region` | `String` | required | |
+| `storage.endpoint` | `Option<String>` | optional | S3-compatible endpoint override (e.g. MinIO) |
+| `storage.access_key_id` | `Option<String>` | optional | With `secret_access_key` present, selects the credentialed constructor; otherwise falls back to environment/instance-profile credentials |
+| `storage.secret_access_key` | `Option<String>` | optional | See above |
+| `storage.session_token` | `Option<String>` | optional | Only used when `access_key_id`/`secret_access_key` are also set |
+| **Gcp** (`GcpStorageConfig`, `storage.rs:49-53`) — feature-gated on `storage_gcp` | | | |
+| `storage.bucket` | `String` | required | |
+| `storage.credential_path` | `String` | required | Path to a service-account JSON key file |
+| **Azure** (`AzureStorageConfig`, `storage.rs:55-61`) — feature-gated on `storage_azure` | | | |
+| `storage.container` | `String` | required | |
+| `storage.account_name` | `String` | required | |
+| `storage.access_key` | `String` | required | |
+| `storage.endpoint` | `String` | required | |
+| **Null** | (no fields) | — | default no-op storage; every operation errors |
+
+If the corresponding feature (`storage_aws_s3` / `storage_gcp` / `storage_azure`) is not compiled in, that `kind` value will fail to deserialize.
+
+`Hooks::after_context` still runs after this config builds the default store (`boot::create_context`, `src/boot.rs`), and can freely replace `ctx.storage` — see [Configure file storage](/docs/how-to/configure-storage) for the multi-store/strategy case, which has no dedicated YAML key.
+
 ## `initializers`, `settings`, `scheduler`
 
-- `initializers: Option<BTreeMap<String, serde_json::Value>>` (`mod.rs:75,106`) — a free-form map consumed by app initializers (e.g. an `oauth2` initializer reading `initializers.oauth2`). Keys and shapes are defined by whichever initializer reads them, not by `Config` itself.
+- `initializers: Option<BTreeMap<String, serde_json::Value>>` (`mod.rs:80,112`) — a free-form map consumed by app initializers (e.g. an `oauth2` initializer reading `initializers.oauth2`). Keys and shapes are defined by whichever initializer reads them, not by `Config` itself.
 - `settings: Option<serde_json::Value>` (`mod.rs:88-89`) — arbitrary app-defined settings, deserialize your own type from `ctx.config.settings`.
 - `scheduler: Option<scheduler::Config>` (`mod.rs:91`) — struct and keys owned by the scheduler area; not detailed on this page.
 

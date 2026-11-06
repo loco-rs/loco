@@ -7,6 +7,7 @@ pub use axum::{
 };
 pub use axum_extra::extract::cookie;
 pub use chrono::NaiveDateTime as DateTime;
+#[cfg(feature = "mailer")]
 pub use include_dir::{include_dir, Dir};
 // some types required for controller generators
 #[cfg(feature = "with-db")]
@@ -38,6 +39,15 @@ pub use sea_orm::sea_query::Expr;
 // sugar for controller views to use `data!({"item": ..})` instead of `json!`
 pub use serde_json::json as data;
 
+#[cfg(feature = "auth_session_encrypted")]
+pub use crate::auth::cookies::EncryptedCookies;
+#[cfg(feature = "auth_oauth")]
+pub use crate::auth::oauth::{Identity, OAuthFailure, OAuthHandler, SignIn};
+#[cfg(feature = "auth_session")]
+pub use crate::auth::{
+    cookies::SignedCookies,
+    session::{CurrentUser, MaybeCurrentUser, Session, SessionUser},
+};
 #[cfg(feature = "auth")]
 pub use crate::controller::extractor::auth;
 pub use crate::controller::extractor::{
@@ -62,13 +72,19 @@ pub use crate::{
         views::{engines::TeraView, ViewEngine, ViewRenderer},
         Json, Routes,
     },
-    errors::Error,
-    mailer,
-    mailer::Mailer,
+    errors::{Error, OrErr},
     task::{self, Task, TaskInfo},
     validation::{self, Validatable, ValidatorTrait},
     Result,
 };
+#[cfg(feature = "mailer")]
+pub use crate::{mailer, mailer::Mailer};
+// Only the trait: `deliver_later` needs it in scope at every call site. It has
+// no blanket impl, so it adds no methods to unrelated values. `Channel` and
+// `Message` are generic names an app may well define itself; import them from
+// `loco_rs::notifications`.
+#[cfg(feature = "notifications")]
+pub use crate::notifications::{self, Notifier};
 // `query::paginate` is in this prelude and returns a `PageResponse` whose
 // `meta` is literally a `PagerMeta` — but the pair you render it with was not,
 // so the only reachable way to answer a paginated endpoint was to hand-roll an

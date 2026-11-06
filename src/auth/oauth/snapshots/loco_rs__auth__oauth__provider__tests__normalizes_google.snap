@@ -1,0 +1,38 @@
+---
+source: src/auth/oauth/provider.rs
+expression: "normalize(&p, profile, None, tokens(), now()).unwrap()"
+---
+Identity {
+    provider: "google",
+    uid: "1100",
+    login: None,
+    name: Some(
+        "Ada Lovelace",
+    ),
+    email: Some(
+        "ada@example.com",
+    ),
+    email_verified: Some(
+        true,
+    ),
+    avatar_url: Some(
+        "https://lh3.example/photo.jpg",
+    ),
+    access_token: "[redacted]",
+    refresh_token: Some(
+        "[redacted]",
+    ),
+    expires_at: Some(
+        2026-01-01T01:00:00Z,
+    ),
+    scope: Some(
+        "read:user,user:email",
+    ),
+    raw: Object {
+        "email": String("ada@example.com"),
+        "email_verified": Bool(true),
+        "name": String("Ada Lovelace"),
+        "picture": String("https://lh3.example/photo.jpg"),
+        "sub": String("1100"),
+    },
+}

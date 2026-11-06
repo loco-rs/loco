@@ -81,6 +81,91 @@ async fn etag(#[case] enable: bool) {
     handle.abort();
 }
 
+/// A 304 is still a response to a request that may carry a rotated session or
+/// remember-me cookie; dropping `Set-Cookie` there loses the rotation.
+#[tokio::test]
+async fn etag_not_modified_keeps_set_cookie() {
+    async fn action() -> Result<Response> {
+        let mut res = format::render().etag("loco-etag")?.text("content")?;
+        res.headers_mut().append(
+            axum::http::header::SET_COOKIE,
+            "a=1; Path=/".parse().unwrap(),
+        );
+        res.headers_mut().append(
+            axum::http::header::SET_COOKIE,
+            "b=2; Path=/".parse().unwrap(),
+        );
+        Ok(res)
+    }
+
+    let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
+    ctx.config.server.middlewares.etag = Some(middleware::etag::Etag { enable: true });
+
+    let port = get_available_port().await;
+    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
+
+    let res = reqwest::Client::new()
+        .get(get_base_url_port(port))
+        .header("if-none-match", "loco-etag")
+        .send()
+        .await
+        .expect("response");
+
+    assert_eq!(res.status(), StatusCode::NOT_MODIFIED);
+    let cookies: Vec<_> = res
+        .headers()
+        .get_all("set-cookie")
+        .iter()
+        .map(|v| v.to_str().unwrap().to_string())
+        .collect();
+    assert_eq!(cookies, ["a=1; Path=/", "b=2; Path=/"]);
+
+    handle.abort();
+}
+
+/// A 304 that sets a cookie is private; an existing `private`/`no-store` stays.
+#[rstest]
+#[case(None, "private")]
+#[case(Some("max-age=60"), "max-age=60, private")]
+#[case(Some("no-store"), "no-store")]
+#[case(Some("private, max-age=5"), "private, max-age=5")]
+#[tokio::test]
+async fn etag_not_modified_with_a_cookie_is_private(
+    #[case] cache_control: Option<&'static str>,
+    #[case] expected: &str,
+) {
+    let action = move || async move {
+        let mut res = format::render().etag("loco-etag")?.text("content")?;
+        res.headers_mut().append(
+            axum::http::header::SET_COOKIE,
+            "a=1; Path=/".parse().unwrap(),
+        );
+        if let Some(v) = cache_control {
+            res.headers_mut()
+                .insert(axum::http::header::CACHE_CONTROL, v.parse().unwrap());
+        }
+        Ok::<_, loco_rs::Error>(res)
+    };
+
+    let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
+    ctx.config.server.middlewares.etag = Some(middleware::etag::Etag { enable: true });
+
+    let port = get_available_port().await;
+    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
+
+    let res = reqwest::Client::new()
+        .get(get_base_url_port(port))
+        .header("if-none-match", "loco-etag")
+        .send()
+        .await
+        .expect("response");
+
+    assert_eq!(res.status(), StatusCode::NOT_MODIFIED);
+    assert_eq!(res.headers()["cache-control"], expected);
+
+    handle.abort();
+}
+
 #[rstest]
 // Enabled with the default `RightmostXForwardedFor` source: the rightmost
 // (last) value of `X-Forwarded-For` is taken verbatim, with **no**
@@ -387,6 +472,7 @@ async fn secure_headers(
 #[case(None, false, None)]
 #[case(Some(StatusCode::BAD_REQUEST), false, None)]
 #[case(None, true, None)]
+#[case(Some(StatusCode::GONE), true, None)]
 #[case(None, false, Some("text fallback response".to_string()))]
 #[tokio::test]
 async fn fallback(
@@ -437,15 +523,11 @@ async fn fallback(
         .await
         .expect("valid response");
 
-    if let Some(code) = code {
-        assert_eq!(res.status(), code);
-    } else if maybe_file.is_some() {
-        // the file fallback is served via `ServeFile`, which reports its own
-        // status (200 OK for a found file) regardless of the configured
-        // `code`.
-        assert_eq!(res.status(), StatusCode::OK);
-    } else {
-        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // A file fallback answers with the configured code too, not the 200
+    // that serving a found file would give.
+    assert_eq!(res.status(), code.unwrap_or(StatusCode::NOT_FOUND));
+    if maybe_file.is_some() {
+        assert_eq!(res.headers()["content-type"], "text/html");
     }
 
     let response_text = res.text().await.expect("response text");

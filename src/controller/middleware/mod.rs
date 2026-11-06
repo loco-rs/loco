@@ -6,6 +6,8 @@
 //! handling. The middleware can be easily configured and applied to the
 //! application's router.
 
+#[cfg(feature = "auth_session")]
+pub mod auth_session;
 pub mod catch_panic;
 pub mod compression;
 pub mod cors;
@@ -71,103 +73,117 @@ pub trait MiddlewareLayer {
     fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>>;
 }
 
+/// A middleware config with every field at its serde default.
+///
+/// Decodes an empty YAML mapping, the same path the config file takes, so
+/// this reuses that decoding code rather than compiling a second copy for
+/// another format.
+pub(crate) fn defaults<T: serde::de::DeserializeOwned>() -> T {
+    serde_yaml::from_value(serde_yaml::Value::Mapping(serde_yaml::Mapping::new()))
+        .expect("every middleware config field has a serde default")
+}
+
 #[allow(clippy::unnecessary_lazy_evaluations)]
 #[must_use]
 pub fn default_middleware_stack(ctx: &AppContext) -> Vec<Box<dyn MiddlewareLayer>> {
     // Shortened reference to middlewares
     let middlewares = &ctx.config.server.middlewares;
 
-    vec![
-        // Limit Payload middleware with a default if none
-        Box::new(middlewares.limit_payload.clone().unwrap_or_default()),
-        // CORS middleware with a default if none
-        Box::new(middlewares.cors.clone().unwrap_or_else(|| cors::Cors {
-            enable: false,
-            ..Default::default()
-        })),
-        // Catch Panic middleware with a default if none
-        Box::new(
-            middlewares
-                .catch_panic
-                .clone()
-                .unwrap_or_else(|| catch_panic::CatchPanic { enable: true }),
-        ),
-        // Etag middleware with a default if none
-        Box::new(
-            middlewares
-                .etag
-                .clone()
-                .unwrap_or_else(|| etag::Etag { enable: true }),
-        ),
-        // Remote IP middleware with a default if none
-        Box::new(
-            middlewares
-                .remote_ip
-                .clone()
-                .unwrap_or_else(|| remote_ip::RemoteIpMiddleware {
-                    enable: false,
-                    ..Default::default()
-                }),
-        ),
-        // Compression middleware with a default if none
-        Box::new(
-            middlewares
-                .compression
-                .clone()
-                .unwrap_or_else(|| compression::Compression { enable: false }),
-        ),
-        // Timeout Request middleware with a default if none
-        Box::new(
-            middlewares
-                .timeout_request
-                .clone()
-                .unwrap_or_else(|| timeout::TimeOut {
-                    enable: false,
-                    ..Default::default()
-                }),
-        ),
-        // Static Assets middleware with a default if none
-        Box::new(middlewares.static_assets.clone().unwrap_or_else(|| {
-            static_assets::StaticAssets {
+    #[allow(unused_mut)]
+    let mut stack: Vec<Box<dyn MiddlewareLayer>> =
+        vec![
+            // Limit Payload middleware with a default if none
+            Box::new(middlewares.limit_payload.clone().unwrap_or_default()),
+            // CORS middleware with a default if none
+            Box::new(middlewares.cors.clone().unwrap_or_else(|| cors::Cors {
                 enable: false,
                 ..Default::default()
-            }
-        })),
-        // Secure Headers middleware with a default if none
-        Box::new(middlewares.secure_headers.clone().unwrap_or_else(|| {
-            secure_headers::SecureHeader {
-                enable: false,
-                ..Default::default()
-            }
-        })),
-        // Logger middleware with default logger configuration
-        Box::new(logger::new(
-            &middlewares
-                .logger
-                .clone()
-                .unwrap_or_else(|| logger::Config { enable: true }),
-            &ctx.environment,
-        )),
-        // Request ID middleware with a default if none
-        Box::new(
-            middlewares
-                .request_id
-                .clone()
-                .unwrap_or_else(|| request_id::RequestId { enable: true }),
-        ),
-        // Fallback middleware with a default if none
-        Box::new(
-            middlewares
-                .fallback
-                .clone()
-                .unwrap_or_else(|| fallback::Fallback {
-                    enable: ctx.environment != Environment::Production,
+            })),
+            // Catch Panic middleware with a default if none
+            Box::new(
+                middlewares
+                    .catch_panic
+                    .clone()
+                    .unwrap_or_else(|| catch_panic::CatchPanic { enable: true }),
+            ),
+            // Etag middleware with a default if none
+            Box::new(
+                middlewares
+                    .etag
+                    .clone()
+                    .unwrap_or_else(|| etag::Etag { enable: true }),
+            ),
+            // Remote IP middleware with a default if none
+            Box::new(middlewares.remote_ip.clone().unwrap_or_else(|| {
+                remote_ip::RemoteIpMiddleware {
+                    enable: false,
                     ..Default::default()
-                }),
-        ),
-        // Powered by middleware with a default identifier
-        Box::new(powered_by::new(ctx.config.server.ident.as_deref())),
-    ]
+                }
+            })),
+            // Compression middleware with a default if none
+            Box::new(
+                middlewares
+                    .compression
+                    .clone()
+                    .unwrap_or_else(|| compression::Compression { enable: false }),
+            ),
+            // Timeout Request middleware with a default if none
+            Box::new(
+                middlewares
+                    .timeout_request
+                    .clone()
+                    .unwrap_or_else(|| timeout::TimeOut {
+                        enable: false,
+                        ..Default::default()
+                    }),
+            ),
+            // Static Assets middleware with a default if none
+            Box::new(middlewares.static_assets.clone().unwrap_or_else(|| {
+                static_assets::StaticAssets {
+                    enable: false,
+                    ..Default::default()
+                }
+            })),
+            // Secure Headers middleware with a default if none
+            Box::new(middlewares.secure_headers.clone().unwrap_or_else(|| {
+                secure_headers::SecureHeader {
+                    enable: false,
+                    ..Default::default()
+                }
+            })),
+            // Logger middleware with default logger configuration
+            Box::new(logger::new(
+                &middlewares
+                    .logger
+                    .clone()
+                    .unwrap_or_else(|| logger::Config { enable: true }),
+                &ctx.environment,
+            )),
+            // Request ID middleware with a default if none
+            Box::new(
+                middlewares
+                    .request_id
+                    .clone()
+                    .unwrap_or_else(|| request_id::RequestId { enable: true }),
+            ),
+            // Fallback middleware with a default if none
+            Box::new(
+                middlewares
+                    .fallback
+                    .clone()
+                    .unwrap_or_else(|| fallback::Fallback {
+                        enable: ctx.environment != Environment::Production,
+                        ..Default::default()
+                    }),
+            ),
+            // Powered by middleware with a default identifier
+            Box::new(powered_by::new(ctx.config.server.ident.as_deref())),
+        ];
+    // Writes server-side session changes before the response is sent; only
+    // active with `auth.session.store: database | redis`.
+    #[cfg(feature = "auth_session")]
+    stack.insert(1, Box::new(auth_session::AuthSession::new(ctx)));
+    stack
 }
 
 /// Ergonomic, Rails-style edits to a middleware stack.

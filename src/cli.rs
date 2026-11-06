@@ -112,9 +112,11 @@ enum Commands {
     Task {
         /// Task name (identifier)
         name: Option<String>,
-        /// Task params (e.g. <`my_task`> foo:bar baz:qux)
-        #[clap(value_parser = parse_key_val::<String,String>)]
-        params: Vec<(String, String)>,
+        /// Task args, passed through verbatim (e.g. <`my_task`> foo:bar
+        /// file.txt --flag). `key:value` tokens are also readable with
+        /// `Vars::cli_arg`.
+        #[clap(trailing_var_arg = true, allow_hyphen_values = true)]
+        params: Vec<String>,
     },
     #[cfg(feature = "worker")]
     /// Managing jobs queue.
@@ -356,10 +358,23 @@ After running the migration, follow these steps to complete the process:
         /// Name of the thing to generate
         name: String,
     },
+    /// Generate a notifier: one notification delivered in the background to
+    /// Slack, webhooks and email
+    Notifier {
+        /// Name of the thing to generate
+        name: String,
+    },
     /// Generate data loader
     Data {
         /// Name of the thing to generate
         name: String,
+    },
+    /// Generate OAuth sign-in for a provider (github, google, or a generic
+    /// OAuth2/OIDC provider): a controller, its config and the `auth_oauth`
+    /// feature.
+    Oauth {
+        /// Provider name, e.g. `github`, `google` or `okta`
+        provider: String,
     },
     /// Generate a deployment infrastructure
     Deployment {
@@ -488,7 +503,9 @@ impl ComponentArg {
             Self::Scheduler {} => Ok(loco_gen::Component::Scheduler {}),
             Self::Worker { name } => Ok(loco_gen::Component::Worker { name }),
             Self::Mailer { name } => Ok(loco_gen::Component::Mailer { name }),
+            Self::Notifier { name } => Ok(loco_gen::Component::Notifier { name }),
             Self::Data { name } => Ok(loco_gen::Component::Data { name }),
+            Self::Oauth { provider } => Ok(loco_gen::Component::OAuth { provider }),
             Self::Deployment { kind } => Ok(kind.to_generator_component(config)),
             Self::Override {
                 template_path: _,
@@ -629,6 +646,17 @@ impl DeploymentKind {
 }
 
 #[cfg(feature = "worker")]
+/// What `jobs purge` deletes without `--status`: finished jobs only. Queued
+/// and processing jobs are deleted only when named explicitly.
+fn default_purge_statuses() -> Vec<JobStatus> {
+    vec![
+        JobStatus::Failed,
+        JobStatus::Cancelled,
+        JobStatus::Completed,
+    ]
+}
+
+#[cfg(feature = "worker")]
 #[derive(Subcommand)]
 enum JobsCommands {
     /// Cancels jobs with the specified names, setting their status to
@@ -642,12 +670,12 @@ enum JobsCommands {
     Tidy {},
     /// Deletes jobs based on their age in days.
     Purge {
-        /// Deletes jobs with errors or cancelled, older than the specified
-        /// maximum age in days.
+        /// Deletes jobs older than the specified maximum age in days.
         #[arg(long, default_value_t = 90)]
         max_age: i64,
-        /// Limits the jobs being saved to those with specific criteria like
-        /// completed or queued.
+        /// Statuses to delete, comma separated. Defaults to the finished
+        /// ones (completed, failed, cancelled); queued and processing jobs
+        /// are only deleted when named here.
         #[arg(long, use_value_delimiter = true)]
         status: Option<Vec<JobStatus>>,
         /// Saves the details of jobs into a file before deleting them.
@@ -689,6 +717,7 @@ enum JobsCommands {
 }
 
 /// Parse a single key-value pair
+#[cfg(all(debug_assertions, feature = "generators", feature = "with-db"))]
 fn parse_key_val<T, U>(
     s: &str,
 ) -> std::result::Result<(T, U), Box<dyn std::error::Error + Send + Sync>>
@@ -794,8 +823,12 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
         } => {
             let start_mode = start_mode_from_flags(all, server_and_worker, worker, scheduler);
 
-            let boot_result =
-                create_app::<H, M>(start_mode, &environment, app_context.config).await?;
+            let boot_result = Box::pin(create_app::<H, M>(
+                start_mode,
+                &environment,
+                app_context.config,
+            ))
+            .await?;
             let serve_params = ServeParams {
                 port: port.unwrap_or(boot_result.app_context.config.server.port),
                 binding: binding
@@ -848,7 +881,7 @@ async fn dispatch_common<H: Hooks>(
             }
         }
         Commands::Task { name, params } => {
-            let vars = task::Vars::from_cli_args(params);
+            let vars = task::Vars::from_args(params);
             run_task::<H>(&app_context, name.as_ref(), &vars).await?;
         }
         #[cfg(feature = "worker")]
@@ -1032,17 +1065,7 @@ async fn handle_job_command(command: JobsCommands, app_context: &AppContext) -> 
             status,
             dump,
         } => {
-            let status = status.as_ref().map_or_else(
-                || {
-                    vec![
-                        JobStatus::Failed,
-                        JobStatus::Cancelled,
-                        JobStatus::Queued,
-                        JobStatus::Completed,
-                    ]
-                },
-                std::clone::Clone::clone,
-            );
+            let status = status.clone().unwrap_or_else(default_purge_statuses);
 
             if let Some(path) = dump {
                 let dump_path = queue
@@ -1181,6 +1204,14 @@ mod tests {
         Playground::command().debug_assert();
     }
 
+    #[test]
+    fn purge_without_status_never_targets_unfinished_jobs() {
+        let statuses = default_purge_statuses();
+        assert!(!statuses.contains(&JobStatus::Queued));
+        assert!(!statuses.contains(&JobStatus::Processing));
+        assert_eq!(statuses.len(), 3);
+    }
+
     #[rstest]
     #[case::default(false, false, None, false, StartMode::ServerOnly)]
     #[case::all(true, false, None, false, StartMode::All)]
@@ -1207,6 +1238,7 @@ mod tests {
         );
     }
 
+    #[cfg(all(feature = "generators", feature = "with-db"))]
     #[test]
     fn key_value_pairs_split_on_the_first_colon() {
         assert_eq!(
@@ -1275,5 +1307,34 @@ mod tests {
                 parsed.err()
             );
         }
+    }
+
+    #[test]
+    fn task_takes_raw_trailing_args() {
+        let cli = Cli::try_parse_from([
+            "loco",
+            "task",
+            "import",
+            "a.txt",
+            "b.txt",
+            "mode:fast",
+            "--dry-run",
+            "-x",
+        ])
+        .expect("raw args parse");
+        let Commands::Task { name, params } = cli.command else {
+            panic!("expected task command")
+        };
+        assert_eq!(name.as_deref(), Some("import"));
+        assert_eq!(params, ["a.txt", "b.txt", "mode:fast", "--dry-run", "-x"]);
+    }
+
+    #[test]
+    fn task_without_args_still_parses() {
+        let cli = Cli::try_parse_from(["loco", "task", "seed_data"]).unwrap();
+        let Commands::Task { params, .. } = cli.command else {
+            panic!("expected task command")
+        };
+        assert!(params.is_empty());
     }
 }

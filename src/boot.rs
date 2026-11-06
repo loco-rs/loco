@@ -19,17 +19,21 @@ use crate::{
     app::{AppContext, Hooks, Initializer},
     banner::print_banner,
     bgworker, cache,
-    config::{self, Config, WorkerMode},
+    config::{Config, WorkerMode},
     controller::ListRoutes,
     env_vars,
     environment::Environment,
     errors::Error,
-    mailer::{EmailSender, MailerWorker},
-    prelude::BackgroundWorker,
     scheduler::{self, Scheduler},
-    storage::{self, Storage},
+    storage,
     task::{self, Tasks},
     Result,
+};
+#[cfg(feature = "mailer")]
+use crate::{
+    config,
+    mailer::{EmailSender, MailerWorker},
+    prelude::BackgroundWorker,
 };
 
 /// Represents the application startup mode.
@@ -399,24 +403,48 @@ pub async fn create_context<H: Hooks>(
     #[cfg(feature = "with-db")]
     let db = db::connect(&config.database).await?;
 
+    #[cfg(feature = "mailer")]
     let mailer = if let Some(cfg) = config.mailer.as_ref() {
         create_mailer(cfg)?
     } else {
         None
     };
+    #[cfg(not(feature = "mailer"))]
+    if config
+        .mailer
+        .as_ref()
+        .is_some_and(|cfg| cfg.stub || cfg.smtp.as_ref().is_some_and(|smtp| smtp.enable))
+    {
+        return Err(Error::Message(
+            "the config enables a mailer, but loco-rs was built without the `mailer` feature"
+                .to_string(),
+        ));
+    }
 
     let queue_provider = bgworker::create_queue_provider(&config).await?;
+    #[cfg(feature = "with-db")]
+    let cache = cache::create_cache_provider_with_db(&config, &db).await?;
+    #[cfg(not(feature = "with-db"))]
+    let cache = cache::create_cache_provider(&config).await?;
+    let storage = storage::create_storage_provider(&config)?;
     let ctx = AppContext {
         environment: environment.clone(),
         #[cfg(feature = "with-db")]
         db,
         queue_provider,
-        storage: Storage::single(storage::drivers::null::new()).into(),
-        cache: cache::create_cache_provider(&config).await?,
+        storage: storage.into(),
+        cache,
         config,
+        #[cfg(feature = "mailer")]
         mailer,
         shared_store: Arc::new(crate::app::SharedStore::default()),
     };
+
+    // Refuse a session configuration that cannot work. The server-side store
+    // itself opens on first use, so commands that never touch a session
+    // (migrations, tasks) need neither its table nor Redis.
+    #[cfg(feature = "auth_session")]
+    crate::auth::session_store::validate(&ctx.config)?;
 
     H::after_context(ctx).await
 }
@@ -553,7 +581,10 @@ async fn setup_routes<H: Hooks>(
 async fn register_workers<H: Hooks>(app_context: &AppContext) -> Result<()> {
     if app_context.config.workers.mode == WorkerMode::BackgroundQueue {
         if let Some(queue) = &app_context.queue_provider {
+            #[cfg(feature = "mailer")]
             queue.register(MailerWorker::build(app_context)).await?;
+            #[cfg(feature = "notifications")]
+            crate::notifications::register_worker(app_context, queue).await?;
             H::connect_workers(app_context, queue).await?;
         } else {
             return Err(Error::QueueProviderMissing);
@@ -617,6 +648,7 @@ pub fn list_middlewares<H: Hooks>(ctx: &AppContext) -> Vec<MiddlewareInfo> {
         .collect::<Vec<_>>()
 }
 
+#[cfg(feature = "mailer")]
 /// Initializes an [`EmailSender`] based on the mailer configuration settings
 /// ([`config::Mailer`]).
 fn create_mailer(config: &config::Mailer) -> Result<Option<EmailSender>> {
