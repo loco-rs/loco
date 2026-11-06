@@ -40,6 +40,13 @@ The way out is a parser written in Rust from the start, such as
 `serde-saphyr`. Loco uses `serde_yaml::Value` in about two dozen places and
 `serde-saphyr` has no equivalent yet, so that move is its own change.
 """ },
+  { id = "RUSTSEC-2026-0440", reason = """
+`astral-tokio-tar` is unmaintained; Astral ended maintenance on 2026-11-03 and
+the advisory reports no vulnerability. It is a dev-dependency only, reached
+through `testcontainers` (in `loco-rs` and `loco-gen` tests), so it never
+ships in a Loco build. Clears when `testcontainers` moves to a maintained
+tar crate.
+""" },
 ]
 
 [licenses]
