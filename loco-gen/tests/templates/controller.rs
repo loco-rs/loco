@@ -245,3 +245,78 @@ fn a_routes_file_takes_the_route_block_instead_of_the_controller() {
         "app.rs must be left untouched when the route block goes to `src/routes.rs`"
     );
 }
+
+/// A `src/routes.rs` without the `AppRoutes::` anchor must fail loudly and
+/// leave nothing behind, otherwise the handlers compile, nothing is
+/// registered, and the next run skips the controller because it exists.
+#[test]
+fn generating_a_controller_fails_when_the_routes_file_has_no_anchor() {
+    // The same routes file, building the table through a helper instead of
+    // `AppRoutes::with_default_routes()` -- no line matches `AppRoutes::`.
+    let routes_without_anchor =
+        ROUTES_RS.replace("AppRoutes::with_default_routes()", "bad_pattern()");
+    assert!(
+        !routes_without_anchor.contains("AppRoutes::"),
+        "fixture must have no anchor"
+    );
+
+    let tree_fs = tree_fs::TreeBuilder::default()
+        .drop(true)
+        .add_empty("src/controllers/mod.rs")
+        .add_empty("tests/requests/mod.rs")
+        .add("src/app.rs", APP_ROUTS)
+        .add("src/routes.rs", &routes_without_anchor)
+        .create()
+        .unwrap();
+
+    let err = generate(
+        &RRgen::with_working_dir(&tree_fs.root),
+        Component::Controller {
+            name: "movie".to_string(),
+            actions: vec!["list".to_string()],
+            auth: false,
+        },
+        &AppInfo {
+            app_name: "tester".to_string(),
+            working_dir: tree_fs.root.clone(),
+        },
+    )
+    .expect_err("Should report Err if the route block cannot be registered.");
+
+    let message = err.to_string();
+    assert!(
+        message.contains("src/routes.rs"),
+        "The error must name the file it could not edit, got: {message}"
+    );
+    assert!(
+        message.contains("AppRoutes::"),
+        "The error must name the anchor to restore, got: {message}"
+    );
+    assert!(
+        message.contains("crate::controllers::movie::list"),
+        "The error must show the route block that was dropped, got: {message}"
+    );
+
+    // Nothing may be left behind: a controller written by the failed run would
+    // make the retry skip it and never reach the injection again.
+    assert!(
+        !tree_fs.root.join("src/controllers/movie.rs").exists(),
+        "the failed generation wrote the controller"
+    );
+    assert!(
+        !tree_fs.root.join("tests/requests/movie.rs").exists(),
+        "the failed generation wrote the request test"
+    );
+    for (path, original) in [
+        ("src/controllers/mod.rs", ""),
+        ("tests/requests/mod.rs", ""),
+        ("src/app.rs", APP_ROUTS),
+        ("src/routes.rs", routes_without_anchor.as_str()),
+    ] {
+        assert_eq!(
+            fs::read_to_string(tree_fs.root.join(path)).unwrap(),
+            original,
+            "the failed generation rewrote {path}"
+        );
+    }
+}
