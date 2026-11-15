@@ -166,9 +166,10 @@ fn strategy_from_config(
     }
 }
 
-/// Rejects a strategy that names a store missing from `stores`, or names one
-/// store twice. At runtime a missing secondary only counts as a failure, so
-/// `FailurePolicy::AllowAll` would hide it: writes succeed, nothing replicates.
+/// Rejects a strategy that names a store missing from `stores`, names one
+/// store twice, or replicates to no secondary. At runtime a missing secondary
+/// only counts as a failure, so `FailurePolicy::AllowAll` would hide it:
+/// writes succeed, nothing replicates.
 fn validate_strategy_stores(config: &crate::config::MultiStorageConfig) -> StorageResult<()> {
     use crate::config::StorageStrategyConfig;
 
@@ -183,7 +184,14 @@ fn validate_strategy_stores(config: &crate::config::MultiStorageConfig) -> Stora
             primary,
             secondaries,
             ..
-        } => (primary, secondaries.as_slice()),
+        } => {
+            if secondaries.is_empty() {
+                return Err(StorageError::Any(
+                    "a Mirror or Backup storage strategy needs at least one secondary".into(),
+                ));
+            }
+            (primary, secondaries.as_slice())
+        }
     };
 
     let mut seen = std::collections::HashSet::new();
@@ -206,7 +214,8 @@ fn validate_strategy_stores(config: &crate::config::MultiStorageConfig) -> Stora
 /// # Errors
 ///
 /// Returns an error if the strategy names a store missing from `stores` or
-/// names one store twice, or if any named store's driver fails to initialize.
+/// names one store twice, if `Mirror`/`Backup` has no secondaries, or if any
+/// named store's driver fails to initialize.
 pub fn create_multi_storage_provider(
     config: &crate::config::MultiStorageConfig,
 ) -> StorageResult<Storage> {
@@ -943,6 +952,20 @@ mod multi_storage_provider_tests {
             primary: "primary".to_string(),
             secondaries: vec!["primary".to_string()],
             failure_policy: FailurePolicy::FailIfAny,
+        });
+
+        assert!(matches!(
+            super::create_multi_storage_provider(&config),
+            Err(StorageError::Any(_))
+        ));
+    }
+
+    #[test]
+    fn empty_secondaries_is_rejected() {
+        let config = null_stores(StorageStrategyConfig::Mirror {
+            primary: "primary".to_string(),
+            secondaries: vec![],
+            failure_policy: FailurePolicy::AllowAll,
         });
 
         assert!(matches!(

@@ -4,7 +4,7 @@
 
 ### Added
 
-- `MultiStorageInitializer` builds a second, multi-store `Storage` with a `Single`, `Mirror` or `Backup` strategy from `initializers.multi_storage`, and exposes it to handlers as `Extension<Arc<Storage>>`. A strategy that names a missing store, or names one store twice, fails at startup.
+- `MultiStorageInitializer` builds a second, multi-store `Storage` with a `Single`, `Mirror` or `Backup` strategy from `initializers.multi_storage`, and exposes it to handlers as `Extension<Arc<Storage>>`. A strategy that names a missing store, names one store twice, or gives `Mirror`/`Backup` no secondaries fails at startup.
 
 ### Changed
 

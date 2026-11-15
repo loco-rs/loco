@@ -709,7 +709,7 @@ since they restate the trait's own API.
 
 - `variant` **Backup** — [`crate::storage::strategies::replicated::ReplicatedStrategy::backup`]:
 - `variant` **Mirror** — [`crate::storage::strategies::replicated::ReplicatedStrategy::mirror`]:
-- `variant` **Single** — No fan-out: unqualified calls target `default`.
+- `variant` **Single** — No fan-out: unqualified calls target `default`
 
 ### `WorkerMode`
 
@@ -1586,7 +1586,7 @@ since they restate the trait's own API.
 - `struct` **Storage**` { stores: BTreeMap<String, Box<dyn StoreDriver>>, strategy: Box<dyn StorageStrategy> }`
 - `enum` **StorageError**
 - `type` **StorageResult**
-- `fn` **create_multi_storage_provider**`(config: &MultiStorageConfig) -> StorageResult<Storage>` — Builds a multi-store [`Storage`] from a [`crate::config::MultiStorageConfig`].
+- `fn` **create_multi_storage_provider**`(config: &MultiStorageConfig) -> StorageResult<Storage>` — Builds a multi-store [`Storage`] from a [`crate::config::MultiStorageConfig`]
 - `fn` **create_storage_provider**`(config: &Config) -> StorageResult<Storage>` — Builds the default [`Storage`] from `config.storage`
 
 ### `Storage`

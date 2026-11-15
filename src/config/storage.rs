@@ -123,7 +123,7 @@ pub enum StorageStrategyConfig {
     /// when the primary fails or (for `exists`/`list`) reports a miss.
     Mirror {
         primary: String,
-        // Required: with a default, a misspelled key would replicate to nothing.
+        // Required and non-empty: otherwise nothing replicates.
         secondaries: Vec<String>,
         #[serde(default)]
         failure_policy: crate::storage::strategies::replicated::FailurePolicy,
@@ -133,7 +133,7 @@ pub enum StorageStrategyConfig {
     /// `primary` only.
     Backup {
         primary: String,
-        // Required: with a default, a misspelled key would replicate to nothing.
+        // Required and non-empty: otherwise nothing replicates.
         secondaries: Vec<String>,
         #[serde(default)]
         failure_policy: crate::storage::strategies::replicated::FailurePolicy,

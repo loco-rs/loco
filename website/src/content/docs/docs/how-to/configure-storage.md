@@ -155,7 +155,7 @@ initializers:
 storage.as_store_err("public")?.download(path).await?;  // never touched by unqualified storage.download()
 ```
 
-A `Storage`'s `strategy` field is a single value — it governs at most one primary/secondaries fan-out group per `MultiStorageConfig`. A store not named in `primary`/`secondaries`/`default` just sits in `stores`, reachable only via `as_store`. A strategy that names a store missing from `stores`, or names one store twice, fails at startup. `secondaries` is required for `Mirror` and `Backup`. To use the null driver here, quote it as `kind: "Null"`: unquoted, YAML reads it as null and startup fails.
+A `Storage`'s `strategy` field is a single value — it governs at most one primary/secondaries fan-out group per `MultiStorageConfig`. A store not named in `primary`/`secondaries`/`default` just sits in `stores`, reachable only via `as_store`. A strategy that names a store missing from `stores`, names one store twice, or gives `Mirror`/`Backup` an empty `secondaries` list fails at startup. To use the null driver here, quote it as `kind: "Null"`: unquoted, YAML reads it as null and startup fails.
 
 Two independent mirror groups in one app need two `Storage` instances. `MultiStorageInitializer` only reads `initializers.multi_storage`, so the second group needs your own initializer that reads another key and layers its `Storage` in a newtype (for example `Extension<Arc<ArchiveStorage>>`). A second plain `Extension<Arc<Storage>>` would replace the first.
 

@@ -8,10 +8,11 @@ use crate::{
     storage, Error, Result,
 };
 
-/// Builds a multi-store [`storage::Storage`] from `initializers.multi_storage`
-/// and layers it as `Extension<Arc<storage::Storage>>` — the storage
-/// equivalent of [`crate::initializers::multi_db::MultiDbInitializer`].
-/// `ctx.storage` is left untouched.
+/// Builds a multi-store [`storage::Storage`] from `initializers.multi_storage`.
+///
+/// Layers it as `Extension<Arc<storage::Storage>>`, like
+/// [`crate::initializers::multi_db::MultiDbInitializer`]. `ctx.storage` is
+/// left untouched.
 #[allow(clippy::module_name_repetitions)]
 pub struct MultiStorageInitializer;
 
