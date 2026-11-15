@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 /// Storage configuration for the application.
@@ -84,6 +86,58 @@ impl std::fmt::Debug for AzureStorageConfig {
             .field("endpoint", &self.endpoint)
             .finish()
     }
+}
+
+/// Config for the multi-store [`crate::storage::Storage`] that
+/// [`crate::initializers::multi_storage::MultiStorageInitializer`] reads from
+/// `initializers.multi_storage`.
+///
+/// ```yaml
+/// initializers:
+///   multi_storage:
+///     stores:
+///       primary: { kind: Aws, bucket: my-app-uploads, region: us-east-1 }
+///       exports: { kind: Local, path: storage/exports }
+///     strategy:
+///       kind: Single
+///       default: primary
+/// ```
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct MultiStorageConfig {
+    /// Named stores, reachable with `storage.as_store(name)` on the
+    /// `Extension<Arc<Storage>>`. A store the strategy does not name is
+    /// still reachable by name, but unqualified calls never touch it.
+    pub stores: HashMap<String, StorageConfig>,
+    pub strategy: StorageStrategyConfig,
+}
+
+/// Config for a [`crate::storage::strategies::StorageStrategy`]: one
+/// fan-out group per `MultiStorageConfig`.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(tag = "kind")]
+pub enum StorageStrategyConfig {
+    /// No fan-out: unqualified calls target `default`.
+    Single { default: String },
+    /// [`crate::storage::strategies::replicated::ReplicatedStrategy::mirror`]:
+    /// writes fan out to every secondary; reads fall back to a secondary
+    /// when the primary fails or (for `exists`/`list`) reports a miss.
+    Mirror {
+        primary: String,
+        // Required and non-empty: otherwise nothing replicates.
+        secondaries: Vec<String>,
+        #[serde(default)]
+        failure_policy: crate::storage::strategies::replicated::FailurePolicy,
+    },
+    /// [`crate::storage::strategies::replicated::ReplicatedStrategy::backup`]:
+    /// writes fan out the same as `Mirror`, but reads are always served from
+    /// `primary` only.
+    Backup {
+        primary: String,
+        // Required and non-empty: otherwise nothing replicates.
+        secondaries: Vec<String>,
+        #[serde(default)]
+        failure_policy: crate::storage::strategies::replicated::FailurePolicy,
+    },
 }
 
 #[cfg(test)]

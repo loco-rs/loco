@@ -103,11 +103,67 @@ let store = aws::with_credentials("my-app-uploads", "us-east-1", credential)?;
 
 > The storage driver trait is `StoreDriver` (not `StorageDriver`) — you'll see it in error messages and if you implement your own driver.
 
-## 4. Use multiple drivers with a strategy (optional)
+## 4. Use multiple named stores with a strategy (optional)
 
-For redundancy across providers, set up several named stores and a `StorageStrategy` that decides how operations fan out across them.
+For a second store alongside the default one — a mirror/backup pair for redundancy, or just an extra bucket you pull from — configure it under `initializers.multi_storage` and register `MultiStorageInitializer`. This never touches `ctx.storage`: the default store from [§1](#1-configure-a-single-driver) (or an `after_context` override) is untouched, and the multi-store `Storage` shows up as a router `Extension`, extracted like any other:
 
-**Mirror** — replicates uploads/deletes/renames/copies to every store; download tries the primary, then falls through to secondaries on failure. This is `ReplicatedStrategy::mirror`.
+```yaml
+# config/development.yaml
+initializers:
+  multi_storage:
+    stores:
+      primary: { kind: Aws, bucket: my-app-uploads, region: us-east-1 }
+      mirror: { kind: Azure, container: my-container, account_name: my-account, access_key: <%= get_env(name="AZURE_STORAGE_KEY") %>, endpoint: https://my-account.blob.core.windows.net }
+    strategy:
+      kind: Mirror              # or Backup, or Single
+      primary: primary
+      secondaries: [mirror]
+      failure_policy: FailIfAny   # or AllowAll, AllowSingleFailure, or { FailAtFailures: 2 }
+```
+
+```rust
+async fn initializers(_ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
+    Ok(vec![Box::new(loco_rs::initializers::multi_storage::MultiStorageInitializer)])
+}
+```
+
+```rust
+use axum::extract::Extension;
+use loco_rs::storage::Storage;
+use std::sync::Arc;
+
+async fn upload_to_mirror(Extension(storage): Extension<Arc<Storage>>) -> Result<Response> {
+    storage.upload(Path::new("report.pdf"), &content).await?;  // fans out to both primary and mirror
+    format::empty()
+}
+```
+
+`strategy.kind: Single` (with a `default` key instead of `primary`/`secondaries`) skips replication entirely — every store is still independently addressable by name, just none of them mirror or fall back to each other. That's the shape for a plain "extra bucket to pull from" — for example a public, read-only bucket alongside your primary write-store:
+
+```yaml
+initializers:
+  multi_storage:
+    stores:
+      primary: { kind: Local, path: storage/uploads }
+      public: { kind: Aws, bucket: my-app-public-assets, region: us-east-1 }
+    strategy:
+      kind: Single
+      default: primary
+```
+
+```rust
+storage.as_store_err("public")?.download(path).await?;  // never touched by unqualified storage.download()
+```
+
+A `Storage`'s `strategy` field is a single value — it governs at most one primary/secondaries fan-out group per `MultiStorageConfig`. A store not named in `primary`/`secondaries`/`default` just sits in `stores`, reachable only via `as_store`. A strategy that names a store missing from `stores`, names one store twice, or gives `Mirror`/`Backup` an empty `secondaries` list fails at startup. To use the null driver here, quote it as `kind: "Null"`: unquoted, YAML reads it as null and startup fails.
+
+Two independent mirror groups in one app need two `Storage` instances. `MultiStorageInitializer` only reads `initializers.multi_storage`, so the second group needs your own initializer that reads another key and layers its `Storage` in a newtype (for example `Extension<Arc<ArchiveStorage>>`). A second plain `Extension<Arc<Storage>>` would replace the first.
+
+The `Extension` exists only on the HTTP router, so background workers and tasks cannot extract it. If a worker needs these stores, build the `Storage` in code as shown below and put it in `ctx.shared_store` from `after_context`.
+
+### Or build it in code (still supported)
+
+Everything above is `storage::create_multi_storage_provider` reading YAML. For anything the config doesn't cover, build the `Storage` yourself the same way you always could:
 
 ```rust
 use std::collections::BTreeMap;
@@ -134,21 +190,7 @@ let storage = Storage::new(
 );
 ```
 
-`FailurePolicy::FailIfAny` requires every secondary to succeed (errors bubble up as `StorageError::Multi`); `AllowAll` swallows secondary failures.
-
-**Backup** — the primary must always succeed for writes; secondary failures are governed by a separate failure policy, and downloads *always* come from the primary only. This is `ReplicatedStrategy::backup`.
-
-```rust
-use loco_rs::storage::strategies::replicated::{ReplicatedStrategy, FailurePolicy};
-
-let strategy: Box<dyn StorageStrategy> = Box::new(ReplicatedStrategy::backup(
-    "primary",
-    Some(vec!["backup_store".to_string()]),
-    FailurePolicy::AllowAll, // also: FailIfAny, AllowSingleFailure, FailAtFailures(n)
-));
-```
-
-Mirror and backup are both `ReplicatedStrategy`, differing only in the constructor used (`mirror` vs `backup`) and the `FailurePolicy` you pick. It exposes a `_with_policy`/`_with_strategy` variant on every `Storage` method (`upload_with_strategy`, `download_with_policy`, ...) if you need to override the strategy for a single call.
+`FailurePolicy::FailIfAny` requires every secondary to succeed (errors bubble up as `StorageError::Multi`); `AllowAll` swallows secondary failures; `AllowSingleFailure`/`FailAtFailures(n)` sit between the two. `ReplicatedStrategy::backup(..)` builds the non-mirroring variant — writes still fan out, but reads always come from the primary only. It exposes a `_with_policy`/`_with_strategy` variant on every `Storage` method (`upload_with_strategy`, `download_with_policy`, ...) if you need to override the strategy for a single call.
 
 ## 5. Upload and download in a controller
 
@@ -330,4 +372,4 @@ async fn can_upload_and_download() {
 
 - `storage_aws_s3` / `storage_azure` / `storage_gcp` / `all_storage` feature flags: [Feature flags reference](/docs/reference/feature-flags)
 - The `storage:` key (single default store, driver-tagged like `cache:`): [Configuration reference](/docs/reference/configuration#storage)
-- Multiple named stores with a strategy have no dedicated YAML key — configure them in code as shown in [§4](#4-use-multiple-drivers-with-a-strategy-optional)
+- `initializers.multi_storage` (multiple named stores + a strategy, via `MultiStorageInitializer`): see [§4](#4-use-multiple-named-stores-with-a-strategy-optional). No dedicated top-level YAML key for this — it lives under `initializers` the same way `initializers.multi_db` does on the database side.
