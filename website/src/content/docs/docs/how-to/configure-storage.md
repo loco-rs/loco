@@ -105,12 +105,12 @@ let store = aws::with_credentials("my-app-uploads", "us-east-1", credential)?;
 
 ## 4. Use multiple named stores with a strategy (optional)
 
-For a second store alongside the default one — a mirror/backup pair for redundancy, or just an extra bucket you pull from — configure it under `initializers.storage` and register `MultiStorageInitializer`. This never touches `ctx.storage`: the default store from [§1](#1-configure-a-single-driver) (or an `after_context` override) is untouched, and the multi-store `Storage` shows up as a router `Extension`, extracted like any other:
+For a second store alongside the default one — a mirror/backup pair for redundancy, or just an extra bucket you pull from — configure it under `initializers.multi_storage` and register `MultiStorageInitializer`. This never touches `ctx.storage`: the default store from [§1](#1-configure-a-single-driver) (or an `after_context` override) is untouched, and the multi-store `Storage` shows up as a router `Extension`, extracted like any other:
 
 ```yaml
 # config/development.yaml
 initializers:
-  storage:
+  multi_storage:
     stores:
       primary: { kind: Aws, bucket: my-app-uploads, region: us-east-1 }
       mirror: { kind: Azure, container: my-container, account_name: my-account, access_key: <%= get_env(name="AZURE_STORAGE_KEY") %>, endpoint: https://my-account.blob.core.windows.net }
@@ -123,7 +123,7 @@ initializers:
 
 ```rust
 async fn initializers(_ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
-    Ok(vec![Box::new(loco_rs::initializers::storage::MultiStorageInitializer)])
+    Ok(vec![Box::new(loco_rs::initializers::multi_storage::MultiStorageInitializer)])
 }
 ```
 
@@ -142,7 +142,7 @@ async fn upload_to_mirror(Extension(storage): Extension<Arc<Storage>>) -> Result
 
 ```yaml
 initializers:
-  storage:
+  multi_storage:
     stores:
       primary: { kind: Local, path: storage/uploads }
       public: { kind: Aws, bucket: my-app-public-assets, region: us-east-1 }
@@ -157,7 +157,7 @@ storage.as_store_err("public")?.download(path).await?;  // never touched by unqu
 
 A `Storage`'s `strategy` field is a single value — it governs at most one primary/secondaries fan-out group per `MultiStorageConfig`. A store not named in `primary`/`secondaries`/`default` just sits in `stores`, reachable only via `as_store`. A strategy that names a store missing from `stores`, or names one store twice, fails at startup. `secondaries` is required for `Mirror` and `Backup`. To use the null driver here, quote it as `kind: "Null"`: unquoted, YAML reads it as null and startup fails.
 
-Two independent mirror groups in one app need two `Storage` instances. `MultiStorageInitializer` only reads `initializers.storage`, so the second group needs your own initializer that reads another key and layers its `Storage` in a newtype (for example `Extension<Arc<ArchiveStorage>>`). A second plain `Extension<Arc<Storage>>` would replace the first.
+Two independent mirror groups in one app need two `Storage` instances. `MultiStorageInitializer` only reads `initializers.multi_storage`, so the second group needs your own initializer that reads another key and layers its `Storage` in a newtype (for example `Extension<Arc<ArchiveStorage>>`). A second plain `Extension<Arc<Storage>>` would replace the first.
 
 The `Extension` exists only on the HTTP router, so background workers and tasks cannot extract it. If a worker needs these stores, build the `Storage` in code as shown below and put it in `ctx.shared_store` from `after_context`.
 
@@ -372,4 +372,4 @@ async fn can_upload_and_download() {
 
 - `storage_aws_s3` / `storage_azure` / `storage_gcp` / `all_storage` feature flags: [Feature flags reference](/docs/reference/feature-flags)
 - The `storage:` key (single default store, driver-tagged like `cache:`): [Configuration reference](/docs/reference/configuration#storage)
-- `initializers.storage` (multiple named stores + a strategy, via `MultiStorageInitializer`): see [§4](#4-use-multiple-named-stores-with-a-strategy-optional). No dedicated top-level YAML key for this — it lives under `initializers` the same way `initializers.multi_db` does on the database side.
+- `initializers.multi_storage` (multiple named stores + a strategy, via `MultiStorageInitializer`): see [§4](#4-use-multiple-named-stores-with-a-strategy-optional). No dedicated top-level YAML key for this — it lives under `initializers` the same way `initializers.multi_db` does on the database side.

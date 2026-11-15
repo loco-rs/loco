@@ -8,38 +8,30 @@ use crate::{
     storage, Error, Result,
 };
 
-/// Wires a second, named-store [`storage::Storage`] from `initializers.storage`
-/// onto the router as `Extension<Arc<storage::Storage>>` — the storage-side
+/// Builds a multi-store [`storage::Storage`] from `initializers.multi_storage`
+/// and layers it as `Extension<Arc<storage::Storage>>` — the storage
 /// equivalent of [`crate::initializers::multi_db::MultiDbInitializer`].
-///
-/// Unlike `after_context`-based storage setup, this never touches
-/// `ctx.storage`: the app's primary store (from the top-level `storage:` key,
-/// or an `after_context` override) is untouched, and this initializer adds a
-/// second, independent, multi-store `Storage` alongside it, extracted in a
-/// handler with `Extension(storage): Extension<Arc<storage::Storage>>`.
+/// `ctx.storage` is left untouched.
 #[allow(clippy::module_name_repetitions)]
 pub struct MultiStorageInitializer;
 
 #[async_trait]
 impl Initializer for MultiStorageInitializer {
     fn name(&self) -> String {
-        "storage".to_string()
+        "multi_storage".to_string()
     }
 
     async fn after_routes(&self, router: AxumRouter, ctx: &AppContext) -> Result<AxumRouter> {
-        let cfg = ctx
+        let multi_storage = ctx
             .config
             .initializers
             .as_ref()
-            .and_then(|settings| settings.get("storage"))
-            .ok_or_else(|| Error::Message("storage initializer not configured".to_string()))?;
+            .and_then(|settings| settings.get("multi_storage"))
+            .ok_or_else(|| Error::Message("multi_storage not configured".to_string()))?;
 
-        let cfg: crate::config::MultiStorageConfig =
-            serde::Deserialize::deserialize(cfg).map_err(|err: serde_json::Error| {
-                Error::Message(format!("invalid storage initializer config: {err}"))
-            })?;
-        let multi_storage = storage::create_multi_storage_provider(&cfg)?;
-
+        let multi_storage = storage::create_multi_storage_provider(&serde_json::from_value(
+            multi_storage.clone(),
+        )?)?;
         Ok(router.layer(Extension(Arc::new(multi_storage))))
     }
 }
@@ -54,7 +46,7 @@ mod tests {
 
     fn storage_initializer_settings() -> serde_json::Value {
         serde_json::json!({
-            "storage": {
+            "multi_storage": {
                 "stores": {
                     "avatars": { "kind": "Local", "path": null },
                     "exports": { "kind": "Local", "path": null },
@@ -70,7 +62,7 @@ mod tests {
         names.join(",")
     }
 
-    /// `after_routes` reads `initializers.storage`, builds the multi-store
+    /// `after_routes` reads `initializers.multi_storage`, builds the multi-store
     /// `Storage`, and layers it as `Extension<Arc<Storage>>` — extractable in
     /// a handler without any `after_context` code in the app.
     #[tokio::test]
@@ -100,7 +92,7 @@ mod tests {
         assert_eq!(body, "avatars,exports");
     }
 
-    /// Absent `initializers.storage` is a clear config error, not a silent
+    /// Absent `initializers.multi_storage` is a clear config error, not a silent
     /// empty `Storage` — there's nothing sensible to default to here, unlike
     /// the top-level `storage:` key's `Null` default.
     #[tokio::test]
@@ -111,7 +103,7 @@ mod tests {
         let err = MultiStorageInitializer
             .after_routes(router, &ctx)
             .await
-            .expect_err("no initializers.storage configured");
+            .expect_err("no initializers.multi_storage configured");
         assert!(err.to_string().contains("not configured"));
     }
 }

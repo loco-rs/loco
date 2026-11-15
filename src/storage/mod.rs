@@ -200,14 +200,8 @@ fn validate_strategy_stores(config: &crate::config::MultiStorageConfig) -> Stora
     Ok(())
 }
 
-/// Builds a multi-store [`Storage`] — several named stores behind one
-/// [`strategies::StorageStrategy`] — from a
-/// [`crate::config::MultiStorageConfig`].
-///
-/// This is what [`crate::initializers::storage::MultiStorageInitializer`]
-/// calls to build the `Extension<std::sync::Arc<Storage>>` it layers onto the
-/// router from `initializers.storage`; call it directly only if you're
-/// wiring the result up some other way.
+/// Builds a multi-store [`Storage`] from a [`crate::config::MultiStorageConfig`].
+/// Used by [`crate::initializers::multi_storage::MultiStorageInitializer`].
 ///
 /// # Errors
 ///

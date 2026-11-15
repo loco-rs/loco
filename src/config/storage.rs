@@ -88,14 +88,13 @@ impl std::fmt::Debug for AzureStorageConfig {
     }
 }
 
-/// Config for a secondary [`crate::storage::Storage`] with several named
-/// stores, read from `initializers.storage` and wired in automatically by
-/// [`crate::initializers::storage::MultiStorageInitializer`] — no
-/// `after_context` code required. See [`crate::storage::create_multi_storage_provider`].
+/// Config for the multi-store [`crate::storage::Storage`] that
+/// [`crate::initializers::multi_storage::MultiStorageInitializer`] reads from
+/// `initializers.multi_storage`.
 ///
 /// ```yaml
 /// initializers:
-///   storage:
+///   multi_storage:
 ///     stores:
 ///       primary: { kind: Aws, bucket: my-app-uploads, region: us-east-1 }
 ///       exports: { kind: Local, path: storage/exports }
@@ -105,35 +104,19 @@ impl std::fmt::Debug for AzureStorageConfig {
 /// ```
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MultiStorageConfig {
-    /// Every named store this `Storage` can address, keyed by the name
-    /// passed to `ctx.storage.as_store(name)`. A name doesn't have to be
-    /// referenced by `strategy` at all — an entry with no role in the
-    /// strategy is still reachable by name, just never touched by an
-    /// unqualified `storage.upload()`/`.download()` call or by mirror/backup
-    /// fan-out. That's how a plain "extra bucket to pull from" is modeled:
-    /// give it a name here and nothing else.
+    /// Named stores, reachable with `storage.as_store(name)` on the
+    /// `Extension<Arc<Storage>>`. A store the strategy does not name is
+    /// still reachable by name, but unqualified calls never touch it.
     pub stores: HashMap<String, StorageConfig>,
     pub strategy: StorageStrategyConfig,
 }
 
-/// Config for a [`crate::storage::strategies::StorageStrategy`].
-///
-/// A `Storage` has exactly one `strategy` field — so this selects, at most,
-/// one primary/secondaries fan-out group per `MultiStorageConfig`. Stores
-/// not named by `default`/`primary`/`secondaries` are still in the `stores`
-/// map and still reachable via `as_store`, just outside the strategy.
-///
-/// Two independent mirror/backup groups in a single app need two separate
-/// `Storage` instances. `MultiStorageInitializer` only reads
-/// `initializers.storage`, so the second one needs your own initializer that
-/// layers it as a newtype: a second `Extension<Arc<Storage>>` would replace
-/// the first.
+/// Config for a [`crate::storage::strategies::StorageStrategy`]: one
+/// fan-out group per `MultiStorageConfig`.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "kind")]
 pub enum StorageStrategyConfig {
-    /// No fan-out: every unqualified `storage.upload()`/`.download()` call
-    /// targets `default`. Every other entry in `stores` is still directly
-    /// reachable via `as_store(name)`.
+    /// No fan-out: unqualified calls target `default`.
     Single { default: String },
     /// [`crate::storage::strategies::replicated::ReplicatedStrategy::mirror`]:
     /// writes fan out to every secondary; reads fall back to a secondary

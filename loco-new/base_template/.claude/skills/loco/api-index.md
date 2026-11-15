@@ -592,7 +592,7 @@ since they restate the trait's own API.
 - `struct` **Mailer**` { smtp: Option<SmtpMailer>, stub: bool }` — Mailer configuration
 - `struct` **MailerAuth**` { user: String, password: String }` — Authentication details for the mailer
 - `enum` **MailerTls** — TLS mode for the SMTP connection
-- `struct` **MultiStorageConfig**` { stores: HashMap<String, StorageConfig>, strategy: StorageStrategyConfig }` — Config for a secondary [`crate::storage::Storage`] with several named
+- `struct` **MultiStorageConfig**` { stores: HashMap<String, StorageConfig>, strategy: StorageStrategyConfig }` — Config for the multi-store [`crate::storage::Storage`] that
 - `struct` **Notifications**` { slack: Option<SlackNotifications>, webhook: Option<WebhookNotifications>, email: Option<EmailNotifications>, max_retries: u32, retry_backoff_secs: u64, timeout_secs: u64, stub: bool }` — Notifications configuration: the default destination of each channel and
 - `struct` **OAuthConfig**` { base_url: Option<String>, after_sign_in_path: Option<String>, after_sign_out_path: Option<String>, failure_path: Option<String>, providers: BTreeMap<String, OAuthProviderConfig> }` — `OAuth2` / `OpenID` Connect sign-in, `OmniAuth`-style
 - `struct` **OAuthProviderConfig**` { strategy: Option<OAuthStrategy>, client_id: String, client_secret: String, scopes: Option<Vec<String>>, base_url: Option<String>, api_url: Option<String>, authorize_url: Option<String>, token_url: Option<String>, userinfo_url: Option<String>, emails_url: Option<String>, redirect_uri: Option<String>, authorize_params: BTreeMap<String, String>, pkce: Option<bool>, token_auth: Option<OAuthTokenAuth> }` — One OAuth provider. Every URL is overridable, for GitHub Enterprise,
@@ -612,7 +612,7 @@ since they restate the trait's own API.
 - `struct` **SqliteConfig**` { pragmas: BTreeMap<String, String> }` — `SQLite` settings shared by the database and the `SQLite` queue
 - `struct` **SqliteQueueConfig**` { uri: String, dangerously_flush: bool, enable_logging: bool, max_connections: u32, min_connections: u32, connect_timeout: u64, idle_timeout: u64, poll_interval_sec: u32, num_workers: u32, reaper: Option<ReaperConfig>, retention: Option<RetentionConfig>, pragmas: BTreeMap<String, String> }`
 - `enum` **StorageConfig** — Storage configuration for the application
-- `enum` **StorageStrategyConfig** — Config for a [`crate::storage::strategies::StorageStrategy`]
+- `enum` **StorageStrategyConfig** — Config for a [`crate::storage::strategies::StorageStrategy`]: one
 - `struct` **WebhookNotifications**` { url: String, secret: Option<String>, headers: BTreeMap<String, String> }` — Default webhook destination
 - `enum` **WorkerMode** — Worker mode configuration
 - `struct` **Workers**` { mode: WorkerMode }` — Background worker configuration
@@ -709,7 +709,7 @@ since they restate the trait's own API.
 
 - `variant` **Backup** — [`crate::storage::strategies::replicated::ReplicatedStrategy::backup`]:
 - `variant` **Mirror** — [`crate::storage::strategies::replicated::ReplicatedStrategy::mirror`]:
-- `variant` **Single** — No fan-out: every unqualified `storage.upload()`/`.download()` call
+- `variant` **Single** — No fan-out: unqualified calls target `default`.
 
 ### `WorkerMode`
 
@@ -1122,9 +1122,9 @@ since they restate the trait's own API.
 ## `initializers::multi_db`
 
 - `struct` **MultiDbInitializer**
-## `initializers::storage`
+## `initializers::multi_storage`
 
-- `struct` **MultiStorageInitializer** — Wires a second, named-store [`storage::Storage`] from `initializers.storage`
+- `struct` **MultiStorageInitializer** — Builds a multi-store [`storage::Storage`] from `initializers.multi_storage`
 ## `logger`
 
 - `enum` **Format**
@@ -1586,7 +1586,7 @@ since they restate the trait's own API.
 - `struct` **Storage**` { stores: BTreeMap<String, Box<dyn StoreDriver>>, strategy: Box<dyn StorageStrategy> }`
 - `enum` **StorageError**
 - `type` **StorageResult**
-- `fn` **create_multi_storage_provider**`(config: &MultiStorageConfig) -> StorageResult<Storage>` — Builds a multi-store [`Storage`] — several named stores behind one
+- `fn` **create_multi_storage_provider**`(config: &MultiStorageConfig) -> StorageResult<Storage>` — Builds a multi-store [`Storage`] from a [`crate::config::MultiStorageConfig`].
 - `fn` **create_storage_provider**`(config: &Config) -> StorageResult<Storage>` — Builds the default [`Storage`] from `config.storage`
 
 ### `Storage`
