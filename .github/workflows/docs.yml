@@ -28,6 +28,10 @@ jobs:
       # Rust opt out in the fence meta with a reason.
       - name: Check that every Rust doc example parses
         run: cargo run -p xtask -- docs-syntax
+      # Resolves every `loco.rs/docs/` link in READMEs, shipped templates, and
+      # agent skills against `website/src/content/docs/` to prevent dead links.
+      - name: Check that docs links across the repo resolve
+        run: cargo run -p xtask -- docs-links
       - name: Compile the docs example app (verified-docs spine)
         run: cargo build --manifest-path examples/demo/Cargo.toml
       - run: cargo install snipdoc --features exec

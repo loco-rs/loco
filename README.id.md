@@ -46,7 +46,7 @@ Untuk memahami lebih dalam cara kerja Loco, termasuk panduan terperinci, contoh,
 
 * `Cache:` Loco menyediakan layer cache untuk meningkatkan performa aplikasi dengan menyimpan data yang sering diakses.
 
-Untuk melihat lebih banyak fitur Loco, kunjungi [situs dokumentasi kami](https://loco.rs/docs/getting-started/tour/).
+Untuk melihat lebih banyak fitur Loco, kunjungi [situs dokumentasi kami](https://loco.rs/docs/tutorials/the-tour/).
 
 ## Memulai
 <!-- <snip id="quick-installation-command" inject_from="yaml" template="sh"> -->

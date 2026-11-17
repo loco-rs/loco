@@ -48,7 +48,7 @@
 
 * `Cache:` Loco cung cấp một lớp cache để cải thiện hiệu suất ứng dụng bằng cách lưu trữ dữ liệu được truy cập thường xuyên.
 
-Để xem thêm các tính năng của Loco, hãy xem [trang tài liệu](https://loco.rs/docs/getting-started/tour/) của chúng tôi.
+Để xem thêm các tính năng của Loco, hãy xem [trang tài liệu](https://loco.rs/docs/tutorials/the-tour/) của chúng tôi.
 
 
 

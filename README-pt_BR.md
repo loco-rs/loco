@@ -47,7 +47,7 @@ Para uma imersão mais profunda em como o Loco funciona, incluindo guias detalha
 
 * `Cache:` O Loco fornece uma camada de cache para melhorar o desempenho da aplicação armazenando dados acessados frequentemente.
 
-Para ver mais recursos do Loco, confira nosso [site de documentação](https://loco.rs/docs/getting-started/tour/).
+Para ver mais recursos do Loco, confira nosso [site de documentação](https://loco.rs/docs/tutorials/the-tour/).
 
 
 

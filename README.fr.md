@@ -42,7 +42,7 @@ Pour un aperçu plus approfondie du fonctionnement de Loco, y compris des guides
 
 * `Cache :` Loco fournit une strate cache pour améliorer les performances des applications en stockant les données fréquemment consultées.
 
-Pour en savoir plus sur les fonctionnalités de Loco, consultez notre [site Web de documentation](https://loco.rs/docs/getting-started/tour/).
+Pour en savoir plus sur les fonctionnalités de Loco, consultez notre [site Web de documentation](https://loco.rs/docs/tutorials/the-tour/).
 
 
 ## Commencez rapidement

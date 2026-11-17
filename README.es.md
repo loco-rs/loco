@@ -46,7 +46,7 @@ Para una explicación más profunda de cómo funciona Loco, incluyendo guías de
 
 * `Caché:` Loco proporciona una capa de caché para mejorar el rendimiento de la aplicación almacenando datos de acceso frecuente.
 
-Para ver más características de Loco, consulta nuestro [sitio de documentación](https://loco.rs/docs/getting-started/tour/).
+Para ver más características de Loco, consulta nuestro [sitio de documentación](https://loco.rs/docs/tutorials/the-tour/).
 
 ## Primeros pasos
 <!-- <snip id="quick-installation-command" inject_from="yaml" template="sh"> -->

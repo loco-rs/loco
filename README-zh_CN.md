@@ -46,7 +46,7 @@
 
 * `缓存（Cache）：` Loco 提供缓存层，通过存储频繁访问的数据来提升应用性能。
 
-了解 Loco 的更多特性，请访问我们的[文档网站](https://loco.rs/docs/getting-started/tour/)。
+了解 Loco 的更多特性，请访问我们的[文档网站](https://loco.rs/docs/tutorials/the-tour/)。
 
 ## 快速开始
 <!-- <snip id="quick-installation-command" inject_from="yaml" template="sh"> -->

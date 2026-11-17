@@ -44,7 +44,7 @@ Loco의 작동 방식에 대해 더 자세히 알아보려면 가이드, 예제,
 
 * `캐시`: Loco는 자주 접근하는 데이터를 저장하여 애플리케이션 성능을 향상시키는 캐시 레이어를 제공합니다.
 
-더 많은 Loco 기능을 보려면 [문서 웹사이트](https://loco.rs/docs/getting-started/tour/)를 확인하세요.
+더 많은 Loco 기능을 보려면 [문서 웹사이트](https://loco.rs/docs/tutorials/the-tour/)를 확인하세요.
 
 
 ## 시작하기
