@@ -11,6 +11,9 @@ on:
       - "examples/*/frontend/src/routes.tsx"
       - "loco-new/base_template/migration/src/lib.rs.t"
       - "loco-new/base_template/frontend/src/routes.tsx"
+      - "loco-new/base_template/README.md"
+      - "loco-new/base_template/AGENTS.md"
+      - "loco-new/base_template/.claude/skills/loco/**"
   pull_request:
     paths:
       - "loco-gen/**"
@@ -18,6 +21,9 @@ on:
       - "examples/*/frontend/src/routes.tsx"
       - "loco-new/base_template/migration/src/lib.rs.t"
       - "loco-new/base_template/frontend/src/routes.tsx"
+      - "loco-new/base_template/README.md"
+      - "loco-new/base_template/AGENTS.md"
+      - "loco-new/base_template/.claude/skills/loco/**"
 
 env:
   RUST_TOOLCHAIN: stable

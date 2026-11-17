@@ -5,7 +5,6 @@
 This is the **SaaS starter** which includes a `User` model and authentication based on JWT.
 It also include configuration sections that help you pick either a frontend or a server-side template set up for your fullstack server.
 
-
 ## Quick Start
 
 ```sh
@@ -52,7 +51,6 @@ listening on http://localhost:5150
 
 You can check your [configuration](config/development.yaml) to pick either frontend setup or server-side rendered template, and activate the relevant configuration sections.
 
-
 ## Getting help
 
-Check out [a quick tour](https://loco.rs/docs/getting-started/tour/) or [the complete guide](https://loco.rs/docs/getting-started/guide/).
+Check out [a quick tour](https://loco.rs/docs/tutorials/the-tour/) or [the complete guide](https://loco.rs/docs/tutorials/your-first-app/).

@@ -46,7 +46,7 @@ For a deeper dive into how Loco works, including detailed guides, examples, and 
 
 * `Cache:` Loco provides an cache layer to improve application performance by storing frequently accessed data.
 
-So see more Loco features, check out our [documentation website](https://loco.rs/docs/getting-started/tour/).
+So see more Loco features, check out our [documentation website](https://loco.rs/docs/tutorials/the-tour/).
 
 ## Getting Started
 <!-- <snip id="quick-installation-command" inject_from="yaml" template="sh"> -->
