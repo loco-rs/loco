@@ -302,6 +302,16 @@ impl AppRoutes {
             app = app.route(&router.uri, router.method);
         }
 
+        // Innermost layer: sees every `Error` from handlers and extractors,
+        // and its output still goes through all the middlewares below.
+        app = app.layer(axum::middleware::from_fn_with_state(
+            (
+                ctx.clone(),
+                H::error_response as super::error_response::HookFn,
+            ),
+            super::error_response::layer,
+        ));
+
         let middlewares = self.middlewares::<H>(&ctx);
         for mid in middlewares {
             app = mid.apply(app)?;

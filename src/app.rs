@@ -13,7 +13,7 @@ use std::{
 
 use async_trait::async_trait;
 use axum::extract::FromRef;
-use axum::Router as AxumRouter;
+use axum::{response::Response, Router as AxumRouter};
 use dashmap::DashMap;
 
 #[cfg(feature = "mailer")]
@@ -26,7 +26,7 @@ use crate::{
     config::Config,
     controller::{
         middleware::{self, MiddlewareLayer},
-        AppRoutes,
+        AppRoutes, ErrorInfo, RequestInfo,
     },
     environment::Environment,
     storage::{self, Storage},
@@ -533,6 +533,31 @@ pub trait Hooks: Send {
     /// or to initialize some aspects of it.
     async fn initializers(_ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
         Ok(vec![])
+    }
+
+    /// Replace the response Loco builds for a [`crate::Error`].
+    ///
+    /// - Return `None` (the default) to keep Loco's response.
+    /// - Return `Some(response)` to send your own, e.g. a different JSON envelope or a
+    /// message translated from the request's `Accept-Language`:
+    ///
+    /// ```rust,ignore
+    /// fn error_response(
+    ///     err: &ErrorInfo,
+    ///     _req: &RequestInfo,
+    ///     _ctx: &AppContext,
+    /// ) -> Option<Response> {
+    ///     let body = serde_json::json!({ "success": false, "code": err.detail.error });
+    ///     Some((err.status, Json(body)).into_response())
+    /// }
+    /// ```
+    ///
+    /// `err.status` and `err.detail` never contain internal error details;
+    ///
+    /// `err.error` does, so what you copy from it into the response is on you.
+    #[must_use]
+    fn error_response(_err: &ErrorInfo, _req: &RequestInfo, _ctx: &AppContext) -> Option<Response> {
+        None
     }
 
     /// Provide a list of middlewares
