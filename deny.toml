@@ -47,6 +47,12 @@ through `testcontainers` (in `loco-rs` and `loco-gen` tests), so it never
 ships in a Loco build. Clears when `testcontainers` moves to a maintained
 tar crate.
 """ },
+  { id = "RUSTSEC-2026-0543", reason = """
+`chrono` is unmaintained; the advisory reports no vulnerability and no
+alternative release exists. It is part of Loco's public API and also comes in
+through `sea-orm`, `sea-query` and `sqlx`, so replacing it (with `jiff` or
+`time`) needs those crates to move first.
+""" },
 ]
 
 [licenses]
