@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use axum::{
     extract::{Request, State},
-    http::{HeaderMap, Method, StatusCode, Uri},
+    http::{header::CONTENT_LENGTH, HeaderMap, Method, StatusCode, Uri},
     middleware::Next,
     response::Response,
 };
@@ -77,7 +77,25 @@ pub(crate) async fn layer(
     let Some(details) = default_response.extensions_mut().remove::<ErrorInfo>() else {
         return default_response;
     };
-    hook(&details, &info, &ctx).unwrap_or(default_response)
+    let Some(custom) = hook(&details, &info, &ctx) else {
+        return default_response;
+    };
+
+    // Take status, headers and body from the hook's response,
+    // and keep the rest of the default one:
+    // A handler may have attached cookies or extensions to it (e.g. `(session, Err(err))`).
+    let (mut parts, _) = default_response.into_parts();
+    let (custom, body) = custom.into_parts();
+    parts.status = custom.status;
+    parts.headers.remove(CONTENT_LENGTH); // content length may have changed by the hook
+    for name in custom.headers.keys() {
+        parts.headers.remove(name);
+    }
+    for (name, value) in &custom.headers {
+        parts.headers.append(name.clone(), value.clone());
+    }
+    parts.extensions.extend(custom.extensions);
+    Response::from_parts(parts, body)
 }
 
 #[cfg(all(test, feature = "with-db"))]
@@ -86,7 +104,10 @@ mod tests {
 
     use axum::{
         body::{to_bytes, Body},
-        http::{header::CONTENT_TYPE, Request},
+        http::{
+            header::{CONTENT_TYPE, SET_COOKIE},
+            Request,
+        },
         routing::get,
     };
     use rstest::rstest;
@@ -154,6 +175,18 @@ mod tests {
 
     /// Calls `uri` on an app using `H`; returns status, content type and body.
     async fn call<H: Hooks>(uri: &str) -> (StatusCode, String, String) {
+        let res = send::<H>(uri).await;
+        let status = res.status();
+        let content_type = res.headers()[CONTENT_TYPE].to_str().unwrap().to_string();
+        let body = to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        (
+            status,
+            content_type,
+            String::from_utf8(body.to_vec()).unwrap(),
+        )
+    }
+
+    async fn send<H: Hooks>(uri: &str) -> Response {
         let fail = |err: fn() -> Error| get(move || async move { Err::<Response, _>(err()) });
         let routes = AppRoutes::empty().add_route(
             Routes::new()
@@ -170,6 +203,15 @@ mod tests {
                         )
                     }),
                 )
+                .add(
+                    "/with-cookie",
+                    get(|| async {
+                        (
+                            [(SET_COOKIE, "session=; Max-Age=0")],
+                            Err::<Response, _>(Error::NotFound),
+                        )
+                    }),
+                )
                 .add("/panic", get(panics)),
         );
         let ctx = tests_cfg::app::get_app_context().await;
@@ -179,15 +221,7 @@ mod tests {
             .header("accept-language", "zh-TW")
             .body(Body::empty())
             .unwrap();
-        let res = router.oneshot(req).await.unwrap();
-        let status = res.status();
-        let content_type = res.headers()[CONTENT_TYPE].to_str().unwrap().to_string();
-        let body = to_bytes(res.into_body(), usize::MAX).await.unwrap();
-        (
-            status,
-            content_type,
-            String::from_utf8(body.to_vec()).unwrap(),
-        )
+        router.oneshot(req).await.unwrap()
     }
 
     // Without an `error_response` override, every response is byte-for-byte
@@ -236,6 +270,25 @@ mod tests {
         assert_eq!(
             serde_json::from_str::<Value>(&body).unwrap(),
             json!({"success": false, "code": "not_found", "is_not_found": true, "lang": "zh-TW"})
+        );
+    }
+
+    // What the handler attached to the error response (here a cookie) is kept:
+    //   only status, headers set by the hook and body are replaced.
+    #[tokio::test]
+    async fn hook_keeps_what_the_handler_attached() {
+        let res = send::<EnvelopeHook>("/with-cookie").await;
+
+        // hook successfully replaced the status.
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+        // IMPORTANT: the cookie the handler attached is kept.
+        assert_eq!(res.headers()[SET_COOKIE], "session=; Max-Age=0");
+
+        // The hook's body is used.
+        let body = to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        assert_eq!(
+            serde_json::from_slice::<Value>(&body).unwrap()["code"],
+            "not_found"
         );
     }
 
