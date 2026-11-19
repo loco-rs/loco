@@ -72,6 +72,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use colored::Colorize;
+pub use error_response::{ErrorInfo, RequestInfo};
 pub use routes::Routes;
 use serde::Serialize;
 
@@ -82,6 +83,7 @@ use crate::{errors::Error, Result};
 mod app_routes;
 mod backtrace;
 mod describe;
+mod error_response;
 pub mod extractor;
 pub mod format;
 pub mod middleware;
@@ -132,7 +134,7 @@ pub fn bad_request<T: Into<String>, U>(msg: T) -> Result<U> {
 pub fn not_found<T>() -> Result<T> {
     Err(Error::NotFound)
 }
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 /// Structure representing details about an error.
 pub struct ErrorDetail {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -195,31 +197,12 @@ fn validation_error_response(
     )
 }
 
-impl IntoResponse for Error {
-    /// Convert an `Error` into an HTTP response.
-    #[allow(clippy::cognitive_complexity, clippy::too_many_lines)]
-    fn into_response(self) -> Response {
-        match &self {
-            Self::WithBacktrace {
-                inner,
-                backtrace: _,
-            } => {
-                tracing::error!(
-                error.msg = %inner,
-                error.details = ?inner,
-                "controller_error"
-                );
-            }
-            err => {
-                tracing::error!(
-                error.msg = %err,
-                error.details = ?err,
-                "controller_error"
-                );
-            }
-        }
-
-        let public_facing_error = match self {
+impl Error {
+    /// The HTTP status and public-facing [`ErrorDetail`] this error maps to by default.
+    /// Internal errors are collapsed to a generic 500 here, so the result is safe to show to API callers.
+    #[allow(clippy::too_many_lines)]
+    fn public_facing_error(&self) -> (StatusCode, ErrorDetail) {
+        match self {
             Self::NotFound => (
                 StatusCode::NOT_FOUND,
                 ErrorDetail::new("not_found", "Resource was not found"),
@@ -234,18 +217,13 @@ impl IntoResponse for Error {
                     ),
                 )
             }
-            Self::CustomError(status_code, data) => (status_code, data),
-            Self::WithBacktrace { inner, backtrace } => {
-                println!("\n{}", inner.to_string().red().underline());
-                backtrace::print_backtrace(&backtrace).unwrap();
-                // Delegate to the wrapped error's own response so the real HTTP
-                // status is preserved (e.g. internal errors stay 500) instead of
-                // being flattened to 400 whenever a backtrace was captured.
-                return (*inner).into_response();
-            }
+            Self::CustomError(status_code, data) => (*status_code, data.clone()),
+            // Delegate to the wrapped error so the real HTTP status is
+            // preserved (e.g. internal errors stay 500).
+            Self::WithBacktrace { inner, .. } => inner.public_facing_error(),
             Self::BadRequest(err) => (
                 StatusCode::BAD_REQUEST,
-                ErrorDetail::new("Bad Request", &err),
+                ErrorDetail::new("Bad Request", err.as_str()),
             ),
             Self::JsonRejection(err) => {
                 tracing::debug!(err = err.body_text(), "json rejection");
@@ -256,7 +234,7 @@ impl IntoResponse for Error {
                 (err.status(), ErrorDetail::with_reason("Bad Request"))
             }
 
-            Self::Validation(ref errors) => validation_error_response(errors),
+            Self::Validation(errors) => validation_error_response(errors),
 
             #[cfg(feature = "with-db")]
             Self::Model(ModelError::EntityNotFound) => (
@@ -274,7 +252,7 @@ impl IntoResponse for Error {
                 ErrorDetail::new("tenant_mismatch", "Model belongs to a different tenant"),
             ),
             #[cfg(feature = "with-db")]
-            Self::Model(ModelError::Validation(ref errors)) => validation_error_response(errors),
+            Self::Model(ModelError::Validation(errors)) => validation_error_response(errors),
 
             // --- Internal / infrastructure errors: deliberately no `_` arm.
             //
@@ -354,9 +332,56 @@ impl IntoResponse for Error {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ErrorDetail::new("internal_server_error", "Internal Server Error"),
             ),
+        }
+    }
+}
+
+impl IntoResponse for Error {
+    /// Convert an `Error` into an HTTP response.
+    ///
+    /// The response also carries the error itself in its extensions, so
+    /// [`crate::app::Hooks::error_response`] can replace it without re-parsing
+    /// the body.
+    #[allow(clippy::cognitive_complexity)]
+    fn into_response(self) -> Response {
+        match &self {
+            Self::WithBacktrace {
+                inner,
+                backtrace: _,
+            } => {
+                tracing::error!(
+                error.msg = %inner,
+                error.details = ?inner,
+                "controller_error"
+                );
+            }
+            err => {
+                tracing::error!(
+                error.msg = %err,
+                error.details = ?err,
+                "controller_error"
+                );
+            }
+        }
+
+        // Unwrap the backtrace wrapper so hooks match on the real variant.
+        let error = match self {
+            Self::WithBacktrace { inner, backtrace } => {
+                println!("\n{}", inner.to_string().red().underline());
+                backtrace::print_backtrace(&backtrace).unwrap();
+                *inner
+            }
+            err => err,
         };
 
-        (public_facing_error.0, Json(public_facing_error.1)).into_response()
+        let (status, detail) = error.public_facing_error();
+        let mut response = (status, Json(&detail)).into_response();
+
+        // `into_response` cannot reach the app's `Hooks`, so carry the error on the response instead.
+        response
+            .extensions_mut()
+            .insert(ErrorInfo::new(error, status, detail));
+        response
     }
 }
 
