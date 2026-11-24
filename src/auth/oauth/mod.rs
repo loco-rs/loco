@@ -319,10 +319,7 @@ fn origin(ctx: &AppContext, params: &StartParams, headers: &HeaderMap) -> Option
         "remember" => None,
         other => params.other.get(other).map(String::as_str),
     };
-    match explicit {
-        Some(value) => safe_return_to(value),
-        None => same_site_referer(ctx, headers),
-    }
+    explicit.map_or_else(|| same_site_referer(ctx, headers), safe_return_to)
 }
 
 /// The path of the `Referer`, when it is on this site (same host as the
@@ -365,10 +362,9 @@ fn same_site_referer(ctx: &AppContext, headers: &HeaderMap) -> Option<String> {
     {
         return None;
     }
-    let target = match url.query() {
-        Some(q) => format!("{path}?{q}"),
-        None => path.to_string(),
-    };
+    let target = url
+        .query()
+        .map_or_else(|| path.to_string(), |q| format!("{path}?{q}"));
     safe_return_to(&target)
 }
 

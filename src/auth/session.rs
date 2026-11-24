@@ -745,9 +745,11 @@ pub fn return_to_param(ctx: &AppContext) -> &str {
         .unwrap_or(DEFAULT_RETURN_TO_PARAM)
 }
 
-/// Whether a signed-out request should be redirected to sign in rather than
-/// answered `401`: its `Accept` names one of `auth.session.navigational_formats`
-/// (default `[html]`). Devise's `is_navigational_format?`.
+/// Whether a signed-out request is redirected to sign in.
+///
+/// True when its `Accept` names one of `auth.session.navigational_formats`
+/// (default `[html]`); other requests get `401`. Devise's
+/// `is_navigational_format?`.
 #[must_use]
 pub fn is_navigational(parts: &Parts, ctx: &AppContext) -> bool {
     let accept = parts
@@ -755,10 +757,12 @@ pub fn is_navigational(parts: &Parts, ctx: &AppContext) -> bool {
         .get(header::ACCEPT)
         .and_then(|v| v.to_str().ok())
         .map(str::to_ascii_lowercase);
-    match session_config(ctx).and_then(|s| s.navigational_formats.as_deref()) {
-        Some(formats) => formats.iter().any(|f| accepts(accept.as_deref(), f)),
-        None => accepts(accept.as_deref(), "html"),
-    }
+    session_config(ctx)
+        .and_then(|s| s.navigational_formats.as_deref())
+        .map_or_else(
+            || accepts(accept.as_deref(), "html"),
+            |formats| formats.iter().any(|f| accepts(accept.as_deref(), f)),
+        )
 }
 
 /// Whether an `Accept` header value asks for `format`: a short name (`html`,
@@ -784,8 +788,9 @@ fn accepts(accept: Option<&str>, format: &str) -> bool {
     })
 }
 
-/// The answer to a signed-out request, like Devise's failure app: a
-/// navigational request (see [`is_navigational`]) is sent to
+/// The answer to a signed-out request, like Devise's failure app.
+///
+/// A navigational request (see [`is_navigational`]) is sent to
 /// `auth.session.sign_in_path?return_to=<original path>` when that is set;
 /// anything else gets `401`. The default of [`SessionUser::on_signed_out`].
 #[must_use]
@@ -808,6 +813,43 @@ pub fn signed_out(parts: &Parts, ctx: &AppContext) -> Response {
         }
         _ => Error::Unauthorized("sign in required".to_string()).into_response(),
     }
+}
+
+/// The cookies of a fresh session signed in as `user_id`.
+///
+/// Made outside any request: what a test sends to act as that user without
+/// going through a sign-in form or provider. On a server-side store the
+/// session is written to the store first. Tests use it through
+/// `loco_rs::testing::session::sign_in` (feature `testing`), Devise's
+/// `sign_in user`.
+///
+/// # Errors
+///
+/// When the cookie key is unavailable (see [`cookies::key`]) or the
+/// server-side store cannot be written.
+pub async fn sign_in_cookies(
+    ctx: &AppContext,
+    user_id: impl Into<String> + Send,
+) -> Result<Vec<cookie::Cookie<'static>>> {
+    let (mut parts, ()) = axum::http::Request::new(()).into_parts();
+    parts.extensions.insert(Arc::new(Runtime::default()));
+    let session = Session::from_parts(&parts, ctx)
+        .await?
+        .renew()
+        .set_user_id(user_id);
+    let (jar, pending) = session.finalize()?;
+    if let Some(Pending { store, ops }) = pending {
+        store.apply(ops).await?;
+    }
+    let response = (jar, ()).into_response();
+    Ok(response
+        .headers()
+        .get_all(header::SET_COOKIE)
+        .iter()
+        .filter_map(|v| v.to_str().ok())
+        .filter_map(|v| cookie::Cookie::parse(v.to_string()).ok())
+        .filter(|c| !c.value().is_empty())
+        .collect())
 }
 
 /// Percent-encodes `value` for a query string.

@@ -192,6 +192,7 @@ async fn setup() -> Result<Response> {
 struct App {
     server: TestServer,
     fake: Shared,
+    ctx: AppContext,
 }
 
 async fn app(configure: impl FnOnce(&mut OAuthConfig)) -> App {
@@ -240,10 +241,10 @@ async fn app_full(
     let router = AppRoutes::empty()
         .add_route(oauth::routes::<Handler>().add("/github/setup", get(setup)))
         .add_route(Routes::new().add("/me", get(me)).add("/maybe", get(maybe)))
-        .to_router::<AppHook>(ctx, axum::Router::new())
+        .to_router::<AppHook>(ctx.clone(), axum::Router::new())
         .unwrap();
     let server = TestServer::builder().save_cookies().build(router).unwrap();
-    App { server, fake }
+    App { server, fake, ctx }
 }
 
 /// The `Location` of a response.
@@ -271,7 +272,7 @@ async fn visit_provider(authorize_url: &str) -> String {
 
 #[tokio::test]
 async fn signs_in_end_to_end_and_out_again() {
-    let App { server, fake } = app(|_| {}).await;
+    let App { server, fake, .. } = app(|_| {}).await;
 
     // Signed out: browsers are sent to sign in with a return_to.
     let res = server
@@ -378,7 +379,7 @@ fn urlencode(s: &str) -> String {
 
 #[tokio::test]
 async fn a_forged_state_is_rejected_without_calling_the_provider() {
-    let App { server, fake } = app(|_| {}).await;
+    let App { server, fake, .. } = app(|_| {}).await;
     let authorize = location!(server.get("/auth/github").await);
     let callback = visit_provider(&authorize).await;
     let url = url::Url::parse(&format!("http://app.test{callback}")).unwrap();
@@ -399,7 +400,7 @@ async fn a_forged_state_is_rejected_without_calling_the_provider() {
 
 #[tokio::test]
 async fn a_callback_without_a_state_cookie_is_rejected() {
-    let App { server, fake } = app(|_| {}).await;
+    let App { server, fake, .. } = app(|_| {}).await;
     let res = server
         .get("/auth/github/callback?code=code-0&state=anything")
         .await;
@@ -435,7 +436,7 @@ async fn a_refused_code_is_a_token_exchange_failure() {
 
 #[tokio::test]
 async fn on_sign_in_can_deny() {
-    let App { server, fake } = app(|o| o.failure_path = Some("/login".to_string())).await;
+    let App { server, fake, .. } = app(|o| o.failure_path = Some("/login".to_string())).await;
     fake.lock().unwrap().login = "blocked".to_string();
     let authorize = location!(server.get("/auth/github").await);
     let res = server.get(&visit_provider(&authorize).await).await;
@@ -455,7 +456,7 @@ async fn unknown_providers_are_not_found_and_app_routes_coexist() {
 
 #[tokio::test]
 async fn pkce_can_be_turned_off() {
-    let App { server, fake } = app(|o| {
+    let App { server, fake, .. } = app(|o| {
         o.providers.get_mut("github").unwrap().pkce = Some(false);
     })
     .await;
@@ -631,4 +632,20 @@ async fn on_failure_sees_the_callback_request() {
         .add_header(header::ACCEPT, "application/json")
         .await;
     res.assert_json(&json!({ "error": "cancelled" }));
+}
+
+#[tokio::test]
+async fn the_test_helper_signs_in_on_either_store() {
+    for store in [SessionStoreKind::Cookie, SessionStoreKind::Database] {
+        let App {
+            mut server, ctx, ..
+        } = app_with(store, |_| {}).await;
+        server.get("/me").await.assert_status_unauthorized();
+        loco_rs::testing::prelude::sign_in(&mut server, &ctx, "u-1")
+            .await
+            .unwrap();
+        server.get("/me").await.assert_text("u-1");
+        server.clear_cookies();
+        server.get("/me").await.assert_status_unauthorized();
+    }
 }
