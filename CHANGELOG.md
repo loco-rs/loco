@@ -2,8 +2,30 @@
 
 ## Unreleased
 
+### Added
+
+- **Configurable signed-out handling.** `auth.session.navigational_formats`
+  (Devise's setting, default `[html]`) picks which requests `CurrentUser`
+  redirects to `sign_in_path` rather than answering `401`, and
+  `auth.session.return_to_param` names the parameter it adds. For anything
+  else, override `SessionUser::on_signed_out` (Devise's failure app);
+  `session::signed_out` is the default.
+- **`/auth/{provider}` origin.** `auth.oauth.origin_param` (OmniAuth's
+  `origin_param`, default `return_to_param`) renames the post-sign-in path
+  parameter. Without it, a same-site `Referer` is used. Both accept relative
+  paths only.
+- **`sign_in` test helper** in `loco_rs::testing::prelude` (Devise's
+  `sign_in user`): signs a test server in as a user id on any session store.
+- `auth.oauth.state_cookie_name` sets the state cookie prefix.
+
 ### Changed
 
+- **Breaking:** `OAuthHandler::on_failure` takes the callback request's
+  `&Parts` as its second argument, so a failure page can read headers or the
+  view engine. Add `_parts: &axum::http::request::Parts` to overrides.
+- The OAuth state cookie is encrypted (it carries the PKCE verifier), so
+  `auth_oauth` now enables `auth_session_encrypted`. A sign-in in flight
+  during the upgrade fails once with `invalid_state`; retrying works.
 - Generated apps also get the skill under `.agents/skills/loco/`, alongside `.claude/skills/loco/`, for Zed, Cursor and other Agent Skills clients (#1857, @paoValle).
 
 ## 1.3.1 - 2026-11-05

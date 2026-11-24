@@ -217,9 +217,10 @@ pub trait OAuthHandler: Send + Sync + 'static {
     /// ```
     async fn on_failure(
         ctx: &AppContext,
-        _parts: &Parts,
+        parts: &Parts,
         failure: &OAuthFailure,
     ) -> Result<Response> {
+        let _ = parts;
         default_failure(ctx, failure)
     }
 

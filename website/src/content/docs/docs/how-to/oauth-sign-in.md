@@ -58,11 +58,15 @@ auth:
     # max_age: 2592000          # seconds; 30 days
     # secure: true              # default: true when server.host is https://
     # sign_in_path: /login      # where CurrentUser sends signed-out browsers
+    # return_to_param: return_to          # the query param it adds
+    # navigational_formats: [html]        # which requests get the redirect
   oauth:
     # base_url: https://app.example.com   # public origin for callback URLs
     # after_sign_in_path: /
     # after_sign_out_path: /
     # failure_path: /login                # else a minimal error page
+    # origin_param: return_to             # default: session.return_to_param
+    # state_cookie_name: loco_oauth_state # prefix; the provider name is appended
     providers:
       github:
         client_id: <%= get_env(name="GITHUB_CLIENT_ID") %>
@@ -144,13 +148,17 @@ AppRoutes::with_default_routes()
 
 | Route | Does |
 |---|---|
-| `GET` or `POST /auth/{provider}` | Sets a ten-minute state cookie, redirects to the provider. `?return_to=/some/path` is where the user lands afterwards. |
+| `GET` or `POST /auth/{provider}` | Sets a ten-minute encrypted state cookie, redirects to the provider. `?return_to=/some/path` is where the user lands afterwards. |
 | `GET /auth/{provider}/callback` | Checks the state, exchanges the code (with the PKCE verifier), fetches the profile, calls `on_sign_in`, starts a fresh session, redirects. |
 | `GET` or `POST /auth/sign_out` | Clears the session, redirects to `after_sign_out_path`. |
 
 After sign-in the user lands on the first of these that is set: the flow's `return_to`, then `SignIn::redirect_to`, then `auth.oauth.after_sign_in_path`, then `/`.
 
 `return_to` accepts same-site paths only. `//evil.example`, `/\evil.example`, absolute URLs and anything with control characters are dropped, so a crafted sign-in link cannot bounce users off-site.
+
+The parameter is named by `auth.oauth.origin_param` (OmniAuth's `origin_param`), which defaults to `auth.session.return_to_param`, which defaults to `return_to`. Rename one and the redirect `CurrentUser` makes and the parameter the sign-in route reads stay in step. Without the parameter, the flow falls back to the `Referer`, like OmniAuth does, when it is a page on this site: same host as the request, or the origin of `auth.oauth.base_url`. A `Referer` from another site, or one under `/auth/` or at `sign_in_path` or `failure_path`, is ignored, so a sign-in link on the login page does not send users back to the login page.
+
+The state cookie (`loco_oauth_state_<provider>`, prefix set by `auth.oauth.state_cookie_name`) is encrypted, not just signed: it holds the PKCE verifier and the browser cannot read it.
 
 ### Adding your own routes next to them
 
@@ -170,9 +178,10 @@ async fn github_app_setup(CurrentUser(user): CurrentUser<String>) -> Result<Resp
 
 The user cancelling at the provider, an expired or forged state, a refused code and a failed profile call all end in `OAuthHandler::on_failure` with an `OAuthFailure { provider, kind, detail, retry_path }`. The state cookie is cleared every time, so a callback URL cannot be replayed.
 
-By default this redirects to `auth.oauth.failure_path?error=<kind>&provider=<name>` when that is set. Otherwise it renders a minimal `401` page with the message and a "Try again" link. The `kind` values are `cancelled`, `provider_error`, `invalid_state`, `missing_code`, `token_exchange`, `profile`, `denied` and `configuration`, and each has a user-facing `kind.message()`. `detail` is meant for logs: it can contain text the provider or an attacker put in the URL. Override `on_failure` to render your own page:
+By default this redirects to `auth.oauth.failure_path?error=<kind>&provider=<name>` when that is set. Otherwise it renders a minimal `401` page with the message and a "Try again" link. The `kind` values are `cancelled`, `provider_error`, `invalid_state`, `missing_code`, `token_exchange`, `profile`, `denied` and `configuration`, and each has a user-facing `kind.message()`. `detail` is meant for logs: it can contain text the provider or an attacker put in the URL. Override `on_failure` to render your own page. It gets the callback request's `Parts`, so it can read headers or the view engine, like Devise's failure app:
 
 ```rust
+use axum::http::request::Parts;
 use loco_rs::{auth::oauth::OAuthFailure, prelude::*};
 
 pub struct OAuth;
@@ -183,8 +192,19 @@ impl OAuthHandler for OAuth {
         Ok(SignIn::new(identity.uid.clone()))
     }
 
-    async fn on_failure(_ctx: &AppContext, failure: &OAuthFailure) -> Result<Response> {
-        format::redirect(&format!("/login?error={}", failure.kind.as_str()))
+    async fn on_failure(
+        _ctx: &AppContext,
+        parts: &Parts,
+        failure: &OAuthFailure,
+    ) -> Result<Response> {
+        let Some(v) = parts.extensions.get::<ViewEngine<TeraView>>() else {
+            return format::redirect(&format!("/login?error={}", failure.kind.as_str()));
+        };
+        format::render().view(
+            v,
+            "auth/failure.html",
+            data!({ "message": failure.kind.message(), "retry": failure.retry_path }),
+        )
     }
 }
 ```
@@ -225,7 +245,32 @@ async fn profile(CurrentUser(user): CurrentUser<users::Model>) -> Result<Respons
 }
 ```
 
-When nobody is signed in, `CurrentUser` answers `401`. A browser request (one that accepts `text/html`) is redirected to `auth.session.sign_in_path?return_to=<current path>` instead, when that path is set. Send that `return_to` on to `/auth/{provider}?return_to=...` and the user comes back where they started. A user that `find_by_session_id` no longer finds (deleted, say) counts as signed out. The lookup runs once per request, however many extractors ask for it.
+When nobody is signed in, `CurrentUser` answers `401`. A browser request is redirected to `auth.session.sign_in_path?return_to=<current path>` instead, when that path is set. Send that `return_to` on to `/auth/{provider}?return_to=...` and the user comes back where they started. A user that `find_by_session_id` no longer finds (deleted, say) counts as signed out. The lookup runs once per request, however many extractors ask for it.
+
+What counts as a browser request is `auth.session.navigational_formats` (Devise's setting of the same name): the `Accept` types that get the redirect. The default is `[html]` (`text/html` or `application/xhtml+xml`). Add `turbo_stream` for Hotwire forms, or `"*/*"` to redirect requests that send no `Accept` at all. Other names are `json`, `xml` or any media type. The query parameter is `auth.session.return_to_param`.
+
+For anything else, override `SessionUser::on_signed_out`, Devise's failure app. It gets the request and returns the response:
+
+```rust
+use axum::http::request::Parts;
+use loco_rs::{auth::session::{self, SessionUser}, prelude::*};
+
+#[async_trait]
+impl SessionUser for users::Model {
+    async fn find_by_session_id(ctx: &AppContext, id: &str) -> Result<Option<Self>> {
+        Ok(users::Model::find_by_pid(&ctx.db, id).await.ok())
+    }
+
+    async fn on_signed_out(ctx: &AppContext, parts: &Parts) -> Response {
+        if parts.uri.path().starts_with("/admin") {
+            return format::redirect("/admin/login").into_response();
+        }
+        session::signed_out(parts, ctx)
+    }
+}
+```
+
+`session::signed_out` is the default behavior, so an override can fall back to it.
 
 ## The session and signed cookies on their own
 
@@ -337,3 +382,23 @@ auth:
 ```
 
 Loco's own suite does exactly this (`tests/controller/oauth.rs`). An in-process axum fake on a random port issues codes bound to the PKCE challenge, and the test plays the browser between it and the app.
+
+Most tests only need someone signed in, not the sign-in itself. `sign_in` from `loco_rs::testing::prelude` is Devise's `sign_in user`: it gives the test server a session for that id, on whichever session store the app uses, and later requests are signed in:
+
+```rust
+use loco_rs::testing::prelude::*;
+
+#[tokio::test]
+async fn shows_the_dashboard() {
+    request::<App, _, _>(|mut request, ctx| async move {
+        sign_in(&mut request, &ctx, "user-pid").await.unwrap();
+        request.get("/dashboard").await.assert_status_ok();
+
+        request.clear_cookies(); // signed out again
+        request.get("/dashboard").await.assert_status_unauthorized();
+    })
+    .await;
+}
+```
+
+The id is the one `on_sign_in` returned and `SessionUser::find_by_session_id` receives.
