@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- Notifications: `Channel::slack_for(key)` and `Channel::webhook_for(key)` queue only a key. The URL, signing secret and headers are looked up through the app's `Destinations` (registered with `notifications::set_destinations`) when the job runs, so per-record secrets never reach the queue table and a rotated secret applies to jobs already queued. Existing channels and queued jobs are unchanged.
+
 ### Changed
 
 - Generated apps also get the skill under `.agents/skills/loco/`, alongside `.claude/skills/loco/`, for Zed, Cursor and other Agent Skills clients (#1857, @paoValle).

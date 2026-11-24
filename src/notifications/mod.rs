@@ -35,6 +35,7 @@
 //! ```
 
 mod channel;
+pub mod destination;
 #[cfg(feature = "mailer")]
 pub mod email;
 pub mod slack;
@@ -45,6 +46,7 @@ use std::{collections::BTreeMap, fmt, sync::Mutex, time::Duration};
 
 use async_trait::async_trait;
 pub use channel::Channel;
+pub use destination::{set_destinations, Destination, Destinations};
 #[cfg(feature = "mailer")]
 pub use email::EmailContent;
 use serde::{Deserialize, Serialize};
@@ -175,13 +177,12 @@ pub trait Notifier: Serialize + Send + Sync + Sized {
     /// # Errors
     /// When the notifier cannot be serialized or a channel fails to render.
     fn deliveries(&self, ctx: &AppContext) -> Result<(Vec<Delivery>, usize)> {
-        let config = ctx.config.notifications.as_ref();
         let message = self.message();
         let event = Self::event();
         let mut deliveries = Vec::new();
         let mut skipped = 0;
         for channel in self.channels(ctx) {
-            if !channel.is_deliverable(config) {
+            if !channel.is_deliverable(ctx) {
                 tracing::warn!(
                     event,
                     channel = channel.name(),
@@ -196,6 +197,10 @@ pub trait Notifier: Serialize + Send + Sync + Sized {
                     webhook_url,
                     payload: self.slack_payload(&message),
                 },
+                Channel::SlackFor { key } => Target::SlackFor {
+                    key,
+                    payload: self.slack_payload(&message),
+                },
                 Channel::Webhook {
                     url,
                     secret,
@@ -204,16 +209,12 @@ pub trait Notifier: Serialize + Send + Sync + Sized {
                     url,
                     secret,
                     headers,
-                    payload: self.webhook_payload(json!({
-                        "id": id,
-                        "event": event,
-                        "created_at": chrono::Utc::now().to_rfc3339(),
-                        "title": message.title,
-                        "body": message.body,
-                        "url": message.url,
-                        "fields": message.fields,
-                        "data": serde_json::to_value(self)?,
-                    })),
+                    payload: self.webhook_payload(webhook_envelope(self, &id, &event, &message)?),
+                },
+                Channel::WebhookFor { key, headers } => Target::WebhookFor {
+                    key,
+                    headers,
+                    payload: self.webhook_payload(webhook_envelope(self, &id, &event, &message)?),
                 },
                 #[cfg(feature = "mailer")]
                 Channel::Email { to, from } => Target::Email {
@@ -256,7 +257,7 @@ pub trait Notifier: Serialize + Send + Sync + Sized {
         };
         if let Some(recorder) = testing::recorder(ctx) {
             for delivery in deliveries {
-                match recorder.record(ctx, delivery) {
+                match recorder.record(ctx, delivery).await {
                     Ok(()) => report.accepted += 1,
                     Err(err) => {
                         tracing::error!(event, err = err.to_string(), "notification failed");
@@ -303,7 +304,7 @@ pub trait Notifier: Serialize + Send + Sync + Sized {
         for delivery in deliveries {
             let channel = delivery.target.name();
             let sent = match &recorder {
-                Some(recorder) => recorder.record(ctx, delivery),
+                Some(recorder) => recorder.record(ctx, delivery).await,
                 None => worker.perform(delivery).await,
             };
             match sent {
@@ -325,9 +326,32 @@ pub trait Notifier: Serialize + Send + Sync + Sized {
     }
 }
 
+/// The default webhook body: `id`, `event`, `created_at`, the message, and
+/// the notifier as `data`.
+fn webhook_envelope<N: Notifier>(
+    notifier: &N,
+    id: &str,
+    event: &str,
+    message: &Message,
+) -> Result<Value> {
+    Ok(json!({
+        "id": id,
+        "event": event,
+        "created_at": chrono::Utc::now().to_rfc3339(),
+        "title": message.title,
+        "body": message.body,
+        "url": message.url,
+        "fields": message.fields,
+        "data": serde_json::to_value(notifier)?,
+    }))
+}
+
 /// A rendered notification for one channel: the job payload of
-/// [`NotificationWorker`]. Secrets from config are not in it; they are read
-/// when the job runs.
+/// [`NotificationWorker`].
+///
+/// Destinations and secrets from config, and those of
+/// keyed channels ([`Channel::slack_for`], [`Channel::webhook_for`]), are not
+/// in it; they are read when the job runs.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Delivery {
     /// Stable across retries; sent to webhooks as `X-Loco-Delivery`.
@@ -337,7 +361,8 @@ pub struct Delivery {
 }
 
 /// A rendered destination. `None` destinations are resolved from the
-/// `notifications:` config when the job runs.
+/// `notifications:` config, and `*_for` keys through the app's
+/// [`Destinations`], when the job runs.
 #[derive(Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "channel", rename_all = "snake_case")]
 #[non_exhaustive]
@@ -349,6 +374,16 @@ pub enum Target {
     Webhook {
         url: Option<String>,
         secret: Option<String>,
+        #[serde(default)]
+        headers: BTreeMap<String, String>,
+        payload: Value,
+    },
+    /// A Slack message to the URL [`Destinations`] gives for `key`.
+    SlackFor { key: String, payload: Value },
+    /// A webhook to the URL, secret and headers [`Destinations`] gives for
+    /// `key`; `headers` are the channel's own and win.
+    WebhookFor {
+        key: String,
         #[serde(default)]
         headers: BTreeMap<String, String>,
         payload: Value,
@@ -385,6 +420,21 @@ impl fmt::Debug for Target {
                 .field("headers", &headers.keys().collect::<Vec<_>>())
                 .field("payload", payload)
                 .finish(),
+            Self::SlackFor { key, payload } => f
+                .debug_struct("SlackFor")
+                .field("key", key)
+                .field("payload", payload)
+                .finish(),
+            Self::WebhookFor {
+                key,
+                headers,
+                payload,
+            } => f
+                .debug_struct("WebhookFor")
+                .field("key", key)
+                .field("headers", &headers.keys().collect::<Vec<_>>())
+                .field("payload", payload)
+                .finish(),
             #[cfg(feature = "mailer")]
             Self::Email { to, from, content } => f
                 .debug_struct("Email")
@@ -400,8 +450,8 @@ impl Target {
     #[must_use]
     pub const fn name(&self) -> &'static str {
         match self {
-            Self::Slack { .. } => "slack",
-            Self::Webhook { .. } => "webhook",
+            Self::Slack { .. } | Self::SlackFor { .. } => "slack",
+            Self::Webhook { .. } | Self::WebhookFor { .. } => "webhook",
             #[cfg(feature = "mailer")]
             Self::Email { .. } => "email",
         }
@@ -432,22 +482,15 @@ impl BackgroundWorker<Delivery> for NotificationWorker {
     }
 
     async fn perform(&self, delivery: Delivery) -> Result<()> {
-        let config = self.ctx.config.notifications.as_ref();
-        match delivery.target {
-            Target::Slack {
-                webhook_url,
-                payload,
-            } => {
-                let url = slack_url(config, webhook_url)?;
-                slack::send(&self.http, &url, &payload).await
-            }
-            Target::Webhook {
+        let channel = delivery.target.name();
+        match resolve(&self.ctx, delivery.target).await? {
+            Resolved::Slack { url, payload } => slack::send(&self.http, &url, &payload).await,
+            Resolved::Webhook {
                 url,
                 secret,
                 headers,
                 payload,
             } => {
-                let (url, secret, headers) = webhook_destination(config, url, secret, headers)?;
                 webhook::send(
                     &self.http,
                     webhook::Request {
@@ -462,9 +505,102 @@ impl BackgroundWorker<Delivery> for NotificationWorker {
                 .await
             }
             #[cfg(feature = "mailer")]
-            Target::Email { to, from, content } => email::send(&self.ctx, to, from, content).await,
+            Resolved::Email { to, from, content } => {
+                email::send(&self.ctx, to, from, content).await
+            }
+            Resolved::Gone { key } => {
+                tracing::warn!(
+                    event = delivery.event,
+                    channel,
+                    key,
+                    "notification destination no longer exists; dropping delivery"
+                );
+                Ok(())
+            }
         }
     }
+}
+
+/// A [`Target`] with its destination looked up: what is actually sent.
+pub(crate) enum Resolved {
+    Slack {
+        url: String,
+        payload: Value,
+    },
+    Webhook {
+        url: String,
+        secret: Option<String>,
+        headers: BTreeMap<String, String>,
+        payload: Value,
+    },
+    #[cfg(feature = "mailer")]
+    Email {
+        to: Vec<String>,
+        from: Option<String>,
+        content: EmailContent,
+    },
+    /// A keyed destination that [`Destinations`] no longer knows.
+    Gone {
+        key: String,
+    },
+}
+
+/// Reads a target's destination from config or the app's [`Destinations`],
+/// now, as the job runs.
+pub(crate) async fn resolve(ctx: &AppContext, target: Target) -> Result<Resolved> {
+    let config = ctx.config.notifications.as_ref();
+    Ok(match target {
+        Target::Slack {
+            webhook_url,
+            payload,
+        } => Resolved::Slack {
+            url: slack_url(config, webhook_url)?,
+            payload,
+        },
+        Target::Webhook {
+            url,
+            secret,
+            headers,
+            payload,
+        } => {
+            let (url, secret, headers) = webhook_destination(config, url, secret, headers)?;
+            Resolved::Webhook {
+                url,
+                secret,
+                headers,
+                payload,
+            }
+        }
+        Target::SlackFor { key, payload } => {
+            match destination::resolve(ctx, "slack", &key).await? {
+                Some(found) => Resolved::Slack {
+                    url: found.url,
+                    payload,
+                },
+                None => Resolved::Gone { key },
+            }
+        }
+        Target::WebhookFor {
+            key,
+            mut headers,
+            payload,
+        } => match destination::resolve(ctx, "webhook", &key).await? {
+            Some(found) => {
+                for (name, value) in found.headers {
+                    headers.entry(name).or_insert(value);
+                }
+                Resolved::Webhook {
+                    url: found.url,
+                    secret: found.secret.filter(|s| !s.is_empty()),
+                    headers,
+                    payload,
+                }
+            }
+            None => Resolved::Gone { key },
+        },
+        #[cfg(feature = "mailer")]
+        Target::Email { to, from, content } => Resolved::Email { to, from, content },
+    })
 }
 
 /// The context's shared HTTP client, built on first use with

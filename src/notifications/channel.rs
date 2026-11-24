@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, fmt};
 
-use crate::config::Notifications;
+use crate::app::AppContext;
 
 /// Where a notification goes. Returned by [`super::Notifier::channels`].
 ///
@@ -19,6 +19,16 @@ pub enum Channel {
     Webhook {
         url: Option<String>,
         secret: Option<String>,
+        headers: BTreeMap<String, String>,
+    },
+    /// A Slack incoming webhook looked up by `key` through the app's
+    /// [`super::Destinations`] when the job runs. Only the key is queued.
+    SlackFor { key: String },
+    /// A JSON `POST` whose URL, secret and headers are looked up by `key`
+    /// through the app's [`super::Destinations`] when the job runs. Only the
+    /// key and the headers set on the channel are queued.
+    WebhookFor {
+        key: String,
         headers: BTreeMap<String, String>,
     },
     /// Email through the app's mailer. Empty `to` uses
@@ -46,6 +56,12 @@ impl fmt::Debug for Channel {
                 .debug_struct("Webhook")
                 .field("url", url)
                 .field("secret", &secret.as_ref().map(|_| "<redacted>"))
+                .field("headers", &headers.keys().collect::<Vec<_>>())
+                .finish(),
+            Self::SlackFor { key } => f.debug_struct("SlackFor").field("key", key).finish(),
+            Self::WebhookFor { key, headers } => f
+                .debug_struct("WebhookFor")
+                .field("key", key)
                 .field("headers", &headers.keys().collect::<Vec<_>>())
                 .finish(),
             #[cfg(feature = "mailer")]
@@ -95,6 +111,27 @@ impl Channel {
         }
     }
 
+    /// A Slack incoming webhook named by `key` (e.g. a project ID), looked up
+    /// through the app's [`super::Destinations`] when the job runs, so the URL
+    /// is never written to the queue and a rotated URL is picked up by jobs
+    /// already waiting.
+    #[must_use]
+    pub fn slack_for(key: impl Into<String>) -> Self {
+        Self::SlackFor { key: key.into() }
+    }
+
+    /// A webhook named by `key`, whose URL, secret and headers are looked up
+    /// through the app's [`super::Destinations`] when the job runs. Headers
+    /// added with [`Channel::header`] are queued with the job and win over
+    /// the looked-up ones.
+    #[must_use]
+    pub fn webhook_for(key: impl Into<String>) -> Self {
+        Self::WebhookFor {
+            key: key.into(),
+            headers: BTreeMap::new(),
+        }
+    }
+
     /// Sign webhook requests with HMAC-SHA256 under `secret` (see
     /// [`super::webhook`]). No effect on other channels.
     #[must_use]
@@ -108,7 +145,7 @@ impl Channel {
     /// Add a request header to a webhook. No effect on other channels.
     #[must_use]
     pub fn header(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
-        if let Self::Webhook { headers, .. } = &mut self {
+        if let Self::Webhook { headers, .. } | Self::WebhookFor { headers, .. } = &mut self {
             headers.insert(name.into(), value.into());
         }
         self
@@ -158,16 +195,22 @@ impl Channel {
     #[must_use]
     pub const fn name(&self) -> &'static str {
         match self {
-            Self::Slack { .. } => "slack",
-            Self::Webhook { .. } => "webhook",
+            Self::Slack { .. } | Self::SlackFor { .. } => "slack",
+            Self::Webhook { .. } | Self::WebhookFor { .. } => "webhook",
             #[cfg(feature = "mailer")]
             Self::Email { .. } => "email",
         }
     }
 
-    /// Whether this channel has somewhere to deliver to.
-    pub(crate) fn is_deliverable(&self, config: Option<&Notifications>) -> bool {
+    /// Whether this channel has somewhere to deliver to. A keyed channel
+    /// needs registered [`super::Destinations`]; whether its key resolves is
+    /// only known when the job runs.
+    pub(crate) fn is_deliverable(&self, ctx: &AppContext) -> bool {
+        let config = ctx.config.notifications.as_ref();
         match self {
+            Self::SlackFor { key } | Self::WebhookFor { key, .. } => {
+                !key.trim().is_empty() && super::destination::has_destinations(ctx)
+            }
             Self::Slack {
                 webhook_url: Some(url),
             }
