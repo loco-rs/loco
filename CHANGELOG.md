@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Added
+
+- Live page updates in the style of Turbo Streams (`loco_rs::controller::turbo`):
+  - `TurboStream` / `TurboStreams` responses (`append`, `prepend`, `replace`, `update`, `remove` and more), which can render a Tera partial.
+  - A `TurboStreamRequest` extractor that detects Turbo requests from the `Accept` header.
+  - An in-process `Broadcaster`, kept in the shared store, that pushes streams to `<turbo-stream-source>` over server-sent events.
+  - Broadcasts do not reach other processes yet. See the new "Live page updates" how-to.
+
 ### Changed
 
 - Generated apps also get the skill under `.agents/skills/loco/`, alongside `.claude/skills/loco/`, for Zed, Cursor and other Agent Skills clients (#1857, @paoValle).

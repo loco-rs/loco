@@ -171,7 +171,7 @@ sea-orm = { version = "2.0", features = [
     "macros",
 ], optional = true }
 
-tokio = { version = "1.45", default-features = false, features = ["fs", "signal", "time"] }
+tokio = { version = "1.45", default-features = false, features = ["fs", "signal", "sync", "time"] }
 tokio-util = { version = "0.7", features = ["io"] }
 # the rest
 

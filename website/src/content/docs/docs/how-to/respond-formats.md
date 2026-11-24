@@ -138,5 +138,6 @@ curl -s localhost:5150/notes/1 -H 'accept: text/html'
 ## Next
 
 - [Render server-side views](/docs/how-to/render-views)
+- [Live page updates](/docs/how-to/live-updates): answer Turbo form posts with `<turbo-stream>` fragments
 - [Handle errors](/docs/how-to/handle-errors)
 - [Validate requests](/docs/how-to/validate-requests)
