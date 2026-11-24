@@ -33,6 +33,15 @@ fn register_functions(tera: &mut Tera) {
     tera.register_function("get_env", get_env);
 }
 
+/// Registers the request-scoped helpers (`csrf_field()` and friends) on app
+/// Tera instances. Not on the config renderer: no request is in scope there.
+fn register_app_functions(tera: &mut Tera) {
+    #[cfg(feature = "auth_session")]
+    crate::controller::middleware::forgery_protection::tera_functions::register(tera);
+    #[cfg(not(feature = "auth_session"))]
+    let _ = tera;
+}
+
 /// The standard Loco Tera instance, with all built-in filters registered.
 /// This is the single factory for every app-facing render path (mailer
 /// templates, inline views). Infra rendering that must NOT see app filters
@@ -41,6 +50,7 @@ fn register_functions(tera: &mut Tera) {
 pub fn instance() -> Tera {
     let mut tera = Tera::default();
     register_functions(&mut tera);
+    register_app_functions(&mut tera);
     crate::controller::views::tera_builtins::filters::register_filters(&mut tera);
     tera
 }

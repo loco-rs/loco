@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- `forgery_protection` middleware, Rails' `protect_from_forgery`. It refuses cross-site `POST`/`PUT`/`PATCH`/`DELETE` with `403`, using `Sec-Fetch-Site` and falling back to `Origin` against `Host`, and takes `exempt` path prefixes and `trusted_origins`. `mode: token` (with `auth_session`) checks Rails-style authenticity tokens from the `authenticity_token` field or `X-CSRF-Token` header, with the `csrf_field()`, `csrf_meta_tags()` and `csrf_token()` Tera functions and a `CsrfToken` extractor. Off by default; on in the server-rendered starter.
+
 ### Changed
 
 - Generated apps also get the skill under `.agents/skills/loco/`, alongside `.claude/skills/loco/`, for Zed, Cursor and other Agent Skills clients (#1857, @paoValle).

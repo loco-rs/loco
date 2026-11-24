@@ -148,6 +148,20 @@ server:
 | `server.ident` | `Option<String>` | optional | `server.rs:40`. When set, replaces the `Server` header value |
 | `server.middlewares` | `middleware::Config` | optional — `#[serde(default)]` | `server.rs:44`. Struct is owned by the middleware area; see the middleware catalog reference for every middleware's keys |
 
+Forgery protection is one of those middlewares, off by default:
+
+```yaml
+server:
+  middlewares:
+    forgery_protection:
+      enable: true       # optional, default false
+      mode: header       # header (default) | token (needs `auth_session`)
+      exempt: []         # path prefixes never checked
+      trusted_origins: [] # extra origins allowed to post
+```
+
+See the middleware catalog (`forgery_protection`) for the token-mode keys.
+
 `Server::full_url() -> String` returns `"{host}:{port}"` (`server.rs:52-55`).
 
 ## `workers`

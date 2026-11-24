@@ -1,4 +1,5 @@
 mod extractor;
+mod forgery_protection;
 mod from_ref;
 mod into_response;
 mod middlewares;
