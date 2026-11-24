@@ -465,6 +465,42 @@ mod tests {
         );
     }
 
+    /// The view helper filters render from a template file, with the
+    /// keyword arguments they document.
+    #[test]
+    fn view_helper_filters_are_available_in_views() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .add_file(
+                "template/helpers.html",
+                "{{ t | time_ago_in_words(now=now) }}|\
+                 {{ t | time_ago_in_words(now=soon, include_seconds=true) }}|\
+                 {{ n | pluralize(word='person') }}|{{ 1 | pluralize(word='person') }}|\
+                 {{ n | pluralize(word='person', plural='users') }}|\
+                 {{ n | pluralize }}|{{ 1 | pluralize(singular='y', plural='ies') }}|\
+                 {{ names | to_sentence(last_word_connector=' or ') }}|\
+                 {{ 13 | ordinalize }}|{{ big | number_to_human(precision=2) }}",
+            )
+            .create()
+            .unwrap();
+
+        let v = TeraView::from_custom_dir(&tree_fs.root, |_| Ok(())).unwrap();
+        assert_eq!(
+            v.render(
+                "template/helpers.html",
+                json!({
+                    "t": "2024-01-01T00:00:00Z",
+                    "now": "2024-01-01T05:00:00Z",
+                    "soon": 1_704_067_225,
+                    "n": 2,
+                    "names": ["a", "b", "c"],
+                    "big": 1_234_567,
+                })
+            )
+            .unwrap(),
+            "about 5 hours|half a minute|2 people|1 person|2 users|s|y|a, b or c|13th|1.2 Million"
+        );
+    }
+
     /// HTML autoescaping must stay on for `.html`/`.htm`/`.xml` views. Tera
     /// applies it by template-name suffix, and the Tera 2 migration changed how
     /// views are registered (glob constructor -> `add_raw_template`), so this

@@ -30,6 +30,14 @@ async fn show(ViewEngine(v): ViewEngine<TeraView>) -> Result<Response> {
 Generate the route with `cargo loco generate controller <name> <action>` and
 swap the handler body, so the route is still registered in `src/app.rs`.
 
+Format text with the built-in Rails view helpers, not hand-written code. In a
+template they are filters: `{{ post.created_at | time_ago_in_words }} ago`,
+`{{ n | pluralize(word="comment") }}`, `{{ names | to_sentence }}`,
+`{{ place | ordinalize }}`, `{{ total | number_with_delimiter }}`,
+`{{ views | number_to_human }}`, `{{ a | distance_of_time_in_words(to=b) }}`.
+In Rust (mailers, JSON) the same functions live in
+`loco_rs::controller::views::helpers`.
+
 ## Shape of a controller
 
 ```rust
