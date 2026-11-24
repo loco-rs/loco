@@ -141,18 +141,24 @@ pub async fn start<H: Hooks>(
                 None
             };
 
-            await_shutdown_then_run_hook::<H>(&app_context, shutdown_signal()).await;
-
-            if let Some(handle) = handle {
-                shutdown_and_await_queue_worker(&app_context, handle).await?;
-            }
+            // The hook runs after the workers finish, so jobs never see what it closed.
+            await_shutdown_then_run_hook::<H>(&app_context, async {
+                shutdown_signal().await;
+                match handle {
+                    Some(handle) => shutdown_and_await_queue_worker(&app_context, handle).await,
+                    None => Ok(()),
+                }
+            })
+            .await?;
         }
         _ => {}
     }
     Ok(())
 }
 
-/// Waits for `shutdown` to resolve, then runs [`Hooks::on_shutdown`].
+/// Waits for `shutdown` to resolve, then runs [`Hooks::on_shutdown`]. If
+/// `shutdown` fails (a force quit, say), workers may still be running, so the
+/// hook is skipped rather than run against them.
 ///
 /// This is used by the worker-only / worker-and-scheduler start modes, which
 /// (unlike the server modes) have no Axum graceful-shutdown hook of their own
@@ -162,10 +168,11 @@ pub async fn start<H: Hooks>(
 /// [`shutdown_signal`] (which blocks on OS signals).
 async fn await_shutdown_then_run_hook<H: Hooks>(
     app_context: &AppContext,
-    shutdown: impl std::future::Future<Output = ()>,
-) {
-    shutdown.await;
+    shutdown: impl std::future::Future<Output = Result<()>>,
+) -> Result<()> {
+    shutdown.await?;
     H::on_shutdown(app_context).await;
+    Ok(())
 }
 
 fn start_queue_worker(app_context: &AppContext, tags: Vec<String>) -> Result<JoinHandle<()>> {
@@ -176,6 +183,14 @@ fn start_queue_worker(app_context: &AppContext, tags: Vec<String>) -> Result<Joi
         let handle = tokio::spawn(async move {
             if let Err(err) = cloned_queue.run(tags).await {
                 error!(err = err.to_string(), "error while running worker");
+            }
+        });
+        // Stop workers on the signal itself, so they wind down alongside the HTTP drain.
+        let queue = queue.clone();
+        tokio::spawn(async move {
+            shutdown_signal().await;
+            if let Err(err) = queue.shutdown() {
+                error!(err = err.to_string(), "error while stopping worker");
             }
         });
         return Ok(handle);
@@ -194,10 +209,9 @@ async fn shutdown_and_await_queue_worker(
 
     println!("press ctrl-c again to force quit");
     select! {
-        _ = handle => {}
-        () = shutdown_signal() => {}
+        _ = handle => Ok(()),
+        () = shutdown_signal() => Err(Error::string("force quit before workers finished")),
     }
-    Ok(())
 }
 
 /// Run task
@@ -730,8 +744,9 @@ mod tests {
 
         // An already-resolved future stands in for `shutdown_signal()`, so
         // the test doesn't have to wait on (or fake) an OS signal.
-        await_shutdown_then_run_hook::<ShutdownFlagHooks>(&app_context, std::future::ready(()))
-            .await;
+        await_shutdown_then_run_hook::<ShutdownFlagHooks>(&app_context, std::future::ready(Ok(())))
+            .await
+            .expect("shutdown should succeed");
 
         assert!(
             shutdown_hook_fired.load(Ordering::SeqCst),
@@ -748,6 +763,7 @@ mod tests {
         let (tx, rx) = tokio::sync::oneshot::channel::<()>();
         let shutdown = async move {
             let _ = rx.await;
+            Ok(())
         };
 
         let fut = await_shutdown_then_run_hook::<ShutdownFlagHooks>(&app_context, shutdown);
@@ -763,11 +779,30 @@ mod tests {
         );
 
         tx.send(()).expect("receiver dropped");
-        fut.await;
+        fut.await.expect("shutdown should succeed");
 
         assert!(
             shutdown_hook_fired.load(Ordering::SeqCst),
             "on_shutdown should fire after shutdown resolves"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_await_shutdown_then_run_hook_skips_hook_when_shutdown_fails() {
+        let app_context = get_app_context().await;
+        let shutdown_hook_fired = Arc::new(AtomicBool::new(false));
+        app_context.shared_store.insert(shutdown_hook_fired.clone());
+
+        let result = await_shutdown_then_run_hook::<ShutdownFlagHooks>(
+            &app_context,
+            std::future::ready(Err(Error::string("force quit"))),
+        )
+        .await;
+
+        assert!(result.is_err());
+        assert!(
+            !shutdown_hook_fired.load(Ordering::SeqCst),
+            "on_shutdown must not fire while workers may still be running"
         );
     }
 }
