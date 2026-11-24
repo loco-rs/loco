@@ -51,11 +51,21 @@ impl FlowState {
     }
 }
 
-/// The state cookie for `provider`. One per provider, so two tabs signing in
-/// with different providers do not clobber each other.
+/// The default state cookie prefix; `auth.oauth.state_cookie_name` replaces
+/// it.
+pub const DEFAULT_STATE_COOKIE: &str = "loco_oauth_state";
+
+/// The default state cookie for `provider`. One per provider, so two tabs
+/// signing in with different providers do not clobber each other.
 #[must_use]
 pub fn cookie_name(provider: &str) -> String {
-    format!("loco_oauth_state_{provider}")
+    prefixed_cookie_name(DEFAULT_STATE_COOKIE, provider)
+}
+
+/// The state cookie for `provider` under `prefix`: `<prefix>_<provider>`.
+#[must_use]
+pub fn prefixed_cookie_name(prefix: &str, provider: &str) -> String {
+    format!("{prefix}_{provider}")
 }
 
 /// 32 random bytes, base64url.

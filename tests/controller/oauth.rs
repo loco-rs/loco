@@ -13,14 +13,17 @@ use std::{
 
 use axum::{
     extract::{Form, Query, State},
-    http::{header, HeaderMap, StatusCode},
+    http::{header, request::Parts, HeaderMap, HeaderValue, StatusCode},
     response::{IntoResponse, Redirect},
     routing::{get, post},
     Json, Router,
 };
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use loco_rs::{
-    auth::oauth::{self, Identity, OAuthHandler, SignIn},
+    auth::{
+        cookies::{self, CookieOptions, EncryptedCookies, SignedCookies},
+        oauth::{self, state::FlowState, Identity, OAuthFailure, OAuthHandler, SignIn},
+    },
     config::{Auth, OAuthConfig, OAuthProviderConfig, SessionConfig, SessionStoreKind},
     controller::AppRoutes,
     prelude::*,
@@ -33,6 +36,7 @@ use sha2::{Digest, Sha256};
 const CLIENT_ID: &str = "fake-client";
 const CLIENT_SECRET: &str = "fake-secret";
 const TOKEN: &str = "gho_fake_access_token";
+const SECRET: &str = "an-integration-test-secret-that-is-long-enough";
 
 #[derive(Default)]
 struct Fake {
@@ -153,6 +157,22 @@ impl OAuthHandler for Handler {
         ))
         .redirect_to("/welcome"))
     }
+
+    async fn on_failure(
+        ctx: &AppContext,
+        parts: &Parts,
+        failure: &OAuthFailure,
+    ) -> Result<Response> {
+        // The callback request is at hand: answer API clients in JSON.
+        if parts
+            .headers
+            .get(header::ACCEPT)
+            .is_some_and(|v| v.as_bytes() == b"application/json")
+        {
+            return format::json(json!({ "error": failure.kind.as_str() }));
+        }
+        oauth::default_failure(ctx, failure)
+    }
 }
 
 async fn me(CurrentUser(id): CurrentUser<String>) -> Result<Response> {
@@ -179,6 +199,14 @@ async fn app(configure: impl FnOnce(&mut OAuthConfig)) -> App {
 }
 
 async fn app_with(store: SessionStoreKind, configure: impl FnOnce(&mut OAuthConfig)) -> App {
+    app_full(store, |_| {}, configure).await
+}
+
+async fn app_full(
+    store: SessionStoreKind,
+    configure_session: impl FnOnce(&mut SessionConfig),
+    configure: impl FnOnce(&mut OAuthConfig),
+) -> App {
     let (fake_url, fake) = start_fake().await;
     let mut ctx = loco_rs::tests_cfg::app::get_app_context().await;
     let mut oauth = OAuthConfig {
@@ -196,13 +224,15 @@ async fn app_with(store: SessionStoreKind, configure: impl FnOnce(&mut OAuthConf
         },
     );
     configure(&mut oauth);
+    let mut session = SessionConfig {
+        secret: Some(SECRET.to_string()),
+        sign_in_path: Some("/login".to_string()),
+        store,
+        ..Default::default()
+    };
+    configure_session(&mut session);
     ctx.config.auth = Some(Auth {
-        session: Some(SessionConfig {
-            secret: Some("an-integration-test-secret-that-is-long-enough".to_string()),
-            sign_in_path: Some("/login".to_string()),
-            store,
-            ..Default::default()
-        }),
+        session: Some(session),
         oauth: Some(oauth),
         ..Default::default()
     });
@@ -484,4 +514,121 @@ async fn remember_on_the_cookie_store_is_ignored_not_a_500() {
         .get("/me")
         .await
         .assert_text("github:583231:octocat@example.com");
+}
+
+/// The state cookie a `/auth/github` start set, decrypted.
+fn flow_state(res: &axum_test::TestResponse, name: &str) -> Option<FlowState> {
+    let cookie = res.cookie(name);
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        header::COOKIE,
+        HeaderValue::from_str(&format!("{}={}", cookie.name(), cookie.value())).unwrap(),
+    );
+    let options = CookieOptions {
+        secure: false,
+        max_age: None,
+    };
+    let key = cookies::derive_key(SECRET);
+    assert!(
+        SignedCookies::from_headers(&headers, key.clone(), options.clone())
+            .get(name)
+            .is_none(),
+        "the state cookie is not merely signed"
+    );
+    EncryptedCookies::from_headers(&headers, key, options)
+        .get(name)
+        .and_then(|c| cookies::unseal::<FlowState>(c.value()))
+}
+
+#[tokio::test]
+async fn the_state_cookie_is_encrypted_and_its_name_configurable() {
+    let App { server, .. } = app(|o| o.state_cookie_name = Some("_app_oauth".to_string())).await;
+    let res = server.get("/auth/github?return_to=/orgs/acme").await;
+    let flow = flow_state(&res, "_app_oauth_github").expect("decrypts with the app key");
+    assert_eq!(flow.return_to.as_deref(), Some("/orgs/acme"));
+    assert!(res.maybe_cookie("loco_oauth_state_github").is_none());
+
+    let res = server.get(&visit_provider(&location!(res)).await).await;
+    assert_eq!(location!(res), "/orgs/acme");
+    let cleared = res.cookie("_app_oauth_github");
+    assert!(cleared.value().is_empty(), "the state cookie is cleared");
+}
+
+#[tokio::test]
+async fn a_same_site_referer_is_the_fallback_origin() {
+    let App { server, .. } = app(|_| {}).await;
+
+    let res = server
+        .get("/auth/github")
+        .add_header(header::REFERER, "http://app.test/orgs/acme?tab=2")
+        .await;
+    let res = server.get(&visit_provider(&location!(res)).await).await;
+    assert_eq!(location!(res), "/orgs/acme?tab=2");
+
+    // An explicit return_to wins over the Referer.
+    let res = server
+        .get("/auth/github?return_to=/explicit")
+        .add_header(header::REFERER, "http://app.test/orgs/acme")
+        .await;
+    let res = server.get(&visit_provider(&location!(res)).await).await;
+    assert_eq!(location!(res), "/explicit");
+
+    // Off-site, other-scheme, other-port and sign-in-page referers are
+    // ignored.
+    for referer in [
+        "http://evil.example/orgs/acme",
+        "http://app.test.evil.example/x",
+        "https://app.test/orgs/acme",
+        "http://app.test:8080/orgs/acme",
+        "http://app.test/login?return_to=%2Fx",
+        "javascript:alert(1)",
+    ] {
+        let res = server
+            .get("/auth/github")
+            .add_header(header::REFERER, referer)
+            .await;
+        let res = server.get(&visit_provider(&location!(res)).await).await;
+        assert_eq!(location!(res), "/welcome", "{referer}");
+    }
+}
+
+#[tokio::test]
+async fn the_origin_param_is_configurable() {
+    // `auth.oauth.origin_param` names it directly...
+    let App { server, .. } = app(|o| o.origin_param = Some("origin".to_string())).await;
+    let res = server
+        .get("/auth/github?origin=/from-origin&return_to=/ignored")
+        .await;
+    let res = server.get(&visit_provider(&location!(res)).await).await;
+    assert_eq!(location!(res), "/from-origin");
+
+    let res = server.get("/auth/github?origin=//evil.example").await;
+    let res = server.get(&visit_provider(&location!(res)).await).await;
+    assert_eq!(location!(res), "/welcome", "still same-site only");
+
+    // ...and otherwise follows `auth.session.return_to_param`.
+    let App { server, .. } = app_full(
+        SessionStoreKind::Cookie,
+        |s| s.return_to_param = Some("next".to_string()),
+        |_| {},
+    )
+    .await;
+    let res = server
+        .get("/me?tab=1")
+        .add_header(header::ACCEPT, "text/html")
+        .await;
+    assert_eq!(location!(res), "/login?next=%2Fme%3Ftab%3D1");
+    let res = server.get("/auth/github?next=%2Fme%3Ftab%3D1").await;
+    let res = server.get(&visit_provider(&location!(res)).await).await;
+    assert_eq!(location!(res), "/me?tab=1");
+}
+
+#[tokio::test]
+async fn on_failure_sees_the_callback_request() {
+    let App { server, .. } = app(|_| {}).await;
+    let res = server
+        .get("/auth/github/callback?error=access_denied")
+        .add_header(header::ACCEPT, "application/json")
+        .await;
+    res.assert_json(&json!({ "error": "cancelled" }));
 }

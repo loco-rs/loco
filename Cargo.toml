@@ -68,8 +68,9 @@ auth_session_encrypted = ["auth_session", "axum-extra/cookie-private"]
 # "Sign in with GitHub / Google / any OAuth2 provider": mountable
 # `/auth/{provider}` routes, an `OAuthHandler` trait and a normalized
 # `Identity`. Brings an HTTP client (reqwest 0.12 on rustls + ring, so still no
-# C toolchain) for the token exchange and profile fetch.
-auth_oauth = ["auth_session", "dep:reqwest"]
+# C toolchain) for the token exchange and profile fetch, and the encrypted
+# cookies that keep its state cookie (PKCE verifier, `return_to`) unreadable.
+auth_oauth = ["auth_session_encrypted", "dep:reqwest"]
 # Notifiers delivered in the background to Slack incoming webhooks, signed
 # JSON webhooks and (with `mailer`) email. Brings the same reqwest 0.12 on
 # rustls + ring as `auth_oauth`, and RustCrypto HMAC for webhook signatures.
