@@ -190,6 +190,43 @@ then a terminal `.json()`, `.text()`, `.html()`, `.empty()`, `.view()`,
 Reach for `render()` only when you need one of those; a plain `format::json(..)`
 is the normal case.
 
+## One action, HTML or JSON (`respond_to`)
+
+Rails' `respond_to do |format|` is `format::respond_to`. Do not write a second
+`/api` controller that repeats the HTML one:
+
+```rust
+#[debug_handler]
+async fn show(
+    Format(respond_to): Format,
+    ViewEngine(v): ViewEngine<TeraView>,
+    Path(id): Path<i32>,
+    State(ctx): State<AppContext>,
+) -> Result<Response> {
+    let post = Model::find_by_id(&ctx.db, id).await?;
+    format::respond_to(&respond_to)
+        .html(|| format::render().view(&v, "posts/show.html", data!({ "post": &post })))
+        .json(|| format::json(PostResponse::from(&post)))
+        .render()
+}
+```
+
+Only the chosen branch runs; a format with no branch is `406`. For `/posts/1.json`
+or a JSON prefix such as `/api/v1` over the same routes, enable the middleware in
+`config/<env>.yaml` — no extra routes:
+
+```yaml
+server:
+  middlewares:
+    respond_to:
+      enable: true
+      prefix: /api/v1
+      sign_in_path: /session/new
+```
+
+On those paths a redirect answers `{"ok":true,"redirect":to}`, a redirect to
+`sign_in_path` answers `401`, and an HTML-only action answers `406`.
+
 ## Errors
 
 Handlers return `loco_rs::Result<Response>`. Use `?`. A `ModelError` converts

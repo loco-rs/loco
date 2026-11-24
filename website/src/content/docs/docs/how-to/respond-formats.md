@@ -128,11 +128,69 @@ pub async fn get_one(
 
 See [Handle errors](/docs/how-to/handle-errors) for what "the framework's default error rendering" produces for each `Error` variant.
 
+## 5. One action, HTML or JSON: `format::respond_to`
+
+`format::respond_to` is the Rails `respond_to do |format|` block. Give it a branch per format; only the chosen branch runs. A request with no `Accept`/`Content-Type` (or an unrecognised one) gets the first branch, and a request for a format with no branch gets `406 {"error":"not_acceptable"}`:
+
+```rust
+use loco_rs::prelude::*;
+
+pub async fn show(
+    Format(respond_to): Format,
+    ViewEngine(v): ViewEngine<TeraView>,
+    Path(id): Path<i32>,
+    State(ctx): State<AppContext>,
+) -> Result<Response> {
+    let post = Model::find_by_id(&ctx.db, id).await?;
+    format::respond_to(&respond_to)
+        .html(|| format::render().view(&v, "posts/show.html", data!({"post": &post})))
+        .json(|| format::json(&post))
+        .render()
+}
+```
+
+`.xml(..)` and `.any(..)` are also available; `.any` answers every format no earlier branch took.
+
+When the HTML view and the JSON body show the same data, `format::respond_with` is the one-liner — the view gets `data` under `key`, JSON gets `data` itself:
+
+```rust
+format::respond_with(&v, &respond_to, "posts/show.html", PostResponse::from(&post))
+```
+
+## 6. Serve every route as JSON: the `respond_to` middleware
+
+Rails apps answer `/posts/1.json` without extra routes. Turn on the `respond_to` middleware for the same thing, plus an optional prefix that mounts every route again as JSON:
+
+```yaml
+server:
+  middlewares:
+    respond_to:
+      enable: true
+      extension: true          # /posts/1.json (default true)
+      prefix: /api/v1          # /api/v1/posts/1 (optional)
+      sign_in_path: /session/new  # redirects here become 401 (optional)
+```
+
+The middleware strips `.json` or the prefix, routes the request to the same handler with `Accept: application/json`, and the `Format`/`RespondTo` extractor reports `Json`. Responses built for a browser are turned into JSON:
+
+| The handler answers | The client gets |
+|---|---|
+| a redirect | `200 {"ok":true,"redirect":"/posts"}` |
+| a redirect to `sign_in_path` | `401 {"error":"signed_out","redirect":"/session/new"}` |
+| an HTML page (no JSON branch) | `406 {"error":"not_acceptable","description":"This action has no JSON response"}` |
+| an HTML error page | `{"error":"not_found"}` (or `forbidden`, `unauthorized`, `bad_request`, `error`) with the same status |
+| JSON | unchanged |
+
+Cookies and other headers are kept. A real static file ending in `.json` is still served: when the stripped path is not found, the original path is tried. Plain `Accept: application/json` requests to the normal path are left alone — only `.json` and the prefix opt into the conversion.
+
 ## Verify
 
 ```sh
 curl -s localhost:5150/notes/1 -H 'accept: application/json'
 curl -s localhost:5150/notes/1 -H 'accept: text/html'
+# with the respond_to middleware enabled
+curl -s localhost:5150/notes/1.json
+curl -s localhost:5150/api/v1/notes/1
 ```
 
 ## Next

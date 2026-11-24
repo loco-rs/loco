@@ -147,6 +147,7 @@ server:
 | `server.host` | `String` | required | `server.rs:38` |
 | `server.ident` | `Option<String>` | optional | `server.rs:40`. When set, replaces the `Server` header value |
 | `server.middlewares` | `middleware::Config` | optional — `#[serde(default)]` | `server.rs:44`. Struct is owned by the middleware area; see the middleware catalog reference for every middleware's keys |
+| `server.middlewares.respond_to` | `Option<respond_to::Config>` | optional, disabled by default | `enable`, `extension` (default `true`), `prefix`, `sign_in_path`. Serves routes as JSON at `<path>.json` and under `prefix`; see [Respond in multiple formats](/docs/how-to/respond-formats) |
 
 `Server::full_url() -> String` returns `"{host}:{port}"` (`server.rs:52-55`).
 
