@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- `spa` middleware: serves a frontend build (e.g. `frontend/dist`) under a mount path, next to `static`. Client-side routes get `index.html`, missing files get a real `404`, hashed assets are sent with `Cache-Control: public, max-age=31536000, immutable` and HTML with `no-cache`. New clientside apps use it instead of `static`.
+
 ### Changed
 
 - Generated apps also get the skill under `.agents/skills/loco/`, alongside `.claude/skills/loco/`, for Zed, Cursor and other Agent Skills clients (#1857, @paoValle).

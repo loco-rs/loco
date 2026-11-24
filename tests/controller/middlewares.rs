@@ -416,6 +416,60 @@ async fn static_assets() {
     handle.abort();
 }
 
+/// An SPA mounted at `/app` works next to the app's own routes: built files
+/// get an immutable cache, client-side routes get `index.html` with
+/// `no-cache`, and a missing asset is a real 404.
+#[tokio::test]
+async fn spa() {
+    async fn action() -> Result<Response> {
+        format::json("api")
+    }
+
+    let tree = tree_fs::TreeBuilder::default()
+        .drop(true)
+        .add("frontend/dist/index.html", "<h1>shell</h1>")
+        .add("frontend/dist/assets/app-abc123.js", "console.log(1)")
+        .create()
+        .expect("create build folder");
+
+    let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
+    ctx.config.server.middlewares.spa = Some(middleware::spa::Spa {
+        enable: true,
+        uri: "/app".to_string(),
+        path: tree.root.join("frontend").join("dist"),
+        ..Default::default()
+    });
+
+    let port = get_available_port().await;
+    let handle = infra_cfg::server::start_with_route(ctx, "/api", get(action), Some(port)).await;
+    let base = get_base_url_port(port);
+
+    let res = reqwest::get(format!("{base}app/assets/app-abc123.js"))
+        .await
+        .expect("valid response");
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.headers()["cache-control"], middleware::spa::IMMUTABLE);
+
+    let res = reqwest::get(format!("{base}app/posts/42"))
+        .await
+        .expect("valid response");
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.headers()["cache-control"], middleware::spa::NO_CACHE);
+    assert_eq!(res.text().await.expect("text response"), "<h1>shell</h1>");
+
+    let res = reqwest::get(format!("{base}app/assets/missing.js"))
+        .await
+        .expect("valid response");
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    let res = reqwest::get(format!("{base}api"))
+        .await
+        .expect("valid response");
+    assert_eq!(res.text().await.expect("text response"), "\"api\"");
+
+    handle.abort();
+}
+
 #[rstest]
 #[case(None, None)]
 #[case(Some("empty".to_string()), None)]

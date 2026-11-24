@@ -75,6 +75,10 @@ server:
         uri: "/static"
         path: "assets/static"
       fallback: "assets/static/404.html"
+    spa:                       # a frontend build, next to `static`
+      enable: true
+      uri: "/app"              # "/" = whatever no route matched
+      path: "frontend/dist"    # index.html for client routes, 404 for missing files
     remote_ip:
       enable: true
       source: RightmostXForwardedFor

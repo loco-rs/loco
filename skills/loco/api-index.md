@@ -813,7 +813,7 @@ since they restate the trait's own API.
 - `fn` **view**`(self: Self, v: &V, key: &str, data: S) -> Result<Response> where V: ViewRenderer, S: Serialize` — Render template located by `key`
 ## `controller::middleware`
 
-- `struct` **Config**` { compression: Option<Compression>, etag: Option<Etag>, limit_payload: Option<LimitPayload>, logger: Option<Config>, catch_panic: Option<CatchPanic>, timeout_request: Option<TimeOut>, cors: Option<Cors>, static_assets: Option<StaticAssets>, secure_headers: Option<SecureHeader>, remote_ip: Option<RemoteIpMiddleware>, fallback: Option<Fallback>, request_id: Option<RequestId> }` — Server middleware configuration structure
+- `struct` **Config**` { compression: Option<Compression>, etag: Option<Etag>, limit_payload: Option<LimitPayload>, logger: Option<Config>, catch_panic: Option<CatchPanic>, timeout_request: Option<TimeOut>, cors: Option<Cors>, static_assets: Option<StaticAssets>, spa: Option<Spa>, secure_headers: Option<SecureHeader>, remote_ip: Option<RemoteIpMiddleware>, fallback: Option<Fallback>, request_id: Option<RequestId> }` — Server middleware configuration structure
 - `trait` **MiddlewareLayer** — Trait representing the behavior of middleware components in the application
 - `trait` **MiddlewareStackExt** — Ergonomic, Rails-style edits to a middleware stack
 - `fn` **default_middleware_stack**`(ctx: &AppContext) -> Vec<Box<dyn MiddlewareLayer>>`
@@ -917,6 +917,12 @@ since they restate the trait's own API.
 ### `SecureHeaders`
 
 - `fn` **new**`(config: &SecureHeader) -> Result<Self>` — Creates a new [`SecureHeaders`] instance with the provided
+## `controller::middleware::spa`
+
+- `struct` **CacheControl**` { assets: Option<String>, html: Option<String> }` — Cache-Control values by response kind
+- `const` **IMMUTABLE** — Cache-Control used for hashed build assets by default
+- `const` **NO_CACHE** — Cache-Control used for HTML (the app shell) by default
+- `struct` **Spa**` { enable: bool, uri: String, path: PathBuf, index: PathBuf, must_exist: bool, precompressed: bool, cache_control: CacheControl }` — SPA middleware configuration
 ## `controller::middleware::static_assets_embedded`
 
 - `struct` **EmbeddedAssets**
