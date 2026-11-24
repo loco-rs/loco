@@ -2,8 +2,13 @@
 
 ## Unreleased
 
+### Added
+
+- `loco_rs::net::OutboundGuard`: refuse outbound requests to loopback, private, link-local and other non-public addresses, checked on the address actually connected to (resolver, redirects and IP-literal URLs). The equivalent of Ruby's `ssrf_filter`.
+
 ### Changed
 
+- **Slack and webhook notifications refuse non-public addresses by default.** A delivery to `localhost`, `10.0.0.0/8`, `169.254.169.254` and similar is logged and dropped. Allow specific hosts, IPs or CIDRs with `notifications.outbound.allow`, or everything with `notifications.outbound.allow_private: true`.
 - Generated apps also get the skill under `.agents/skills/loco/`, alongside `.claude/skills/loco/`, for Zed, Cursor and other Agent Skills clients (#1857, @paoValle).
 
 ## 1.3.1 - 2026-11-05

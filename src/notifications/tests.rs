@@ -91,8 +91,85 @@ async fn context(notifications: Option<Notifications>) -> AppContext {
     // The test config runs jobs inline, so a delivery completes before
     // `deliver_later` returns and the mock server has seen it.
     assert_eq!(ctx.config.workers.mode, WorkerMode::ForegroundBlocking);
-    ctx.config.notifications = notifications;
+    // The mock servers listen on loopback, which the outbound guard refuses
+    // by default.
+    let mut notifications = notifications.unwrap_or_default();
+    if notifications.outbound == crate::net::OutboundGuard::default() {
+        notifications.outbound.allow = vec!["127.0.0.1".to_string()];
+    }
+    ctx.config.notifications = Some(notifications);
     ctx
+}
+
+/// A context with the default outbound guard, as a production app has.
+async fn guarded_context() -> AppContext {
+    let mut ctx = context(None).await;
+    if let Some(n) = ctx.config.notifications.as_mut() {
+        n.outbound = crate::net::OutboundGuard::default();
+    }
+    ctx
+}
+
+#[tokio::test]
+async fn loopback_destinations_are_refused_by_default() {
+    let (base, log) = mock_server(StatusCode::OK).await;
+    let port = base.rsplit(':').next().unwrap();
+    let ctx = guarded_context().await;
+
+    let report = QueuePaused::to(vec![
+        // IP literal: refused before sending.
+        Channel::slack_url(format!("{base}/s")),
+        Channel::webhook_url(format!("{base}/w")),
+        // A name resolving to loopback: refused when it resolves.
+        Channel::webhook_url(format!("http://localhost:{port}/w")),
+    ])
+    .deliver_later(&ctx)
+    .await;
+
+    // Refusals are permanent: dropped with an error log, not retried.
+    assert_eq!(report.failed, 0);
+    assert!(requests(&log).is_empty(), "{:?}", requests(&log));
+}
+
+#[tokio::test]
+async fn allowed_hosts_reach_private_destinations() {
+    let (base, log) = mock_server(StatusCode::OK).await;
+    let port = base.rsplit(':').next().unwrap();
+    let ctx = context(Some(Notifications {
+        outbound: crate::net::OutboundGuard {
+            allow_private: false,
+            allow: vec!["localhost".to_string()],
+        },
+        ..Notifications::default()
+    }))
+    .await;
+
+    QueuePaused::to(vec![
+        Channel::webhook_url(format!("http://localhost:{port}/by-name")),
+        // Not on the list.
+        Channel::webhook_url(format!("{base}/by-ip")),
+    ])
+    .deliver_later(&ctx)
+    .await;
+
+    let paths: Vec<String> = requests(&log).into_iter().map(|r| r.path).collect();
+    assert_eq!(paths, vec!["/by-name"]);
+}
+
+#[tokio::test]
+async fn allow_private_turns_the_guard_off() {
+    let (base, log) = mock_server(StatusCode::OK).await;
+    let ctx = context(Some(Notifications {
+        outbound: crate::net::OutboundGuard::allow_all(),
+        ..Notifications::default()
+    }))
+    .await;
+
+    QueuePaused::to(vec![Channel::webhook_url(format!("{base}/w"))])
+        .deliver_later(&ctx)
+        .await;
+
+    assert_eq!(requests(&log).len(), 1);
 }
 
 #[test]

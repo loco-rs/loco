@@ -592,7 +592,7 @@ since they restate the trait's own API.
 - `struct` **Mailer**` { smtp: Option<SmtpMailer>, stub: bool }` — Mailer configuration
 - `struct` **MailerAuth**` { user: String, password: String }` — Authentication details for the mailer
 - `enum` **MailerTls** — TLS mode for the SMTP connection
-- `struct` **Notifications**` { slack: Option<SlackNotifications>, webhook: Option<WebhookNotifications>, email: Option<EmailNotifications>, max_retries: u32, retry_backoff_secs: u64, timeout_secs: u64, stub: bool }` — Notifications configuration: the default destination of each channel and
+- `struct` **Notifications**` { slack: Option<SlackNotifications>, webhook: Option<WebhookNotifications>, email: Option<EmailNotifications>, max_retries: u32, retry_backoff_secs: u64, timeout_secs: u64, stub: bool, outbound: OutboundGuard }` — Notifications configuration: the default destination of each channel and
 - `struct` **OAuthConfig**` { base_url: Option<String>, after_sign_in_path: Option<String>, after_sign_out_path: Option<String>, failure_path: Option<String>, providers: BTreeMap<String, OAuthProviderConfig> }` — `OAuth2` / `OpenID` Connect sign-in, `OmniAuth`-style
 - `struct` **OAuthProviderConfig**` { strategy: Option<OAuthStrategy>, client_id: String, client_secret: String, scopes: Option<Vec<String>>, base_url: Option<String>, api_url: Option<String>, authorize_url: Option<String>, token_url: Option<String>, userinfo_url: Option<String>, emails_url: Option<String>, redirect_uri: Option<String>, authorize_params: BTreeMap<String, String>, pkce: Option<bool>, token_auth: Option<OAuthTokenAuth> }` — One OAuth provider. Every URL is overridable, for GitHub Enterprise,
 - `enum` **OAuthStrategy** — Which provider preset a configured provider uses
@@ -1284,6 +1284,31 @@ since they restate the trait's own API.
 - `variant` **Asc**
 - `variant` **Desc**
 - `fn` **order**`(self: &Self) -> Order` — Returns the corresponding `Order` enum variant based on the current
+## `net`
+
+- `struct` **BlockedAddress** — The error for a refused destination. Its message names the host, never
+- `struct` **GuardedResolver** — A DNS resolver that keeps only the addresses an [`OutboundGuard`]
+- `struct` **OutboundGuard**` { allow_private: bool, allow: Vec<String> }` — Which outbound addresses are allowed
+- `fn` **is_blocked**`(err: &Error) -> bool` — Whether a reqwest error was caused by the guard refusing an address
+- `fn` **is_public**`(ip: IpAddr) -> bool` — Whether `ip` is a publicly routable address
+
+### `BlockedAddress`
+
+- `fn` **host**`(self: &Self) -> &str` — The refused host or address
+
+### `GuardedResolver`
+
+- `fn` **filter**`(self: &Self, host: &str, addrs: impl Trait) -> Result<Vec<SocketAddr>, BlockedAddress>` — Keeps the allowed addresses among `addrs` resolved for `host`
+- `fn` **new**`(guard: OutboundGuard) -> Self` — A resolver enforcing `guard`
+
+### `OutboundGuard`
+
+- `fn` **allow_all**`() -> Self` — A guard that allows everything
+- `fn` **allows_host**`(self: &Self, host: &str) -> bool` — Whether `host` (a name, not an address) is allowed by name
+- `fn` **apply**`(self: &Self, builder: ClientBuilder) -> ClientBuilder` — Installs the guard on a reqwest client: a resolver that drops
+- `fn` **check_host**`(self: &Self, host: &str) -> Result<(), BlockedAddress>` — Checks a host as it appears in a URL: an IP literal (`127.0.0.1`,
+- `fn` **check_url**`(self: &Self, url: &str) -> Result<(), BlockedAddress>` — Checks a URL before sending: it must parse and have a host, and
+- `fn` **is_allowed**`(self: &Self, ip: IpAddr) -> bool` — Whether a connection to `ip` is allowed: it is public, or the guard
 ## `notifications`
 
 - `enum` **Channel** — Where a notification goes. Returned by [`super::Notifier::channels`]
