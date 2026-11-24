@@ -18,7 +18,7 @@ cache until you add one — to **every** environment you care about, including
 ```yaml
 cache:
   kind: InMem
-  max_capacity: 33554432      # bytes; optional, defaults to 32 MiB
+  max_capacity: 33554432      # entries, not bytes; optional, defaults to 32 * 1024 * 1024
 ```
 
 If a cache "isn't working," check that this block exists before debugging your
