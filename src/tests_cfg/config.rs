@@ -35,6 +35,7 @@ pub fn test_config() -> Config {
         },
         mailer: None,
         notifications: None,
+        webhooks: std::collections::BTreeMap::new(),
         initializers: None,
         settings: None,
         scheduler: Some(scheduler::Config {

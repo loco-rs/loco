@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- `SignedWebhook<S>` extractor: verifies HMAC-SHA256 signatures on incoming webhooks (GitHub-style, Stripe-style timestamped, and Loco's own notification webhooks) against secrets under `webhooks:` in config, with constant-time comparison and a replay window.
+
 ### Changed
 
 - Generated apps also get the skill under `.agents/skills/loco/`, alongside `.claude/skills/loco/`, for Zed, Cursor and other Agent Skills clients (#1857, @paoValle).

@@ -41,6 +41,7 @@ mod queue;
 mod server;
 mod storage;
 mod template;
+mod webhooks;
 
 pub use auth::*;
 pub use cache::*;
@@ -51,6 +52,7 @@ pub use notifications::*;
 pub use queue::*;
 pub use server::*;
 pub use storage::*;
+pub use webhooks::*;
 
 use crate::{environment::Environment, scheduler, Error, Result};
 
@@ -82,6 +84,9 @@ pub struct Config {
     /// Notification channels and delivery retries; see [`Notifications`].
     #[serde(default)]
     pub notifications: Option<Notifications>,
+    /// Signed incoming webhooks, keyed by source name; see [`Webhook`].
+    #[serde(default)]
+    pub webhooks: BTreeMap<String, Webhook>,
     pub initializers: Option<Initializers>,
 
     /// Custom app settings

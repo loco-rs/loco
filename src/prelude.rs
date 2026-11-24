@@ -50,6 +50,8 @@ pub use crate::auth::{
 };
 #[cfg(feature = "auth")]
 pub use crate::controller::extractor::auth;
+#[cfg(feature = "auth")]
+pub use crate::controller::extractor::webhook::{SignedWebhook, WebhookSource};
 pub use crate::controller::extractor::{
     shared_store::SharedStore,
     validate::{JsonValidate, JsonValidateWithMessage},
