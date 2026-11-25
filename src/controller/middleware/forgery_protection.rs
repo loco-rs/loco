@@ -15,7 +15,14 @@
 //!   `csrf_field()`, `csrf_meta_tags()` and `csrf_token()` Tera functions,
 //!   handlers from the [`CsrfToken`] extractor. Needs the `auth_session`
 //!   feature: the token lives in a signed cookie keyed off
-//!   `auth.session.secret`.
+//!   `auth.session.secret`, named `__Host-loco_csrf` when cookies are
+//!   `Secure` so a sibling subdomain cannot set it. Token mode runs the
+//!   `header` check first, like Rails, so a cross-site request is refused
+//!   even when it carries a token.
+//!
+//! The `Origin`/`Host` comparison needs the `Host` header the browser sent:
+//! a reverse proxy must pass it through (or list the public origin in
+//! `trusted_origins`).
 //!
 //! Paths under an `exempt` prefix (webhooks, a bearer-token API) are never
 //! checked.
@@ -75,8 +82,9 @@ pub struct ForgeryProtection {
     /// Path prefixes that are never checked, e.g. `/api/webhooks/`.
     #[serde(default)]
     pub exempt: Vec<String>,
-    /// Other origins allowed to send unsafe requests in `header` mode, as
-    /// `scheme://host[:port]`, e.g. `https://admin.example.com`.
+    /// Other origins allowed to send unsafe requests, as
+    /// `scheme://host[:port]`, e.g. `https://admin.example.com`. Applies in
+    /// both modes.
     #[serde(default)]
     pub trusted_origins: Vec<String>,
     /// Form field that carries the token (`token` mode).
@@ -85,7 +93,8 @@ pub struct ForgeryProtection {
     /// Request header that carries the token (`token` mode).
     #[serde(default = "default_header")]
     pub header: String,
-    /// Cookie that holds the token (`token` mode).
+    /// Cookie that holds the token (`token` mode). Gets a `__Host-` prefix
+    /// when cookies are `Secure`.
     #[serde(default = "default_cookie")]
     pub cookie: String,
 }
@@ -128,28 +137,44 @@ pub fn is_unsafe(method: &Method) -> bool {
     )
 }
 
+/// `scheme://host[:port]` as a comparable origin: host lowercased, a default
+/// port (`:443`, `:80`) the same as none. `None` for `null` or junk.
+fn origin_of(text: &str) -> Option<url::Origin> {
+    let origin = url::Url::parse(text.trim()).ok()?.origin();
+    origin.is_tuple().then_some(origin)
+}
+
 /// Whether `headers` say a browser sent the request from another site.
 ///
 /// `Sec-Fetch-Site: same-origin` and `none` (typed in the address bar, a
-/// bookmark) pass. Without `Sec-Fetch-Site`, `Origin` must match `Host`.
-/// Without either header the request is not from a browser page and passes.
-/// An `Origin` listed in `trusted` always passes.
+/// bookmark) pass; `same-site` (a sibling subdomain) does not. Without
+/// `Sec-Fetch-Site`, `Origin` must match `Host` (host case and a default
+/// port are ignored; the scheme is taken from `Origin`, since the server
+/// cannot tell it behind a proxy). Without either header the request is not
+/// from a browser page and passes. An `Origin` listed in `trusted` always
+/// passes.
 #[must_use]
 pub fn is_cross_site(headers: &HeaderMap, trusted: &[String]) -> bool {
     let text = |name: &str| headers.get(name).and_then(|v| v.to_str().ok());
-    let origin = text(header::ORIGIN.as_str());
-    if origin.is_some_and(|o| trusted.iter().any(|t| t.trim_end_matches('/') == o)) {
+    let sent = text(header::ORIGIN.as_str());
+    let origin = sent.and_then(origin_of);
+    if origin
+        .as_ref()
+        .is_some_and(|o| trusted.iter().any(|t| origin_of(t).as_ref() == Some(o)))
+    {
         return false;
     }
     if let Some(site) = text("sec-fetch-site") {
         return !matches!(site, "same-origin" | "none");
     }
-    origin.is_some_and(|origin| {
-        let host = origin
-            .strip_prefix("https://")
-            .or_else(|| origin.strip_prefix("http://"));
-        host.is_none() || host != text(header::HOST.as_str())
-    })
+    if sent.is_none() {
+        return false;
+    }
+    let Some(url::Origin::Tuple(scheme, ..)) = &origin else {
+        return true;
+    };
+    let host = text(header::HOST.as_str()).and_then(|h| origin_of(&format!("{scheme}://{h}")));
+    host != origin
 }
 
 fn refuse(error: &str, description: &str) -> Response {
@@ -232,7 +257,9 @@ impl MiddlewareLayer for Middleware {
     }
 }
 
-async fn check_header(config: &ForgeryProtection, req: Request, next: Next) -> Response {
+/// The `header` mode check: a refusal for an unsafe, non-exempt request
+/// sent from another site.
+fn refuse_cross_site(config: &ForgeryProtection, req: &Request) -> Option<Response> {
     if is_unsafe(req.method())
         && !config.is_exempt(req.uri().path())
         && is_cross_site(req.headers(), &config.trusted_origins)
@@ -242,10 +269,17 @@ async fn check_header(config: &ForgeryProtection, req: Request, next: Next) -> R
             path = req.uri().path(),
             "forgery_protection: refused a cross-site request"
         );
-        return refuse(
+        return Some(refuse(
             "cross_site_request",
             "this request was sent from another site",
-        );
+        ));
+    }
+    None
+}
+
+async fn check_header(config: &ForgeryProtection, req: Request, next: Next) -> Response {
+    if let Some(refused) = refuse_cross_site(config, &req) {
+        return refused;
     }
     next.run(req).await
 }
@@ -260,21 +294,24 @@ mod token {
         Arc,
     };
 
+    use std::convert::Infallible;
+
     use axum::{
         body::{Body, Bytes},
-        extract::{FromRequest, FromRequestParts, Request},
-        http::{header, request::Parts},
+        extract::{DefaultBodyLimit, FromRequest, FromRequestParts, Multipart, Request},
+        http::{header, request::Parts, StatusCode},
         middleware::Next,
         response::{IntoResponse, Response},
     };
     use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
     use rand::RngCore;
+    use tower::{Layer, ServiceExt};
 
-    use super::{is_unsafe, refuse, ForgeryProtection};
+    use super::{is_unsafe, refuse, refuse_cross_site, ForgeryProtection};
     use crate::{
         app::AppContext,
         auth::cookies::{self, CookieOptions, Key, SignedCookies},
-        controller::middleware::limit_payload::DefaultBodyLimitKind,
+        controller::{middleware::limit_payload::DefaultBodyLimitKind, ErrorDetail},
         Error, Result,
     };
 
@@ -285,6 +322,8 @@ mod token {
         config: ForgeryProtection,
         key: Key,
         options: CookieOptions,
+        /// `config.cookie`, with `__Host-` in front when cookies are `Secure`.
+        cookie: String,
         body_limit: usize,
     }
 
@@ -302,10 +341,19 @@ mod token {
                 DefaultBodyLimitKind::Disable => usize::MAX,
                 DefaultBodyLimitKind::Limit(limit) => limit,
             };
+            let options = CookieOptions::from_config(&ctx.config);
+            // `__Host-` cookies must be `Secure`, `Path=/` and have no
+            // `Domain`, so a sibling subdomain cannot plant one.
+            let cookie = if options.secure && !config.cookie.starts_with("__Host-") {
+                format!("__Host-{}", config.cookie)
+            } else {
+                config.cookie.clone()
+            };
             Ok(Self {
                 config: config.clone(),
                 key: cookies::key(ctx)?,
-                options: CookieOptions::from_config(&ctx.config),
+                options,
+                cookie,
                 body_limit,
             })
         }
@@ -443,20 +491,28 @@ mod token {
             return Ok((None, req));
         }
 
+        // The body is read here, before any per-route `DefaultBodyLimit`, so
+        // the app-wide `limit_payload` caps it. Larger uploads send the token
+        // in the header instead (or are exempt).
         let (parts, body) = req.into_parts();
         let bytes = axum::body::to_bytes(body, settings.body_limit)
             .await
-            .map_err(|_| {
-                Box::new(
-                    Error::CustomError(
-                        axum::http::StatusCode::PAYLOAD_TOO_LARGE,
-                        crate::controller::ErrorDetail::new(
-                            "payload_too_large",
-                            "request body is too large",
-                        ),
+            .map_err(|err| {
+                let too_large = err.into_inner().is::<http_body_util::LengthLimitError>();
+                let (status, code, text) = if too_large {
+                    (
+                        StatusCode::PAYLOAD_TOO_LARGE,
+                        "payload_too_large",
+                        "request body is too large",
                     )
-                    .into_response(),
-                )
+                } else {
+                    (
+                        StatusCode::BAD_REQUEST,
+                        "bad_request",
+                        "could not read the request body",
+                    )
+                };
+                Box::new(Error::CustomError(status, ErrorDetail::new(code, text)).into_response())
             })?;
         let field = settings.config.field.as_str();
         let found = if is_form {
@@ -475,9 +531,22 @@ mod token {
             req.headers_mut()
                 .insert(header::CONTENT_TYPE, ctype.clone());
         }
-        let mut multipart = axum::extract::Multipart::from_request(req, &())
+        // The body is already read within `body_limit`. Without this,
+        // `Multipart` would apply axum's own 2 MiB default to the copy.
+        let field = field.to_string();
+        DefaultBodyLimit::disable()
+            .layer(tower::service_fn(move |req: Request| {
+                let field = field.clone();
+                async move { Ok::<_, Infallible>(find_part(req, &field).await) }
+            }))
+            .oneshot(req)
             .await
-            .ok()?;
+            .ok()
+            .flatten()
+    }
+
+    async fn find_part(req: Request, field: &str) -> Option<String> {
+        let mut multipart = Multipart::from_request(req, &()).await.ok()?;
         while let Ok(Some(part)) = multipart.next_field().await {
             if part.name() == Some(field) {
                 return part.text().await.ok();
@@ -487,13 +556,16 @@ mod token {
     }
 
     pub async fn check(settings: &Settings, req: Request, next: Next) -> Response {
+        if let Some(refused) = refuse_cross_site(&settings.config, &req) {
+            return refused;
+        }
         let jar = SignedCookies::from_headers(
             req.headers(),
             settings.key.clone(),
             settings.options.clone(),
         );
         let existing = jar
-            .get(&settings.config.cookie)
+            .get(&settings.cookie)
             .and_then(|c| decode_raw(c.value()));
         let raw = existing.unwrap_or_else(|| {
             let mut raw = [0u8; TOKEN_LEN];
@@ -529,7 +601,7 @@ mod token {
         if existing.is_none() && token.0.used.load(Ordering::Relaxed) {
             let cookie = settings
                 .options
-                .cookie(settings.config.cookie.clone(), URL_SAFE_NO_PAD.encode(raw));
+                .cookie(settings.cookie.clone(), URL_SAFE_NO_PAD.encode(raw));
             return (jar.add(cookie), res).into_response();
         }
         res
@@ -652,6 +724,20 @@ mod tests {
             ("host", "app.test")
         ]));
         assert!(cross(&[("origin", "null"), ("host", "app.test")]));
+        // Host case and a default port do not matter; a different port does.
+        assert!(!cross(&[
+            ("origin", "https://App.Test"),
+            ("host", "app.test:443")
+        ]));
+        assert!(!cross(&[
+            ("origin", "http://app.test:80"),
+            ("host", "APP.test")
+        ]));
+        assert!(cross(&[
+            ("origin", "https://app.test:8443"),
+            ("host", "app.test")
+        ]));
+        assert!(cross(&[("origin", "https://app.test")]));
     }
 
     #[test]
@@ -662,6 +748,10 @@ mod tests {
                 ("sec-fetch-site", "same-site"),
                 ("origin", "https://admin.test")
             ]),
+            &trusted
+        ));
+        assert!(!is_cross_site(
+            &headers(&[("origin", "https://ADMIN.test:443"), ("host", "app.test")]),
             &trusted
         ));
         assert!(is_cross_site(

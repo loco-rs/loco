@@ -231,7 +231,9 @@ sha2 = { version = "0.10", optional = true }
 base64 = { version = "0.22", optional = true }
 validator = { version = "0.20.0", features = ["derive"] }
 futures-util = "0.3"
-tower = { workspace = true }
+# `util` is already on through axum; named here for `ServiceExt::oneshot`.
+tower = { workspace = true, features = ["util"] }
+http-body-util = "0.1"
 bytes = "1.11"
 axum-client-ip = { version = "1.3", features = ["forwarded-header"] }
 semver = { version = "1", features = ["serde"] }

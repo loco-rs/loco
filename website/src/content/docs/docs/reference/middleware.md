@@ -186,8 +186,8 @@ Table order = coding/config order (`default_middleware_stack`, `mod.rs:80-169`).
 - **Default:** **disabled**. The server-rendered starter turns it on.
 - **Purpose:** refuses cross-site `POST`/`PUT`/`PATCH`/`DELETE` with `403`. Rails' `protect_from_forgery`. `GET`, `HEAD`, `OPTIONS` and `TRACE` are never checked.
 - **Modes:**
-  - `header` (default): a request is cross-site when `Sec-Fetch-Site` is anything but `same-origin` or `none`; without that header, when `Origin` does not match `Host`. A request with neither header (curl, a script, a server) passes. Error body: `cross_site_request`.
-  - `token`: every unsafe request must send the authenticity token in the `X-CSRF-Token` header or the `authenticity_token` form field (urlencoded or multipart). The raw token lives in a signed cookie keyed off the session secret; each render of it is masked, so it differs on every page. Error body: `invalid_authenticity_token`. Needs the `auth_session` feature.
+  - `header` (default): a request is cross-site when `Sec-Fetch-Site` is anything but `same-origin` or `none`; without that header, when `Origin` does not match `Host` (host case and default ports ignored; a proxy must pass `Host` through). A request with neither header (curl, a script, a server) passes. Error body: `cross_site_request`.
+  - `token`: runs the `header` check, then every unsafe request must send the authenticity token in the `X-CSRF-Token` header or the `authenticity_token` form field (urlencoded or multipart). The raw token lives in a signed cookie keyed off the session secret, named `__Host-loco_csrf` when cookies are `Secure`; each render of it is masked, so it differs on every page. The form field is read from a body up to the app-wide `limit_payload` (over it: `413`); larger uploads send the header or are exempt. Error body: `invalid_authenticity_token`. Needs the `auth_session` feature.
 - **Knobs:**
 
 | Name | Type | Default |
@@ -195,10 +195,10 @@ Table order = coding/config order (`default_middleware_stack`, `mod.rs:80-169`).
 | `enable` | `bool` | `false` |
 | `mode` | `header` \| `token` | `header` |
 | `exempt` | `Vec<String>` | `[]` — path prefixes never checked (webhooks, a bearer-token API) |
-| `trusted_origins` | `Vec<String>` | `[]` — extra origins allowed to post, e.g. `https://admin.example.com` |
+| `trusted_origins` | `Vec<String>` | `[]` — extra origins allowed to post, e.g. `https://admin.example.com` (both modes) |
 | `field` | `String` | `"authenticity_token"` (token mode) |
 | `header` | `String` | `"x-csrf-token"` (token mode) |
-| `cookie` | `String` | `"loco_csrf"` (token mode) |
+| `cookie` | `String` | `"loco_csrf"` (token mode; `__Host-` prefixed when `Secure`) |
 
 In token mode, templates get the token from three Tera functions:
 `{{ csrf_field() }}` (a hidden input), `{{ csrf_meta_tags() }}` (the

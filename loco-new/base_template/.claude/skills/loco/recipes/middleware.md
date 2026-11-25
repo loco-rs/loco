@@ -101,7 +101,9 @@ forgery_protection:
   `{{ csrf_meta_tags() }}` in the layout and send `X-CSRF-Token` from JS.
   `{{ csrf_token() }}` is the bare value. Handlers take the `CsrfToken`
   extractor (prelude) and call `.masked()`. In production, boot fails unless
-  `auth.session.secret` is set.
+  `auth.session.secret` is set. Token mode runs the `header` check too.
+- Form bodies are read up to the app-wide `limit_payload`, before any per-route
+  limit. A bigger upload sends the token in `X-CSRF-Token` or is `exempt`.
 - A webhook or bearer-token API that gets `403 cross_site_request` belongs in
   `exempt`, not behind `enable: false`.
 
