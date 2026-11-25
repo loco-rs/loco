@@ -162,7 +162,7 @@ impl SessionStoreKind {
 ///     # (`{base_url}/auth/{provider}/callback`). Default: `server.host`
 ///     # plus `server.port`.
 ///     base_url: https://myapp.example.com
-///     after_sign_in_path: /          # used when the flow carried no return_to
+///     after_sign_in_path: /          # used when the link carried no return_to
 ///     after_sign_out_path: /
 ///     failure_path: /login           # optional; see `OAuthHandler::on_failure`
 ///     origin_param: return_to        # `/auth/github?return_to=/path`; default shown
@@ -187,8 +187,9 @@ impl SessionStoreKind {
 pub struct OAuthConfig {
     /// Public base URL used for the `redirect_uri` sent to providers.
     pub base_url: Option<String>,
-    /// Where to land after sign-in when the flow carried no `return_to` and
-    /// the handler named no destination. Default `/`.
+    /// Where to land after sign-in when the sign-in link carried no
+    /// `return_to` and the handler named no destination. Wins over the
+    /// `Referer`. Default: the same-site `Referer`, then `/`.
     pub after_sign_in_path: Option<String>,
     /// Where the sign-out route redirects. Default `/`.
     pub after_sign_out_path: Option<String>,
@@ -198,8 +199,8 @@ pub struct OAuthConfig {
     pub failure_path: Option<String>,
     /// The query parameter of `/auth/{provider}` that names where to land
     /// after sign-in (`OmniAuth`'s `origin_param`). Default:
-    /// `auth.session.return_to_param`, then `return_to`. Without it, a
-    /// same-site `Referer` is used.
+    /// `auth.session.return_to_param`, then `return_to`. Must not be
+    /// `remember`, the remember-me flag.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub origin_param: Option<String>,
     /// Name of the encrypted cookie that holds the flow state while the user

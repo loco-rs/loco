@@ -152,11 +152,11 @@ AppRoutes::with_default_routes()
 | `GET /auth/{provider}/callback` | Checks the state, exchanges the code (with the PKCE verifier), fetches the profile, calls `on_sign_in`, starts a fresh session, redirects. |
 | `GET` or `POST /auth/sign_out` | Clears the session, redirects to `after_sign_out_path`. |
 
-After sign-in the user lands on the first of these that is set: the flow's `return_to`, then `SignIn::redirect_to`, then `auth.oauth.after_sign_in_path`, then `/`.
+After sign-in the user lands on the first of these that is set: the sign-in link's `return_to`, then `SignIn::redirect_to`, then `auth.oauth.after_sign_in_path`, then the page the sign-in started from (its `Referer`, see below), then `/`.
 
 `return_to` accepts same-site paths only. `//evil.example`, `/\evil.example`, absolute URLs and anything with control characters are dropped, so a crafted sign-in link cannot bounce users off-site.
 
-The parameter is named by `auth.oauth.origin_param` (OmniAuth's `origin_param`), which defaults to `auth.session.return_to_param`, which defaults to `return_to`. Rename one and the redirect `CurrentUser` makes and the parameter the sign-in route reads stay in step. Without the parameter, the flow falls back to the `Referer`, like OmniAuth does, when it is a page on this site: same host as the request, or the origin of `auth.oauth.base_url`. A `Referer` from another site, or one under `/auth/` or at `sign_in_path` or `failure_path`, is ignored, so a sign-in link on the login page does not send users back to the login page.
+The parameter is named by `auth.oauth.origin_param` (OmniAuth's `origin_param`), which defaults to `auth.session.return_to_param`, which defaults to `return_to`. Rename one and the redirect `CurrentUser` makes and the parameter the sign-in route reads stay in step. Without the parameter, and when neither `SignIn::redirect_to` nor `after_sign_in_path` is set, the flow falls back to the `Referer`, like OmniAuth does, when it is a page on this site: same host as the request, or the origin of `auth.oauth.base_url`. A `Referer` from another site, or one under `/auth/` or at `sign_in_path` or `failure_path` (compared without query string or trailing slash), is ignored, so a sign-in link on the login page does not send users back to the login page. The `/auth/` prefix is fixed: it is where `oauth::routes` mounts. The parameter cannot be called `remember`, which is the remember-me flag; Loco refuses to boot with that name.
 
 The state cookie (`loco_oauth_state_<provider>`, prefix set by `auth.oauth.state_cookie_name`) is encrypted, not just signed: it holds the PKCE verifier and the browser cannot read it.
 
@@ -201,7 +201,7 @@ impl OAuthHandler for OAuth {
             return format::redirect(&format!("/login?error={}", failure.kind.as_str()));
         };
         format::render().view(
-            v,
+            &v.0,
             "auth/failure.html",
             data!({ "message": failure.kind.message(), "retry": failure.retry_path }),
         )

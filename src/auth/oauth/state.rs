@@ -1,5 +1,5 @@
 //! The short-lived state cookie that ties a callback to the browser that
-//! started the flow (CSRF), plus the PKCE verifier and `return_to`.
+//! started the flow (CSRF), plus the PKCE verifier and where to land.
 
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use rand::RngCore;
@@ -18,8 +18,13 @@ pub struct FlowState {
     pub state: String,
     /// PKCE code verifier, when PKCE is on.
     pub verifier: Option<String>,
-    /// Same-site path to land on after sign-in.
+    /// Same-site path the sign-in link asked to land on after sign-in.
     pub return_to: Option<String>,
+    /// The same-site page the sign-in started from (its `Referer`). Used
+    /// only when neither `return_to`, `SignIn::redirect_to` nor
+    /// `auth.oauth.after_sign_in_path` is set.
+    #[serde(default)]
+    pub referer: Option<String>,
     /// The sign-in link asked to be remembered.
     #[serde(default)]
     pub remember: bool,
@@ -33,6 +38,7 @@ impl FlowState {
             state: random_token(),
             verifier: pkce.then(random_token),
             return_to: return_to.and_then(safe_return_to),
+            referer: None,
             remember: false,
         }
     }

@@ -12,8 +12,10 @@
   `session::signed_out` is the default.
 - **`/auth/{provider}` origin.** `auth.oauth.origin_param` (OmniAuth's
   `origin_param`, default `return_to_param`) renames the post-sign-in path
-  parameter. Without it, a same-site `Referer` is used. Both accept relative
-  paths only.
+  parameter. Without it, `SignIn::redirect_to` and `after_sign_in_path` come
+  first, then a same-site `Referer`. Both accept relative paths only. Boot
+  fails when the parameter is `remember` or not a plain name, or when
+  `auth.oauth.state_cookie_name` is not a valid cookie name.
 - **`sign_in` test helper** in `loco_rs::testing::prelude` (Devise's
   `sign_in user`): signs a test server in as a user id on any session store.
 - `auth.oauth.state_cookie_name` sets the state cookie prefix.
@@ -26,6 +28,12 @@
 - The OAuth state cookie is encrypted (it carries the PKCE verifier), so
   `auth_oauth` now enables `auth_session_encrypted`. A sign-in in flight
   during the upgrade fails once with `invalid_state`; retrying works.
+- **Breaking for struct literals:** `SessionConfig`, `OAuthConfig`,
+  `oauth::StartParams` and `oauth::state::FlowState` have new public fields
+  (`return_to_param`, `navigational_formats`, `origin_param`,
+  `state_cookie_name`, `other`, `referer`). Code that builds them with a
+  struct literal must add them (`..Default::default()` works for the two
+  config structs).
 - Generated apps also get the skill under `.agents/skills/loco/`, alongside `.claude/skills/loco/`, for Zed, Cursor and other Agent Skills clients (#1857, @paoValle).
 
 ## 1.3.1 - 2026-11-05

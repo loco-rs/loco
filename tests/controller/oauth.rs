@@ -149,13 +149,17 @@ impl OAuthHandler for Handler {
             return Err(Error::Unauthorized("not on the allowlist".to_string()));
         }
         // The session id carries what the test wants to assert on.
-        Ok(SignIn::new(format!(
+        let sign_in = SignIn::new(format!(
             "{}:{}:{}",
             identity.provider,
             identity.uid,
             identity.email.as_deref().unwrap_or("-")
-        ))
-        .redirect_to("/welcome"))
+        ));
+        // `plain` leaves the landing page to the framework.
+        if identity.login.as_deref() == Some("plain") {
+            return Ok(sign_in);
+        }
+        Ok(sign_in.redirect_to("/welcome"))
     }
 
     async fn on_failure(
@@ -555,24 +559,51 @@ async fn the_state_cookie_is_encrypted_and_its_name_configurable() {
     assert!(cleared.value().is_empty(), "the state cookie is cleared");
 }
 
+/// Starts a sign-in from `referer` (with `query`) and returns where it lands.
+async fn land_from(server: &TestServer, query: &str, referer: &str) -> String {
+    let res = server
+        .get(&format!("/auth/github{query}"))
+        .add_header(header::REFERER, referer)
+        .await;
+    let res = server.get(&visit_provider(&location!(res)).await).await;
+    location!(res)
+}
+
 #[tokio::test]
-async fn a_same_site_referer_is_the_fallback_origin() {
-    let App { server, .. } = app(|_| {}).await;
+async fn a_same_site_referer_is_the_last_resort_origin() {
+    let App { server, fake, .. } = app(|_| {}).await;
 
-    let res = server
-        .get("/auth/github")
-        .add_header(header::REFERER, "http://app.test/orgs/acme?tab=2")
-        .await;
-    let res = server.get(&visit_provider(&location!(res)).await).await;
-    assert_eq!(location!(res), "/orgs/acme?tab=2");
+    // `SignIn::redirect_to` wins over the Referer...
+    let from = "http://app.test/orgs/acme?tab=2";
+    assert_eq!(land_from(&server, "", from).await, "/welcome");
+    // ...and an explicit return_to over both.
+    assert_eq!(
+        land_from(&server, "?return_to=/explicit", from).await,
+        "/explicit"
+    );
 
-    // An explicit return_to wins over the Referer.
-    let res = server
-        .get("/auth/github?return_to=/explicit")
-        .add_header(header::REFERER, "http://app.test/orgs/acme")
-        .await;
-    let res = server.get(&visit_provider(&location!(res)).await).await;
-    assert_eq!(location!(res), "/explicit");
+    // With neither redirect_to nor after_sign_in_path, the Referer is used.
+    fake.lock().unwrap().login = "plain".to_string();
+    assert_eq!(land_from(&server, "", from).await, "/orgs/acme?tab=2");
+}
+
+#[tokio::test]
+async fn after_sign_in_path_wins_over_the_referer() {
+    let App { server, fake, .. } =
+        app(|o| o.after_sign_in_path = Some("/dashboard".to_string())).await;
+    fake.lock().unwrap().login = "plain".to_string();
+    let from = "http://app.test/orgs/acme";
+    assert_eq!(land_from(&server, "", from).await, "/dashboard");
+    assert_eq!(
+        land_from(&server, "?return_to=/explicit", from).await,
+        "/explicit"
+    );
+}
+
+#[tokio::test]
+async fn only_same_site_non_sign_in_referers_are_used() {
+    let App { server, fake, .. } = app(|_| {}).await;
+    fake.lock().unwrap().login = "plain".to_string();
 
     // Off-site, other-scheme, other-port and sign-in-page referers are
     // ignored.
@@ -582,14 +613,11 @@ async fn a_same_site_referer_is_the_fallback_origin() {
         "https://app.test/orgs/acme",
         "http://app.test:8080/orgs/acme",
         "http://app.test/login?return_to=%2Fx",
+        "http://app.test/login/",
+        "http://app.test/auth/github",
         "javascript:alert(1)",
     ] {
-        let res = server
-            .get("/auth/github")
-            .add_header(header::REFERER, referer)
-            .await;
-        let res = server.get(&visit_provider(&location!(res)).await).await;
-        assert_eq!(location!(res), "/welcome", "{referer}");
+        assert_eq!(land_from(&server, "", referer).await, "/", "{referer}");
     }
 }
 

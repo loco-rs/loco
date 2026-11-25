@@ -144,7 +144,7 @@ loco_rs::auth::session_store::sign_out_everywhere(&ctx, &pid).await?;
 - `store: database` needs `with-db`; `redis` needs `cache_redis`. Tables are created on first use.
 - Server-side stores need the `auth_session` middleware: keep it if you override `Hooks::middlewares`.
 - Signed out, `CurrentUser` redirects navigational requests to `auth.session.sign_in_path?return_to=<path>` and answers `401` otherwise. Tune it with config, not a custom extractor: `navigational_formats` (default `[html]`; add `turbo_stream` for Hotwire) and `return_to_param`. For anything else override `SessionUser::on_signed_out(ctx, parts)` (Devise's failure app); `session::signed_out(parts, ctx)` is the default to fall back to.
-- `/auth/{provider}?return_to=/path` picks where the user lands (same-site paths only; `auth.oauth.origin_param` renames it). Without it a same-site `Referer` is used. Never redirect to a `return_to` yourself without `oauth::state::safe_return_to`.
+- `/auth/{provider}?return_to=/path` picks where the user lands (same-site paths only; `auth.oauth.origin_param` renames it). Without it, `SignIn::redirect_to`, then `auth.oauth.after_sign_in_path`, then a same-site `Referer` decide. Never redirect to a `return_to` yourself without `oauth::state::safe_return_to`.
 - `OAuthHandler::on_failure(ctx, parts, failure)` gets the callback request's `Parts` (headers, view engine). The state cookie is encrypted (`auth_oauth` enables `auth_session_encrypted`).
 - In tests, `sign_in(&mut request, &ctx, pid)` from `loco_rs::testing::prelude` signs in on any store; see `recipes/testing.md`.
 

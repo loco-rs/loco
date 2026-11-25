@@ -128,10 +128,10 @@ auth:
 | `auth.session.remember_cookie_name` | `Option<String>` | optional, default `loco_remember` | Must differ from `cookie_name` |
 | `auth.session.redis_uri` | `Option<String>` | optional | Redis for `store: redis`; default is the `cache` Redis URI |
 | `auth.oauth.base_url` | `Option<String>` | optional | Public origin for callback URLs; default `server.full_url()` |
-| `auth.oauth.after_sign_in_path` | `Option<String>` | optional, default `/` | Used when neither `return_to` nor `SignIn::redirect_to` is set |
+| `auth.oauth.after_sign_in_path` | `Option<String>` | optional, default `/` | Used when neither `return_to` nor `SignIn::redirect_to` is set. Wins over the `Referer` |
 | `auth.oauth.after_sign_out_path` | `Option<String>` | optional, default `/` | |
 | `auth.oauth.failure_path` | `Option<String>` | optional | Default failure handler redirects here with `?error=&provider=`; without it, a minimal `401` page |
-| `auth.oauth.origin_param` | `Option<String>` | optional, default `auth.session.return_to_param` | Query parameter of `/auth/{provider}` naming where to land after sign-in; same-site paths only. Without it, a same-site `Referer` is used |
+| `auth.oauth.origin_param` | `Option<String>` | optional, default `auth.session.return_to_param` | Query parameter of `/auth/{provider}` naming where to land after sign-in; same-site paths only; not `remember`. Without it, a same-site `Referer` is used when nothing else names a landing page |
 | `auth.oauth.state_cookie_name` | `Option<String>` | optional, default `loco_oauth_state` | Prefix of the encrypted state cookie; `_<provider>` is appended |
 | `auth.oauth.providers.<name>` | `OAuthProviderConfig` | at least one | `strategy` (`github`/`google`/`generic`; inferred from the name for `github`/`google`), `client_id`, `client_secret`, `scopes`, `base_url`, `api_url`, `authorize_url`, `token_url`, `userinfo_url`, `emails_url`, `redirect_uri`, `authorize_params` (map), `pkce` (default `true`), `token_auth` (`post`/`basic`) |
 
