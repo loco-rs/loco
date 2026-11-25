@@ -10,6 +10,7 @@ const PAGE: &str = "{{ post.created_at | time_ago_in_words }} ago
 {{ rank | ordinalize }}
 {{ views | number_with_delimiter }}
 {{ views | number_to_human }}
+{{ views | number_to_human(precision=0) }}
 {{ started | distance_of_time_in_words(to=finished) }}";
 
 async fn page() -> Result<Response> {
@@ -42,7 +43,7 @@ async fn view_helper_filters_render_in_a_response() {
     assert_eq!(res.status(), axum::http::StatusCode::OK);
     assert_eq!(
         res.text().await.unwrap(),
-        "3 days ago\n2 comments\nAna, Bo, and Cy\n22nd\n1,234,567\n1.23 Million\nabout 2 hours"
+        "3 days ago\n2 comments\nAna, Bo, and Cy\n22nd\n1,234,567\n1.23 Million\n1 Million\nabout 2 hours"
     );
 
     handle.abort();

@@ -105,9 +105,9 @@ pub fn distance_of_time_in_words(
         1440..=2519 => "1 day".to_string(),
         // 42 hours up to 30 days.
         2520..=43_199 => format!("{} days", (minutes + MINUTES_IN_DAY / 2) / MINUTES_IN_DAY),
-        // 30 days up to 60 days.
+        // 30 days up to 60 days, rounded half up as Rails rounds it.
         43_200..=86_399 => counted(
-            minutes / MINUTES_IN_MONTH,
+            (minutes + MINUTES_IN_MONTH / 2) / MINUTES_IN_MONTH,
             "about 1 month",
             "about %{count} months",
         ),
@@ -353,24 +353,58 @@ const HUMAN_UNITS: [(i32, &str); 6] = [
     (15, "Quadrillion"),
 ];
 
+/// The most digits [`number_to_human_with`] prints. 15 significant digits is
+/// all an `f64` carries through decimal and back, so asking for more would
+/// only print rounding noise (or overflow); larger precisions are treated as
+/// this.
+const MAX_PRECISION: u32 = 15;
+
+/// `number` rounded half away from zero to `decimals` places (negative
+/// `decimals` round to tens, hundreds, ...). Where the scaling would overflow,
+/// the number already has no digits to drop and is returned as is.
+fn round_to(number: f64, decimals: i32) -> f64 {
+    // Scale by a power of ten at least 1, which is exact up to 10^22, so the
+    // result is the nearest `f64` to the rounded decimal.
+    let factor = 10f64.powi(decimals.abs());
+    let rounded = if decimals >= 0 {
+        (number * factor).round() / factor
+    } else {
+        (number / factor).round() * factor
+    };
+    if factor.is_finite() && rounded.is_finite() {
+        rounded
+    } else {
+        number
+    }
+}
+
 /// Rounds to `precision` significant digits (or decimal places when
 /// `significant` is false), returning the value and the decimals to print.
+///
+/// As in Rails, `precision: 0` with `significant: true` rounds to a whole
+/// number, since zero significant digits has no meaning.
 #[allow(clippy::cast_possible_truncation)]
 fn round_number(number: f64, precision: u32, significant: bool) -> (f64, usize) {
-    let precision = i32::try_from(precision).unwrap_or(i32::MAX);
-    if !significant {
-        let factor = 10f64.powi(precision);
-        return (
-            (number * factor).round() / factor,
-            usize::try_from(precision).unwrap_or(0),
-        );
+    // Fits in an i32: precision is at most MAX_PRECISION.
+    let precision = precision.min(MAX_PRECISION).cast_signed();
+    if !significant || precision == 0 {
+        // Keep the whole and decimal digits together within MAX_PRECISION.
+        let whole_digits = if number == 0.0 {
+            1
+        } else {
+            (number.abs().log10().floor() as i32 + 1).max(1)
+        };
+        let decimals = precision.min((MAX_PRECISION.cast_signed() - whole_digits).max(0));
+        return (round_to(number, decimals), decimals.unsigned_abs() as usize);
     }
     if number == 0.0 {
-        return (0.0, usize::try_from(precision - 1).unwrap_or(0));
+        return (0.0, (precision - 1).unsigned_abs() as usize);
     }
     let digits = number.abs().log10().floor() as i32 + 1;
-    let factor = 10f64.powi(precision - digits);
-    let rounded = (number * factor).round() / factor;
+    let rounded = round_to(number, precision - digits);
+    if rounded == 0.0 {
+        return (0.0, 0);
+    }
     // Rounding can add a digit (999.6 -> 1000): print one decimal fewer.
     let rounded_digits = rounded.abs().log10().floor() as i32 + 1;
     (
@@ -382,7 +416,14 @@ fn round_number(number: f64, precision: u32, significant: bool) -> (f64, usize) 
 /// Formats with `decimals` places, then strips trailing zeros (Rails'
 /// `strip_insignificant_zeros: true`).
 fn format_stripped(number: f64, decimals: usize) -> String {
-    let text = format!("{number:.decimals$}");
+    // With no decimals, `Display` gives the shortest digits that read back as
+    // the same `f64` (`3.4e23` is `340000000000000000000000`), where `{:.0}`
+    // would print the binary value's every digit.
+    let text = if decimals == 0 {
+        number.to_string()
+    } else {
+        format!("{number:.decimals$}")
+    };
     let text = if text.contains('.') {
         text.trim_end_matches('0').trim_end_matches('.').to_string()
     } else {
@@ -409,6 +450,10 @@ pub fn number_to_human(number: f64) -> String {
 /// [`number_to_human`] with Rails' `precision:` and `significant:` options.
 /// With `significant: false`, `precision` counts decimal places instead of
 /// significant digits.
+///
+/// `precision: 0` rounds to a whole number either way,
+/// as in Rails, and precisions above 17 (all an `f64` holds) are treated as
+/// 17.
 ///
 /// ```rust
 /// use loco_rs::controller::views::helpers::number_to_human_with;
@@ -480,7 +525,9 @@ mod tests {
     #[case(2 * 86_400 + 12 * 3600, "3 days")]
     #[case(29 * 86_400 + 23 * 3600 + 59 * 60 + 29, "30 days")]
     #[case(29 * 86_400 + 23 * 3600 + 59 * 60 + 30, "about 1 month")]
-    #[case(59 * 86_400 + 23 * 3600 + 59 * 60 + 29, "about 1 month")]
+    #[case(44 * 86_400 + 23 * 3600 + 59 * 60 + 29, "about 1 month")]
+    #[case(44 * 86_400 + 23 * 3600 + 59 * 60 + 30, "about 2 months")]
+    #[case(59 * 86_400 + 23 * 3600 + 59 * 60 + 29, "about 2 months")]
     #[case(59 * 86_400 + 23 * 3600 + 59 * 60 + 30, "2 months")]
     #[case(364 * 86_400, "12 months")]
     #[case(365 * 86_400 + 60, "about 1 year")]
@@ -659,5 +706,51 @@ mod tests {
         assert_eq!(number_to_human_with(1_234_567.0, 1, false), "1.2 Million");
         assert_eq!(number_to_human_with(1_234_567.0, 0, false), "1 Million");
         assert_eq!(number_to_human_with(12.346, 2, false), "12.35");
+    }
+
+    // `precision: 0` used to round to 0 and panic formatting ~2^31 decimals.
+    #[rstest]
+    #[case(1_234_567.0, true, "1 Million")]
+    #[case(1_234_567.0, false, "1 Million")]
+    #[case(0.4, true, "0")]
+    #[case(0.0, true, "0")]
+    #[case(-0.4, true, "0")]
+    #[case(123.0, true, "123")]
+    #[case(1500.0, true, "2 Thousand")]
+    fn number_to_human_precision_zero(
+        #[case] n: f64,
+        #[case] significant: bool,
+        #[case] expected: &str,
+    ) {
+        assert_eq!(number_to_human_with(n, 0, significant), expected);
+    }
+
+    // Huge precisions used to panic (over 65535 decimals) or print "NaN".
+    #[rstest]
+    #[case(1_234_567.0, true, "1.234567 Million")]
+    #[case(1_234_567.0, false, "1.234567 Million")]
+    #[case(0.5, true, "0.5")]
+    #[case(0.1, false, "0.1")]
+    #[case(1e-300, false, "0")]
+    fn number_to_human_large_precision(
+        #[case] n: f64,
+        #[case] significant: bool,
+        #[case] expected: &str,
+    ) {
+        for precision in [15, 17, 309, 400, 65_535, 65_536, u32::MAX] {
+            assert_eq!(number_to_human_with(n, precision, significant), expected);
+        }
+    }
+
+    // The extremes of `f64` print digits that read back as the same number.
+    #[test]
+    fn number_to_human_extremes() {
+        for precision in [3, 15, 400, u32::MAX] {
+            let tiny = number_to_human_with(1e-300, precision, true);
+            assert_eq!(tiny.parse::<f64>().ok(), Some(1e-300), "{tiny}");
+            let huge = number_to_human_with(f64::MAX, precision, true);
+            let digits = huge.strip_suffix(" Quadrillion").expect(&huge);
+            assert!(digits.bytes().all(|b| b.is_ascii_digit()), "{huge}");
+        }
     }
 }

@@ -19,9 +19,14 @@ fn apply_with_delimiter(value: &Value, delimiter: &str, separator: &str) -> Valu
 }
 
 /// Formatting behind the `number_to_human` filter.
+#[allow(clippy::cast_precision_loss)]
 fn apply_to_human(value: &Value, precision: u32, significant: bool) -> Value {
+    // `as_f64` refuses integers above 2^53; losing their low digits is fine,
+    // since the output keeps a few significant digits.
     let number = value
         .as_f64()
+        .or_else(|| value.as_i128().map(|n| n as f64))
+        .or_else(|| value.as_u128().map(|n| n as f64))
         .or_else(|| value.as_str().and_then(|s| s.trim().parse::<f64>().ok()));
     number.map_or_else(
         || value.clone(),
@@ -184,6 +189,11 @@ mod tests {
     #[case(Value::from(1_234_567), 3, "1.23 Million")]
     #[case(Value::from(1_234_567), 2, "1.2 Million")]
     #[case(Value::from("1500000"), 3, "1.5 Million")]
+    // Integers above 2^53, which `Value::as_f64` refuses.
+    #[case(Value::from(9_007_199_254_740_993_u64), 3, "9.01 Quadrillion")]
+    #[case(Value::from(-9_007_199_254_740_993_i64), 3, "-9.01 Quadrillion")]
+    #[case(Value::from(u128::MAX), 3, "340000000000000000000000 Quadrillion")]
+    #[case(Value::from(1_234_567), 0, "1 Million")]
     #[case(Value::from("invalid"), 3, "invalid")]
     fn test_number_to_human(#[case] input: Value, #[case] precision: u32, #[case] expected: &str) {
         assert_eq!(

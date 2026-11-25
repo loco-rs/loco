@@ -4,7 +4,7 @@
 
 ### Added
 
-- View helpers with Rails wording: `time_ago_in_words`, `distance_of_time_in_words`, `pluralize`, `to_sentence`, `ordinalize`, `number_with_delimiter` and `number_to_human`. Each is a Tera filter and a Rust function in `loco_rs::controller::views::helpers`. The time helpers take RFC 3339 strings, dates or Unix seconds, and `now=` for tests. `pluralize` replaces Tera's built-in filter but keeps its behaviour when no `word=` is given. `number_with_delimiter` gained `delimiter=` and `separator=`.
+- View helpers with Rails wording: `time_ago_in_words`, `distance_of_time_in_words`, `pluralize`, `to_sentence`, `ordinalize`, `number_with_delimiter` and `number_to_human`. Each is a Tera filter and a Rust function in `loco_rs::controller::views::helpers`. The time helpers take RFC 3339 strings, dates or Unix seconds, and `now=` for tests. `pluralize` replaces Tera's built-in filter but keeps its behaviour when no `word=` is given. `number_with_delimiter` gained `delimiter=` and `separator=`. (#1913)
 
 ### Changed
 
