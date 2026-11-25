@@ -171,6 +171,7 @@ since they restate the trait's own API.
 - `fn` **origin_param**`(ctx: &AppContext) -> &str` — The query parameter `/auth/{provider}` reads the post-sign-in path from
 - `fn` **routes**`() -> Routes` — The routes for handler `H`, under `/auth`. Add your own with `.add(..)` or
 - `fn` **state_cookie_name**`(ctx: &AppContext, provider: &str) -> String` — The state cookie for `provider`: `auth.oauth.state_cookie_name` (default
+- `fn` **validate**`(config: &Config) -> Result<()>` — Rejects an `auth.oauth` configuration that cannot work. Checked at boot
 
 ### `FailureKind`
 
@@ -194,7 +195,7 @@ since they restate the trait's own API.
 ### `SignIn`
 
 - `fn` **new**`(user_id: impl Trait) -> Self` — Sign in the user with session id `user_id`
-- `fn` **redirect_to**`(self: Self, path: impl Trait) -> Self` — Land on `path` unless the flow carried a `return_to`
+- `fn` **redirect_to**`(self: Self, path: impl Trait) -> Self` — Land on `path` unless the sign-in link carried a `return_to`. Wins
 - `fn` **remember**`(self: Self) -> Self` — Remember this sign-in, whatever the sign-in link asked for
 ## `auth::oauth::provider`
 
@@ -213,7 +214,7 @@ since they restate the trait's own API.
 ## `auth::oauth::state`
 
 - `const` **DEFAULT_STATE_COOKIE** — The default state cookie prefix; `auth.oauth.state_cookie_name` replaces
-- `struct` **FlowState**` { state: String, verifier: Option<String>, return_to: Option<String>, remember: bool }` — What the start of the flow leaves for the callback
+- `struct` **FlowState**` { state: String, verifier: Option<String>, return_to: Option<String>, referer: Option<String>, remember: bool }` — What the start of the flow leaves for the callback
 - `const` **STATE_TTL_SECONDS** — How long a user has to finish at the provider: 10 minutes
 - `fn` **cookie_name**`(provider: &str) -> String` — The default state cookie for `provider`. One per provider, so two tabs
 - `fn` **pkce_challenge**`(verifier: &str) -> String` — `BASE64URL(SHA256(verifier))` (RFC 7636 S256)
