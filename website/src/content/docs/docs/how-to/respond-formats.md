@@ -79,7 +79,7 @@ async fn htmx_redirect() -> Result<Response> {
 
 ## 3. Content negotiation: respond differently per client
 
-Use the `RespondTo` extractor (or its wrapper `Format(pub RespondTo)`) to detect the request's format from `Content-Type` (checked first) or, failing that, `Accept`:
+Use the `RespondTo` extractor (or its wrapper `Format(pub RespondTo)`) to detect the format the client wants: the most preferred type in `Accept` (by `q`; `*/*` does not count) or, when `Accept` names none, the request's `Content-Type`:
 
 ```rust
 use loco_rs::prelude::*;
