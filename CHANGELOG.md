@@ -4,6 +4,7 @@
 
 ### Changed
 
+- **`RespondTo` / `Format` follow `Accept` before `Content-Type`.** `Content-Type` describes the body the client sent, `Accept` the response it wants; a form posted from a page (`application/x-www-form-urlencoded`, `Accept: text/html,...`) used to come out as `Other("application/x-www-form-urlencoded")` and now is `Html`. `Accept` is read by `q`, `*/*` and `q=0` are skipped; without a specific `Accept` the `Content-Type` decides as before. `RespondTo` also derives `Clone`, `PartialEq` and `Eq` (@jirkamotejl).
 - Generated apps also get the skill under `.agents/skills/loco/`, alongside `.claude/skills/loco/`, for Zed, Cursor and other Agent Skills clients (#1857, @paoValle).
 
 ## 1.3.1 - 2026-11-05
