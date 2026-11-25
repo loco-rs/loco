@@ -144,7 +144,7 @@ pub async fn show(
     let post = Model::find_by_id(&ctx.db, id).await?;
     format::respond_to(&respond_to)
         .html(|| format::render().view(&v, "posts/show.html", data!({"post": &post})))
-        .json(|| format::json(&post))
+        .json(|| format::json(PostResponse::from(&post)))
         .render()
 }
 ```
@@ -181,7 +181,13 @@ The middleware strips `.json` or the prefix, routes the request to the same hand
 | an HTML error page | `{"error":"not_found"}` (or `forbidden`, `unauthorized`, `bad_request`, `error`) with the same status |
 | JSON | unchanged |
 
-Cookies and other headers are kept. A real static file ending in `.json` is still served: when the stripped path is not found, the original path is tried. Plain `Accept: application/json` requests to the normal path are left alone — only `.json` and the prefix opt into the conversion.
+Cookies and other headers are kept, and `304 Not Modified` passes through with its `ETag`. A real static file ending in `.json` is still served: when no route answers the stripped path, a `GET` tries the original path, and that answer is used only if it found something. A JSON `404` from your own handler is returned as it is. Plain `Accept: application/json` requests to the normal path are left alone — only `.json` and the prefix opt into the conversion.
+
+Pick a `prefix` none of your routes use. Requests under it are routed with the prefix removed, so with `prefix: /api` the starter app's own `/api/auth/...` routes would no longer be found. `/api/v1` does not clash with them.
+
+:::caution
+The middleware wraps the whole app. A middleware layered after it in `Hooks::middlewares` sees the path the client sent (`/admin.json`, `/api/v1/admin`), not the route that runs, so a guard there that matches on the path can be stepped around. Guard routes with `Routes::layer` or in the handler instead.
+:::
 
 ## Verify
 

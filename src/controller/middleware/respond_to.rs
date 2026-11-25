@@ -4,7 +4,7 @@
 //! asks for it:
 //!
 //! - a path ending in `.json` (`/posts/1.json` runs `/posts/1`), and
-//! - a path under a configured prefix (`/api/posts/1` runs `/posts/1`).
+//! - a path under a configured prefix (`/api/v1/posts/1` runs `/posts/1`).
 //!
 //! The extension or prefix is removed before routing and the request is
 //! marked as wanting JSON, so the [`Format`](super::format::Format)
@@ -20,18 +20,28 @@
 //! - an HTML page from an action with no JSON branch becomes
 //!   `406 {"error": "not_acceptable"}`.
 //!
-//! Other responses (JSON, files, CSV) pass through unchanged, and headers
-//! such as `Set-Cookie` are kept.
+//! Other responses (JSON, files, CSV, `304 Not Modified`) pass through
+//! unchanged, and headers such as `Set-Cookie` are kept.
 //!
 //! ```yaml
 //! server:
 //!   middlewares:
 //!     respond_to:
 //!       enable: true
-//!       prefix: /api
+//!       prefix: /api/v1
 //!       extension: true
 //!       sign_in_path: /session/new
 //! ```
+//!
+//! Pick a prefix none of your routes use. Every request under it is routed
+//! with the prefix removed, so a route that already lives there (the
+//! starter app mounts its auth and home controllers under `/api`) can no
+//! longer be reached with `prefix: /api`.
+//!
+//! This middleware wraps the whole app, so any middleware layered after it
+//! sees the path as the client sent it (`/admin.json`, `/api/v1/admin`), not
+//! the route that runs. Do not guard routes by path in such a middleware;
+//! put the guard on the routes (`Routes::layer`) or in the handler.
 
 use std::{convert::Infallible, sync::Arc};
 
@@ -55,16 +65,18 @@ pub struct Config {
     /// Turns the middleware on. Off by default.
     #[serde(default)]
     pub enable: bool,
-    /// Serve every route as JSON under this path prefix too, e.g. `/api` or
-    /// `/api/v1`. The prefix is removed before routing.
+    /// Serve every route as JSON under this path prefix too, e.g. `/api/v1`.
+    /// The prefix is removed before routing, so it must not be a path your
+    /// routes already use. A missing leading `/` is added.
     #[serde(default)]
     pub prefix: Option<String>,
     /// Answer as JSON when the path ends in `.json`, which is removed
     /// before routing. On by default.
     #[serde(default = "default_extension")]
     pub extension: bool,
-    /// A redirect to a path starting with this (your sign-in page) answers
-    /// `401` instead of `200 {"ok": true, ...}`.
+    /// A redirect to this path (your sign-in page), or to a path below it,
+    /// answers `401` instead of `200 {"ok": true, ...}`. Only redirects on
+    /// the same host count.
     #[serde(default)]
     pub sign_in_path: Option<String>,
 }
@@ -90,9 +102,19 @@ pub struct Middleware {
 #[must_use]
 pub fn new(config: &Config, ctx: &AppContext) -> Middleware {
     Middleware {
-        config: config.clone(),
+        config: Config {
+            prefix: config.prefix.as_deref().and_then(normalize_prefix),
+            ..config.clone()
+        },
         ctx: ctx.clone(),
     }
+}
+
+/// `api/v1/` and `/api/v1` both mean `/api/v1`; an empty prefix or `/` means
+/// none.
+fn normalize_prefix(prefix: &str) -> Option<String> {
+    let trimmed = prefix.trim().trim_matches('/');
+    (!trimmed.is_empty()).then(|| format!("/{trimmed}"))
 }
 
 impl MiddlewareLayer for Middleware {
@@ -137,7 +159,6 @@ fn json_path(config: &Config, path: &str) -> Option<(String, Via)> {
     let under_prefix = config
         .prefix
         .as_deref()
-        .map(|p| p.trim_end_matches('/'))
         .filter(|p| !p.is_empty())
         .and_then(|prefix| path.strip_prefix(prefix))
         .filter(|after| after.is_empty() || after.starts_with('/'));
@@ -167,10 +188,17 @@ async fn handle(config: &Config, inner: axum::Router, req: Request) -> Response 
     let Some((path, via)) = json_path(config, req.uri().path()) else {
         return call(inner, req).await;
     };
+    let host = req
+        .headers()
+        .get(header::HOST)
+        .and_then(|v| v.to_str().ok())
+        .map(str::to_string)
+        .or_else(|| req.uri().authority().map(ToString::to_string));
 
     // A `.json` file served as-is (a static asset, say) must still be
     // found, so a GET that 404s with the extension removed is tried again
-    // unchanged.
+    // unchanged. A JSON 404 came from a handler that ran and answered, so
+    // it is not retried, and the retry only wins when it finds something.
     let retry = (via == Via::Extension && matches!(*req.method(), Method::GET | Method::HEAD))
         .then(|| {
             let mut again = Request::new(Body::empty());
@@ -192,14 +220,22 @@ async fn handle(config: &Config, inner: axum::Router, req: Request) -> Response 
     let res = call(inner.clone(), Request::from_parts(parts, body)).await;
 
     if res.status() == StatusCode::NOT_FOUND
+        && !is_json(res.headers())
         && let Some(again) = retry
     {
         let original = call(inner, again).await;
-        if original.status() != StatusCode::NOT_FOUND {
+        if original.status().is_success() || original.status() == StatusCode::NOT_MODIFIED {
             return original;
         }
     }
-    to_json(config, res)
+    to_json(config, host.as_deref(), res)
+}
+
+fn is_json(headers: &HeaderMap) -> bool {
+    headers
+        .get(header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .is_some_and(|v| v.starts_with("application/json"))
 }
 
 async fn call(inner: axum::Router, req: Request) -> Response {
@@ -210,20 +246,34 @@ async fn call(inner: axum::Router, req: Request) -> Response {
 }
 
 /// Turns a browser-only response into JSON. Everything else is unchanged.
-fn to_json(config: &Config, res: Response) -> Response {
+/// `host` is the request's `Host`, to tell a redirect on this site from one
+/// to another.
+fn to_json(config: &Config, host: Option<&str>, res: Response) -> Response {
     let status = res.status();
     let headers = res.headers();
 
     if status.is_redirection() {
+        // Only real redirects with somewhere to go. `304 Not Modified` (from
+        // the `etag` middleware) and `300 Multiple Choices` pass through.
         let to = headers
             .get(header::LOCATION)
             .and_then(|v| v.to_str().ok())
-            .unwrap_or("/")
-            .to_string();
-        let signed_out = config
-            .sign_in_path
-            .as_deref()
-            .is_some_and(|sign_in| location_path(&to).starts_with(sign_in));
+            .map(str::to_string);
+        let Some(to) = to.filter(|_| {
+            matches!(
+                status,
+                StatusCode::MOVED_PERMANENTLY
+                    | StatusCode::FOUND
+                    | StatusCode::SEE_OTHER
+                    | StatusCode::TEMPORARY_REDIRECT
+                    | StatusCode::PERMANENT_REDIRECT
+            )
+        }) else {
+            return res;
+        };
+        let signed_out = config.sign_in_path.as_deref().is_some_and(|sign_in| {
+            same_site_path(&to, host).is_some_and(|path| is_under(path, sign_in))
+        });
         let answer = if signed_out {
             (
                 StatusCode::UNAUTHORIZED,
@@ -264,10 +314,29 @@ fn to_json(config: &Config, res: Response) -> Response {
     replace(res.headers(), (status, json!({ "error": reason })))
 }
 
-/// The path part of a `Location`, which may be a full URL.
-fn location_path(to: &str) -> &str {
-    to.split_once("://")
-        .map_or(to, |(_, rest)| rest.find('/').map_or("/", |i| &rest[i..]))
+/// The path part of a `Location` that points at this site: a relative
+/// path, or a full URL whose host is `host`. `None` for another site.
+fn same_site_path<'a>(to: &'a str, host: Option<&str>) -> Option<&'a str> {
+    let after_scheme = to
+        .split_once("://")
+        .map(|(_, rest)| rest)
+        .or_else(|| to.strip_prefix("//"));
+    let Some(rest) = after_scheme else {
+        return Some(to);
+    };
+    let (authority, path) = rest
+        .find(['/', '?', '#'])
+        .map_or((rest, "/"), |i| (&rest[..i], &rest[i..]));
+    host.is_some_and(|host| authority.eq_ignore_ascii_case(host))
+        .then_some(path)
+}
+
+/// `path` is `base` itself or below it: `/login`, `/login/`, `/login?x=1`
+/// are under `/login`; `/login-help` is not.
+fn is_under(path: &str, base: &str) -> bool {
+    let base = base.trim_end_matches('/');
+    path.strip_prefix(base)
+        .is_some_and(|rest| rest.is_empty() || rest.starts_with(['/', '?', '#']))
 }
 
 /// A JSON response that keeps the original's headers, except those that
@@ -295,6 +364,7 @@ fn replace(original: &HeaderMap, (status, body): (StatusCode, serde_json::Value)
 #[cfg(test)]
 mod tests {
     use axum::{
+        extract::Path,
         http::{header, StatusCode},
         response::Html,
         routing::get,
@@ -344,10 +414,48 @@ mod tests {
     }
 
     #[test]
-    fn takes_path_from_location() {
-        assert_eq!(location_path("/login?x=1"), "/login?x=1");
-        assert_eq!(location_path("https://example.com/login"), "/login");
-        assert_eq!(location_path("https://example.com"), "/");
+    fn takes_path_from_same_site_location() {
+        let host = Some("example.com");
+        assert_eq!(same_site_path("/login?x=1", host), Some("/login?x=1"));
+        assert_eq!(
+            same_site_path("https://example.com/login", host),
+            Some("/login")
+        );
+        assert_eq!(same_site_path("https://EXAMPLE.com", host), Some("/"));
+        assert_eq!(same_site_path("https://other.com/login", host), None);
+        assert_eq!(same_site_path("//other.com/login", host), None);
+        assert_eq!(same_site_path("https://example.com/login", None), None);
+    }
+
+    #[test]
+    fn sign_in_matches_the_path_not_a_prefix_of_it() {
+        assert!(is_under("/login", "/login"));
+        assert!(is_under("/login/", "/login"));
+        assert!(is_under("/login?next=/x", "/login"));
+        assert!(is_under("/login/sso", "/login/"));
+        assert!(!is_under("/login-help", "/login"));
+        assert!(!is_under("/log", "/login"));
+    }
+
+    #[tokio::test]
+    async fn prefix_is_normalized() {
+        let ctx = tests_cfg::app::get_app_context().await;
+        for (given, want) in [
+            ("api", Some("/api")),
+            ("/api/", Some("/api")),
+            ("api/v1/", Some("/api/v1")),
+            ("/", None),
+            ("", None),
+        ] {
+            let mw = new(
+                &Config {
+                    prefix: Some(given.to_string()),
+                    ..config()
+                },
+                &ctx,
+            );
+            assert_eq!(mw.config.prefix.as_deref(), want, "{given}");
+        }
     }
 
     #[test]
@@ -365,10 +473,43 @@ mod tests {
             .render()
     }
 
+    async fn find(Path(id): Path<i32>, Format(respond_to): Format) -> crate::Result<Response> {
+        if id != 1 {
+            return Err(crate::Error::NotFound);
+        }
+        format::respond_to(&respond_to)
+            .html(|| format::html("<p>record</p>"))
+            .json(|| format::json(json!({ "id": id })))
+            .render()
+    }
+
     async fn app() -> axum::Router {
+        app_with(config()).await
+    }
+
+    async fn app_with(config: Config) -> axum::Router {
         let ctx = tests_cfg::app::get_app_context().await;
         let router = AXRouter::new()
             .route("/posts/{id}", get(show))
+            .route("/records/{id}", get(find))
+            .route(
+                "/cached",
+                get(|| async { ([(header::ETAG, "\"v1\"")], format::json(json!({ "v": 1 }))) }),
+            )
+            .route(
+                "/signin",
+                axum::routing::post(|| async {
+                    (
+                        [(header::SET_COOKIE, "session=abc; HttpOnly")],
+                        format::redirect("/posts/1"),
+                    )
+                }),
+            )
+            .route(
+                "/elsewhere",
+                get(|| async { format::redirect("https://other.com/login") }),
+            )
+            .route("/help", get(|| async { format::redirect("/login-help") }))
             .route("/page", get(|| async { Html("<p>html only</p>") }))
             .route(
                 "/save",
@@ -380,22 +521,107 @@ mod tests {
                 get(|| async { format::json(json!({ "file": true })) }),
             )
             .fallback(|| async { (StatusCode::NOT_FOUND, Html("<h1>404</h1>")) });
-        new(&config(), &ctx).apply(router).unwrap().with_state(ctx)
+        // `etag` sits inside, as in the default stack.
+        let router = crate::controller::middleware::etag::Etag { enable: true }
+            .apply(router)
+            .unwrap();
+        new(&config, &ctx).apply(router).unwrap().with_state(ctx)
     }
 
     async fn send(method: &str, uri: &str, accept: &str) -> (StatusCode, String) {
-        let req = Request::builder()
-            .method(method)
-            .uri(uri)
-            .header(header::ACCEPT, accept)
-            .body(Body::empty())
-            .unwrap();
-        let res = app().await.oneshot(req).await.unwrap();
+        let (status, _, body) =
+            send_with(app().await, method, uri, &[(header::ACCEPT, accept)]).await;
+        (status, body)
+    }
+
+    async fn send_with(
+        app: axum::Router,
+        method: &str,
+        uri: &str,
+        headers: &[(header::HeaderName, &str)],
+    ) -> (StatusCode, HeaderMap, String) {
+        let mut req = Request::builder().method(method).uri(uri);
+        for (name, value) in headers {
+            req = req.header(name, *value);
+        }
+        let res = app.oneshot(req.body(Body::empty()).unwrap()).await.unwrap();
         let status = res.status();
+        let headers = res.headers().clone();
         let body = axum::body::to_bytes(res.into_body(), usize::MAX)
             .await
             .unwrap();
-        (status, String::from_utf8(body.to_vec()).unwrap())
+        (status, headers, String::from_utf8(body.to_vec()).unwrap())
+    }
+
+    #[tokio::test]
+    async fn not_modified_passes_through() {
+        let (status, headers, body) = send_with(
+            app().await,
+            "GET",
+            "/api/cached",
+            &[(header::IF_NONE_MATCH, "\"v1\"")],
+        )
+        .await;
+        assert_eq!(status, StatusCode::NOT_MODIFIED);
+        assert_eq!(headers.get(header::ETAG).unwrap(), "\"v1\"");
+        assert_eq!(body, "");
+    }
+
+    #[tokio::test]
+    async fn handler_not_found_is_not_retried() {
+        // `/records/999.json` with the extension kept would be a bad `{id}`
+        // (a 400); the handler's own JSON 404 must win.
+        assert_eq!(
+            send("GET", "/records/999.json", "*/*").await,
+            (
+                StatusCode::NOT_FOUND,
+                r#"{"error":"not_found","description":"Resource was not found"}"#.to_string()
+            )
+        );
+        assert_eq!(
+            send("GET", "/records/1.json", "*/*").await,
+            (StatusCode::OK, r#"{"id":1}"#.to_string())
+        );
+    }
+
+    #[tokio::test]
+    async fn converted_redirect_keeps_set_cookie() {
+        let (status, headers, body) = send_with(app().await, "POST", "/api/signin", &[]).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body, r#"{"ok":true,"redirect":"/posts/1"}"#);
+        assert_eq!(
+            headers.get(header::SET_COOKIE).unwrap(),
+            "session=abc; HttpOnly"
+        );
+        assert!(headers.get(header::LOCATION).is_none());
+    }
+
+    #[tokio::test]
+    async fn only_same_site_sign_in_redirects_are_signed_out() {
+        for path in ["/api/elsewhere", "/api/help"] {
+            let (status, _, _) =
+                send_with(app().await, "GET", path, &[(header::HOST, "example.com")]).await;
+            assert_eq!(status, StatusCode::OK, "{path}");
+        }
+        let (status, _, _) = send_with(
+            app().await,
+            "GET",
+            "/api/private",
+            &[(header::HOST, "example.com")],
+        )
+        .await;
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn prefix_without_leading_slash_works() {
+        let app = app_with(Config {
+            prefix: Some("api/".to_string()),
+            ..config()
+        })
+        .await;
+        let (status, _, body) = send_with(app, "GET", "/api/posts/1", &[]).await;
+        assert_eq!((status, body.as_str()), (StatusCode::OK, r#"{"id":1}"#));
     }
 
     #[tokio::test]

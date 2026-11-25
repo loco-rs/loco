@@ -225,7 +225,10 @@ server:
 ```
 
 On those paths a redirect answers `{"ok":true,"redirect":to}`, a redirect to
-`sign_in_path` answers `401`, and an HTML-only action answers `406`.
+`sign_in_path` answers `401`, and an HTML-only action answers `406`. Pick a
+prefix no route uses: the starter mounts routes under `/api`, so `prefix: /api`
+hides them. Middleware added after this one sees the unstripped path; never
+guard routes by path there.
 
 ## Errors
 

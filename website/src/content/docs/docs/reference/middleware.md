@@ -224,14 +224,16 @@ If neither `file` nor `not_found` is set, the bundled `fallback.html` is served.
 - **Default:** **disabled**.
 - **Purpose:** answers any route as JSON when the path ends in `.json` or starts with `prefix`. It strips that part, routes the request to the same handler with `Accept: application/json` (so `Format`/`RespondTo` read `Json`), and turns browser responses into JSON: redirects become `{"ok":true,"redirect":to}`, a redirect to `sign_in_path` becomes `401`, an HTML-only success becomes `406`. See [Respond in multiple formats](/docs/how-to/respond-formats).
 - **Ordering:** it wraps the finished router, so it must stay after `fallback` and `static` in the stack.
+- **Security note:** middleware layered after it sees the path as sent (`/admin.json`, `/api/v1/admin`), not the route that runs. Do not guard routes by path in such a middleware; use `Routes::layer` or the handler.
+- **Prefix:** pick one no route uses. With `prefix: /api`, the starter's `/api/...` routes are no longer reachable.
 - **Knobs:**
 
 | Name | Type | Default |
 |---|---|---|
 | `enable` | `bool` | `false` |
 | `extension` | `bool` | `true` — `/posts/1.json` answers as JSON |
-| `prefix` | `Option<String>` | `None` — e.g. `/api/v1` serves every route as JSON under it |
-| `sign_in_path` | `Option<String>` | `None` — redirects to a path starting with this answer `401 {"error":"signed_out"}` |
+| `prefix` | `Option<String>` | `None` — e.g. `/api/v1` serves every route as JSON under it; a missing leading `/` is added |
+| `sign_in_path` | `Option<String>` | `None` — same-host redirects to this path (or below it, e.g. `/session/new?next=..`) answer `401 {"error":"signed_out"}` |
 
 ### 14. `powered_by`
 

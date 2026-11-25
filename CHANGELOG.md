@@ -5,6 +5,7 @@
 ### Added
 
 - `format::respond_to` and `format::respond_with`: one action answers HTML or JSON, like Rails' `respond_to`. The opt-in `respond_to` middleware serves any route as JSON at `<path>.json` or under a prefix such as `/api/v1`, turning redirects into `{"ok":true,"redirect":to}`, sign-in redirects into `401`, and HTML-only answers into `406`.
+- **Upgrading:** `middleware::Config` has a new `respond_to` field. Code that builds it as a struct literal without `..Default::default()` must add `respond_to: None`.
 
 ### Changed
 
