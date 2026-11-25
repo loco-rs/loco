@@ -81,6 +81,57 @@ async fn etag(#[case] enable: bool) {
     handle.abort();
 }
 
+/// RFC 9110 §13.1.2: a matching `If-None-Match` turns only a successful GET or
+/// HEAD into 304; a POST's response and an error response stay as they are.
+#[tokio::test]
+async fn etag_not_modified_only_for_a_successful_get_or_head() {
+    async fn action() -> Result<Response> {
+        format::render().etag("\"v1\"")?.text("content")
+    }
+    async fn missing() -> Result<Response> {
+        format::render()
+            .etag("\"v1\"")?
+            .status(StatusCode::NOT_FOUND)
+            .text("missing")
+    }
+
+    let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
+    ctx.config.server.middlewares.etag = Some(middleware::etag::Etag { enable: true });
+
+    let port = get_available_port().await;
+    let handle = infra_cfg::server::start_with_route(
+        ctx,
+        "/",
+        get(action).head(action).post(action).put(missing),
+        Some(port),
+    )
+    .await;
+
+    let client = reqwest::Client::new();
+    let url = get_base_url_port(port);
+    for (method, inm, status) in [
+        (
+            reqwest::Method::GET,
+            "\"x\", W/\"v1\"",
+            StatusCode::NOT_MODIFIED,
+        ),
+        (reqwest::Method::HEAD, "*", StatusCode::NOT_MODIFIED),
+        (reqwest::Method::POST, "\"v1\"", StatusCode::OK),
+        (reqwest::Method::PUT, "\"v1\"", StatusCode::NOT_FOUND),
+        (reqwest::Method::GET, "\"v2\"", StatusCode::OK),
+    ] {
+        let res = client
+            .request(method.clone(), &url)
+            .header("if-none-match", inm)
+            .send()
+            .await
+            .expect("response");
+        assert_eq!(res.status(), status, "{method} with If-None-Match {inm}");
+    }
+
+    handle.abort();
+}
+
 /// A 304 is still a response to a request that may carry a rotated session or
 /// remember-me cookie; dropping `Set-Cookie` there loses the rotation.
 #[tokio::test]

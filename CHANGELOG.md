@@ -6,6 +6,10 @@
 
 - Generated apps also get the skill under `.agents/skills/loco/`, alongside `.claude/skills/loco/`, for Zed, Cursor and other Agent Skills clients (#1857, @paoValle).
 
+### Fixed
+
+- **`etag` middleware follows RFC 9110 for `If-None-Match`.** It answered 304 for any method, so a POST that carried a matching `If-None-Match` ran its handler and then lost its response; and for error responses too. Now only a successful (2xx) GET or HEAD becomes 304. The header is also read as RFC 9110 defines it: a list of tags, `*`, and weak comparison (`W/"x"` matches `"x"`); a header equal to the whole tag still matches (@jirkamotejl).
+
 ## 1.3.1 - 2026-11-05
 
 ### Fixed
