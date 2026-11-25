@@ -97,7 +97,7 @@ pub fn routes() -> Routes {
 
 Answer quickly: providers time out and retry. Do real work in a [background job](/docs/how-to/add-worker).
 
-If your app turns on forgery (CSRF) protection, exempt the webhook routes: the provider cannot send your CSRF token, and the signature already proves who sent the request.
+If your app uses CSRF (forgery protection) middleware, exempt the webhook routes from it: the sender cannot send a CSRF token, and the signature already proves who sent the request.
 
 ## 4. Test it
 

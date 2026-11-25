@@ -1,3 +1,5 @@
+use std::fmt;
+
 use serde::{Deserialize, Serialize};
 
 /// An incoming webhook source whose requests are signed with a shared secret,
@@ -21,7 +23,7 @@ use serde::{Deserialize, Serialize};
 ///     prefix: ""
 ///     encoding: base64
 /// ```
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct Webhook {
     /// Shared signing secret. An empty secret refuses every request: HMAC
     /// accepts an empty key, which would let anyone sign a payload.
@@ -51,6 +53,21 @@ const fn default_tolerance_secs() -> u64 {
     300
 }
 
+// The secret is a credential, so `Debug` (and with it `{:?}` of the whole
+// config) never prints it.
+impl fmt::Debug for Webhook {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Webhook")
+            .field("secret", &"<redacted>")
+            .field("scheme", &self.scheme)
+            .field("header", &self.header)
+            .field("prefix", &self.prefix)
+            .field("encoding", &self.encoding)
+            .field("tolerance_secs", &self.tolerance_secs)
+            .finish()
+    }
+}
+
 /// The signature layouts `SignedWebhook` understands.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -77,4 +94,20 @@ pub enum SignatureEncoding {
     Hex,
     /// Standard base64 with padding.
     Base64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn debug_redacts_secret() {
+        let config: Webhook =
+            serde_json::from_value(serde_json::json!({ "secret": "WEBHOOKSECRET" }))
+                .expect("config");
+        let dump = format!("{config:?}");
+        assert!(!dump.contains("WEBHOOKSECRET"), "secret leaked: {dump}");
+        assert!(dump.contains("<redacted>"));
+        assert!(dump.contains("tolerance_secs: 300"));
+    }
 }

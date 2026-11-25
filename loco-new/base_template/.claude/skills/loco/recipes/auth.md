@@ -179,7 +179,8 @@ async fn github(hook: SignedWebhook<GitHub>) -> Result<Response> {
   is 400; a missing config entry or empty secret is 500.
 - Request tests: `loco_rs::controller::extractor::webhook::sign(&config, body, now)`
   returns the headers to send.
-- If the app enables CSRF protection, exempt the webhook routes.
+- If the app uses CSRF (forgery protection) middleware, exempt the webhook
+  routes from it: senders cannot send a CSRF token.
 
 ## Scaffold the whole thing
 

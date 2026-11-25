@@ -22,6 +22,21 @@ impl WebhookSource for Stripe {
     const NAME: &'static str = "stripe";
 }
 
+struct Peer;
+impl WebhookSource for Peer {
+    const NAME: &'static str = "peer";
+}
+
+struct Shopify;
+impl WebhookSource for Shopify {
+    const NAME: &'static str = "shopify";
+}
+
+struct NoSecret;
+impl WebhookSource for NoSecret {
+    const NAME: &'static str = "nosecret";
+}
+
 struct Unconfigured;
 impl WebhookSource for Unconfigured {
     const NAME: &'static str = "missing";
@@ -45,6 +60,18 @@ async fn stripe(hook: SignedWebhook<Stripe>) -> Result<Response> {
     format::text(&hook.body().len().to_string())
 }
 
+async fn peer(hook: SignedWebhook<Peer>) -> Result<Response> {
+    format::text(hook.header("X-Loco-Event").unwrap_or_default())
+}
+
+async fn shopify(hook: SignedWebhook<Shopify>) -> Result<Response> {
+    format::text(&hook.body().len().to_string())
+}
+
+async fn nosecret(_hook: SignedWebhook<NoSecret>) -> Result<Response> {
+    format::empty()
+}
+
 async fn unconfigured(_hook: SignedWebhook<Unconfigured>) -> Result<Response> {
     format::empty()
 }
@@ -58,6 +85,8 @@ struct Server {
     handle: tokio::task::JoinHandle<()>,
     github: Webhook,
     stripe: Webhook,
+    peer: Webhook,
+    shopify: Webhook,
 }
 
 async fn serve() -> Server {
@@ -70,6 +99,23 @@ async fn serve() -> Server {
     ctx.config
         .webhooks
         .insert("stripe".to_string(), stripe_cfg.clone());
+    let peer_cfg = webhook(serde_json::json!({ "secret": "peer-secret", "scheme": "loco" }));
+    ctx.config
+        .webhooks
+        .insert("peer".to_string(), peer_cfg.clone());
+    let shopify_cfg = webhook(serde_json::json!({
+        "secret": "shpss",
+        "header": "X-Shopify-Hmac-Sha256",
+        "prefix": "",
+        "encoding": "base64",
+    }));
+    ctx.config
+        .webhooks
+        .insert("shopify".to_string(), shopify_cfg.clone());
+    ctx.config.webhooks.insert(
+        "nosecret".to_string(),
+        webhook(serde_json::json!({ "secret": "" })),
+    );
 
     let router = AppRoutes::empty()
         .add_route(
@@ -77,6 +123,9 @@ async fn serve() -> Server {
                 .prefix("/webhooks")
                 .add("/github", post(github))
                 .add("/stripe", post(stripe))
+                .add("/peer", post(peer))
+                .add("/shopify", post(shopify))
+                .add("/nosecret", post(nosecret))
                 .add("/missing", post(unconfigured)),
         )
         .to_router::<AppHook>(ctx.clone(), axum::Router::new())
@@ -98,6 +147,8 @@ async fn serve() -> Server {
         handle,
         github: github_cfg,
         stripe: stripe_cfg,
+        peer: peer_cfg,
+        shopify: shopify_cfg,
     }
 }
 
@@ -190,6 +241,68 @@ async fn unconfigured_source_is_a_server_error() {
     let headers = sign(&server.github, BODY.as_bytes(), now());
     let res = post_signed(server.port, "missing", BODY, headers).await;
     assert_eq!(res.status(), 500);
+
+    server.handle.abort();
+}
+
+#[tokio::test]
+async fn empty_secret_is_a_server_error() {
+    let server = serve().await;
+
+    let empty = webhook(serde_json::json!({ "secret": "" }));
+    let headers = sign(&empty, BODY.as_bytes(), now());
+    let res = post_signed(server.port, "nosecret", BODY, headers).await;
+    assert_eq!(res.status(), 500);
+
+    server.handle.abort();
+}
+
+#[tokio::test]
+async fn loco_scheme_webhook_checks_signature_and_timestamp() {
+    let server = serve().await;
+
+    let mut headers = sign(&server.peer, BODY.as_bytes(), now());
+    headers.push(("X-Loco-Event".to_string(), "deploy_paused".to_string()));
+    let res = post_signed(server.port, "peer", BODY, headers).await;
+    assert_eq!(res.status(), 200);
+    assert_eq!(res.text().await.unwrap(), "deploy_paused");
+
+    let stale = sign(&server.peer, BODY.as_bytes(), now() - 3600);
+    let res = post_signed(server.port, "peer", BODY, stale).await;
+    assert_eq!(res.status(), 401);
+
+    // Signature without its timestamp header.
+    let mut headers = sign(&server.peer, BODY.as_bytes(), now());
+    headers.retain(|(name, _)| name != "X-Loco-Timestamp");
+    let res = post_signed(server.port, "peer", BODY, headers).await;
+    assert_eq!(res.status(), 401);
+
+    server.handle.abort();
+}
+
+#[tokio::test]
+async fn base64_webhook_verifies() {
+    let server = serve().await;
+
+    let headers = sign(&server.shopify, BODY.as_bytes(), now());
+    let res = post_signed(server.port, "shopify", BODY, headers).await;
+    assert_eq!(res.status(), 200);
+    assert_eq!(res.text().await.unwrap(), BODY.len().to_string());
+
+    // A hex digest where base64 is expected does not verify.
+    let hex = webhook(serde_json::json!({
+        "secret": "shpss",
+        "header": "X-Shopify-Hmac-Sha256",
+        "prefix": "",
+    }));
+    let res = post_signed(
+        server.port,
+        "shopify",
+        BODY,
+        sign(&hex, BODY.as_bytes(), now()),
+    )
+    .await;
+    assert_eq!(res.status(), 401);
 
     server.handle.abort();
 }

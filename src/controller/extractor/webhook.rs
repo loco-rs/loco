@@ -109,8 +109,8 @@ pub enum WebhookError {
 impl From<WebhookError> for crate::Error {
     fn from(err: WebhookError) -> Self {
         match err {
+            // `Error::into_response` logs these at error level.
             WebhookError::NotConfigured(_) | WebhookError::EmptySecret => {
-                tracing::error!(error = %err, "webhook verification is misconfigured");
                 Self::Message(err.to_string())
             }
             WebhookError::Malformed(_) => Self::BadRequest(err.to_string()),
@@ -194,7 +194,9 @@ impl<S: WebhookSource> FromRequest<AppContext> for SignedWebhook<S> {
             .await
             .map_err(IntoResponse::into_response)?;
         if let Err(err) = verify(config, &headers, &body, chrono::Utc::now().timestamp()) {
-            tracing::warn!(source = S::NAME, error = %err, "webhook refused");
+            // `Error::into_response` logs the refusal; this only adds which
+            // source it was, for debugging.
+            tracing::debug!(source = S::NAME, error = %err, "webhook refused");
             return Err(err.into_response());
         }
         Ok(Self {
@@ -242,13 +244,20 @@ pub fn verify(
             for part in value.split(',') {
                 match part.trim().split_once('=') {
                     Some(("t", t)) => timestamp = Some(t),
-                    Some(("v1", sig)) => digests.push(decode(config, sig)?),
+                    // During secret rotation the sender lists one `v1=` per
+                    // secret; one we cannot decode must not hide one that
+                    // matches.
+                    Some(("v1", sig)) => {
+                        if let Ok(digest) = decode(config, sig) {
+                            digests.push(digest);
+                        }
+                    }
                     _ => {}
                 }
             }
             let timestamp = timestamp.ok_or(WebhookError::Malformed("no `t=` timestamp"))?;
             if digests.is_empty() {
-                return Err(WebhookError::Malformed("no `v1=` signature"));
+                return Err(WebhookError::Malformed("no decodable `v1=` signature"));
             }
             if !digests
                 .iter()
@@ -532,6 +541,30 @@ mod tests {
             verify(&cfg, &headers(&[(name, "v1=00".to_string())]), BODY, NOW),
             Err(WebhookError::Malformed(_))
         ));
+    }
+
+    #[test]
+    fn timestamped_skips_undecodable_v1() {
+        let cfg = config(serde_json::json!({ "secret": "whsec", "scheme": "timestamped" }));
+        let (name, value) = sign(&cfg, BODY, NOW).remove(0);
+        // An undecodable `v1=` before the good one must not refuse the request.
+        let rotated = value.replace("v1=", "v1=not-hex,v1=");
+        assert_eq!(
+            verify(&cfg, &headers(&[(name.clone(), rotated)]), BODY, NOW),
+            Ok(())
+        );
+        // Only undecodable ones: malformed.
+        let ts = format!("t={NOW},v1=not-hex,v1=zz");
+        assert!(matches!(
+            verify(&cfg, &headers(&[(name.clone(), ts)]), BODY, NOW),
+            Err(WebhookError::Malformed(_))
+        ));
+        // Decodable but none match: mismatch.
+        let ts = format!("t={NOW},v1=not-hex,v1=00ff");
+        assert_eq!(
+            verify(&cfg, &headers(&[(name, ts)]), BODY, NOW),
+            Err(WebhookError::Mismatch)
+        );
     }
 
     #[test]
