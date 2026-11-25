@@ -11,6 +11,7 @@
 //! a URL, secret and headers each time the job runs.
 //!
 //! ```rust,ignore
+//! use loco_rs::model::ModelError;
 //! use loco_rs::notifications::{self, Destination, Destinations};
 //!
 //! struct ProjectHooks;
@@ -23,8 +24,12 @@
 //!         channel: &str,
 //!         key: &str,
 //!     ) -> Result<Option<Destination>> {
-//!         let Some(project) = projects::Model::find_by_pid(&ctx.db, key).await? else {
-//!             return Ok(None); // deleted since: the delivery is dropped
+//!         let project = match projects::Model::find_by_pid(&ctx.db, key).await {
+//!             Ok(project) => project,
+//!             // Deleted since: the delivery is dropped, not retried.
+//!             Err(ModelError::EntityNotFound) => return Ok(None),
+//!             // Anything else (the database is down): the queue retries.
+//!             Err(err) => return Err(err.into()),
 //!         };
 //!         Ok(match channel {
 //!             "slack" => project.slack_url.map(Destination::new),
@@ -111,6 +116,10 @@ pub trait Destinations: Send + Sync + 'static {
     ///
     /// `Ok(None)` means the destination is gone (the project was deleted,
     /// the hook removed): the delivery is logged and dropped, not retried.
+    /// Map "row not found" to `Ok(None)`, not to an error: Loco's
+    /// `find_by_pid` finders return `Err(ModelError::EntityNotFound)` for a
+    /// missing row, and passing that on with `?` retries a delivery that can
+    /// never succeed.
     ///
     /// # Errors
     /// A transient failure (the database is down): the job fails and the

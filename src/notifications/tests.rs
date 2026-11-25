@@ -934,7 +934,8 @@ async fn recorded_keyed_deliveries_show_the_resolved_destination() {
     ])
     .deliver_later(&ctx)
     .await;
-    assert_eq!(report.accepted, 2);
+    assert_eq!(report.accepted, 1);
+    assert_eq!(report.skipped, 1, "a missing key is not reported as sent");
 
     let sent = testing::deliveries(&ctx);
     assert_eq!(
@@ -975,5 +976,104 @@ fn keyed_debug_output_hides_resolved_secrets() {
     let dump = format!("{destination:?} {channel:?}");
     for secret in ["WEBHOOKSECRET", "HEADERSECRET", "SLACKSECRET"] {
         assert!(!dump.contains(secret), "{secret} leaked: {dump}");
+    }
+}
+
+#[tokio::test]
+async fn keyed_deliver_now_reports_sent_gone_and_lookup_failures() {
+    let (base, log) = mock_server(StatusCode::OK).await;
+    let ctx = context(None).await;
+    let book = Book::default();
+    book.set("acme", Destination::new(format!("{base}/acme")));
+    set_destinations(&ctx, book);
+
+    let report = QueuePaused::to(vec![
+        Channel::slack_for("acme"),
+        Channel::webhook_for("missing"),
+    ])
+    .deliver_now(&ctx)
+    .await
+    .expect("a gone destination is not an error");
+    assert_eq!(report.accepted, 1);
+    assert_eq!(report.skipped, 1);
+    assert_eq!(report.failed, 0);
+    let sent = requests(&log);
+    assert_eq!(sent.len(), 1);
+    assert_eq!(sent[0].path, "/acme");
+
+    let err = QueuePaused::to(vec![Channel::slack_for("acme"), Channel::slack_for("down")])
+        .deliver_now(&ctx)
+        .await
+        .expect_err("a failing lookup is returned");
+    assert!(err.to_string().contains("database unavailable"), "{err}");
+    assert_eq!(requests(&log).len(), 2, "the other channel was still sent");
+}
+
+#[tokio::test]
+async fn keyed_deliver_later_in_foreground_blocking_mode_counts_each_outcome() {
+    let (base, log) = mock_server(StatusCode::OK).await;
+    let ctx = context(None).await;
+    assert_eq!(ctx.config.workers.mode, WorkerMode::ForegroundBlocking);
+    let book = Book::default();
+    book.set("acme", Destination::new(format!("{base}/acme")));
+    set_destinations(&ctx, book);
+
+    let report = QueuePaused::to(vec![
+        Channel::webhook_for("acme"),
+        Channel::slack_for("missing"),
+        Channel::slack_for("down"),
+    ])
+    .deliver_later(&ctx)
+    .await;
+    assert_eq!(
+        report,
+        Report {
+            accepted: 1,
+            skipped: 1,
+            failed: 1,
+        }
+    );
+    let sent = requests(&log);
+    assert_eq!(sent.len(), 1);
+    assert_eq!(sent[0].path, "/acme");
+}
+
+#[tokio::test]
+async fn channel_headers_replace_looked_up_ones_in_any_letter_case() {
+    let (base, log) = mock_server(StatusCode::OK).await;
+    let ctx = context(Some(Notifications {
+        webhook: Some(WebhookNotifications {
+            url: format!("{base}/default"),
+            secret: None,
+            headers: BTreeMap::from([("Authorization".to_string(), "Bearer CONFIG".to_string())]),
+        }),
+        ..Notifications::default()
+    }))
+    .await;
+    let book = Book::default();
+    book.set(
+        "acme",
+        Destination::new(format!("{base}/keyed")).header("Authorization", "Bearer BOOK"),
+    );
+    set_destinations(&ctx, book);
+
+    QueuePaused::to(vec![
+        Channel::webhook_for("acme").header("authorization", "Bearer CHANNEL"),
+        Channel::webhook().header("AUTHORIZATION", "Bearer CHANNEL"),
+    ])
+    .deliver_now(&ctx)
+    .await
+    .expect("sent");
+
+    let sent = requests(&log);
+    assert_eq!(sent.len(), 2);
+    for req in sent {
+        let values: Vec<_> = req
+            .headers
+            .get_all("authorization")
+            .iter()
+            .map(|v| v.to_str().unwrap().to_string())
+            .collect();
+        assert_eq!(values, vec!["Bearer CHANNEL".to_string()], "{}", req.path);
     }
 }

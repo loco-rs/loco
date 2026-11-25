@@ -55,7 +55,7 @@ use serde_json::{json, Value};
 use crate::{
     app::AppContext,
     bgworker::{BackgroundWorker, Queue, RetryPolicy},
-    config::Notifications,
+    config::{Notifications, WorkerMode},
     Error, Result,
 };
 
@@ -117,6 +117,11 @@ pub struct Report {
     /// Handed to the queue (or, in `ForegroundBlocking` mode, sent).
     pub accepted: usize,
     /// Not configured: a default channel with no config, or an empty URL.
+    /// Also a [`Channel::slack_for`] or [`Channel::webhook_for`] key that the
+    /// app's [`Destinations`] does not know, when the delivery runs inline
+    /// (`deliver_now`, `ForegroundBlocking` mode, or while recording). A
+    /// queued delivery only finds that out when the job runs; the worker then
+    /// logs and drops it.
     pub skipped: usize,
     /// Could not be rendered or enqueued (or, in `ForegroundBlocking` mode,
     /// failed to send). Logged; never returned as an error.
@@ -255,12 +260,24 @@ pub trait Notifier: Serialize + Send + Sync + Sized {
             skipped,
             ..Report::default()
         };
-        if let Some(recorder) = testing::recorder(ctx) {
+        // In `ForegroundBlocking` mode, send here as `perform_later` would,
+        // but keep the outcome, so a destination that is gone is not counted
+        // as sent.
+        let inline = (testing::is_recording(ctx)
+            || matches!(ctx.config.workers.mode, WorkerMode::ForegroundBlocking))
+        .then(|| Inline::new(ctx));
+        if let Some(inline) = inline {
             for delivery in deliveries {
-                match recorder.record(ctx, delivery).await {
-                    Ok(()) => report.accepted += 1,
+                let channel = delivery.target.name();
+                match inline.deliver(ctx, delivery).await {
+                    Ok(outcome) => report.count(outcome),
                     Err(err) => {
-                        tracing::error!(event, err = err.to_string(), "notification failed");
+                        tracing::error!(
+                            event,
+                            channel,
+                            err = err.to_string(),
+                            "notification delivery failed"
+                        );
                         report.failed += 1;
                     }
                 }
@@ -294,21 +311,16 @@ pub trait Notifier: Serialize + Send + Sync + Sized {
     /// After trying every channel, when any of them failed.
     async fn deliver_now(&self, ctx: &AppContext) -> Result<Report> {
         let (deliveries, skipped) = self.deliveries(ctx)?;
-        let worker = NotificationWorker::build(ctx);
+        let inline = Inline::new(ctx);
         let mut report = Report {
             skipped,
             ..Report::default()
         };
         let mut errors = Vec::new();
-        let recorder = testing::recorder(ctx);
         for delivery in deliveries {
             let channel = delivery.target.name();
-            let sent = match &recorder {
-                Some(recorder) => recorder.record(ctx, delivery).await,
-                None => worker.perform(delivery).await,
-            };
-            match sent {
-                Ok(()) => report.accepted += 1,
+            match inline.deliver(ctx, delivery).await {
+                Ok(outcome) => report.count(outcome),
                 Err(err) => {
                     report.failed += 1;
                     errors.push(format!("{channel}: {err}"));
@@ -322,6 +334,47 @@ pub trait Notifier: Serialize + Send + Sync + Sized {
                 "notification delivery failed: {}",
                 errors.join("; ")
             )))
+        }
+    }
+}
+
+impl Report {
+    const fn count(&mut self, outcome: Outcome) {
+        match outcome {
+            Outcome::Delivered => self.accepted += 1,
+            Outcome::Gone => self.skipped += 1,
+        }
+    }
+}
+
+/// What became of one delivery that was sent (or recorded) without an error.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Outcome {
+    /// Sent, recorded, or permanently rejected by the receiver (logged).
+    Delivered,
+    /// The keyed destination no longer exists; logged and dropped.
+    Gone,
+}
+
+/// Delivers in this task instead of through the queue.
+enum Inline {
+    Record(testing::Recorder),
+    Send(Box<NotificationWorker>),
+}
+
+impl Inline {
+    /// Records when recording is on, else sends.
+    fn new(ctx: &AppContext) -> Self {
+        testing::recorder(ctx).map_or_else(
+            || Self::Send(Box::new(NotificationWorker::build(ctx))),
+            Self::Record,
+        )
+    }
+
+    async fn deliver(&self, ctx: &AppContext, delivery: Delivery) -> Result<Outcome> {
+        match self {
+            Self::Record(recorder) => recorder.record(ctx, delivery).await,
+            Self::Send(worker) => worker.send(delivery).await,
         }
     }
 }
@@ -482,9 +535,17 @@ impl BackgroundWorker<Delivery> for NotificationWorker {
     }
 
     async fn perform(&self, delivery: Delivery) -> Result<()> {
+        // A destination that is gone completes the job: retrying cannot help.
+        self.send(delivery).await.map(|_| ())
+    }
+}
+
+impl NotificationWorker {
+    /// Resolves and sends one delivery, saying whether it went anywhere.
+    async fn send(&self, delivery: Delivery) -> Result<Outcome> {
         let channel = delivery.target.name();
         match resolve(&self.ctx, delivery.target).await? {
-            Resolved::Slack { url, payload } => slack::send(&self.http, &url, &payload).await,
+            Resolved::Slack { url, payload } => slack::send(&self.http, &url, &payload).await?,
             Resolved::Webhook {
                 url,
                 secret,
@@ -502,23 +563,29 @@ impl BackgroundWorker<Delivery> for NotificationWorker {
                         payload: &payload,
                     },
                 )
-                .await
+                .await?;
             }
             #[cfg(feature = "mailer")]
             Resolved::Email { to, from, content } => {
-                email::send(&self.ctx, to, from, content).await
+                email::send(&self.ctx, to, from, content).await?;
             }
             Resolved::Gone { key } => {
-                tracing::warn!(
-                    event = delivery.event,
-                    channel,
-                    key,
-                    "notification destination no longer exists; dropping delivery"
-                );
-                Ok(())
+                warn_gone(&delivery.event, channel, &key);
+                return Ok(Outcome::Gone);
             }
         }
+        Ok(Outcome::Delivered)
     }
+}
+
+/// Logs a keyed delivery whose destination [`Destinations`] no longer knows.
+pub(crate) fn warn_gone(event: &str, channel: &str, key: &str) {
+    tracing::warn!(
+        event,
+        channel,
+        key,
+        "notification destination no longer exists; dropping delivery"
+    );
 }
 
 /// A [`Target`] with its destination looked up: what is actually sent.
@@ -586,9 +653,7 @@ pub(crate) async fn resolve(ctx: &AppContext, target: Target) -> Result<Resolved
             payload,
         } => match destination::resolve(ctx, "webhook", &key).await? {
             Some(found) => {
-                for (name, value) in found.headers {
-                    headers.entry(name).or_insert(value);
-                }
+                merge_headers(&mut headers, found.headers);
                 Resolved::Webhook {
                     url: found.url,
                     secret: found.secret.filter(|s| !s.is_empty()),
@@ -601,6 +666,18 @@ pub(crate) async fn resolve(ctx: &AppContext, target: Target) -> Result<Resolved
         #[cfg(feature = "mailer")]
         Target::Email { to, from, content } => Resolved::Email { to, from, content },
     })
+}
+
+/// Adds each of `defaults` to `headers` unless `headers` already has that
+/// name in any letter case: HTTP header names are case-insensitive, so
+/// `authorization` on the channel must replace `Authorization` from the
+/// destination or config, not be sent alongside it.
+fn merge_headers(headers: &mut BTreeMap<String, String>, defaults: BTreeMap<String, String>) {
+    for (name, value) in defaults {
+        if !headers.keys().any(|own| own.eq_ignore_ascii_case(&name)) {
+            headers.insert(name, value);
+        }
+    }
 }
 
 /// The context's shared HTTP client, built on first use with
@@ -699,9 +776,7 @@ fn webhook_destination(
         let defaults = config.and_then(|c| c.webhook.as_ref()).ok_or_else(|| {
             Error::string("webhook notification: notifications.webhook is not set")
         })?;
-        for (name, value) in &defaults.headers {
-            headers.entry(name.clone()).or_insert_with(|| value.clone());
-        }
+        merge_headers(&mut headers, defaults.headers.clone());
         (
             defaults.url.clone(),
             secret.or_else(|| defaults.secret.clone()),

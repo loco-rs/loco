@@ -33,7 +33,7 @@ use std::{
 use serde::Serialize;
 use serde_json::Value;
 
-use super::{resolve, Delivery, Resolved};
+use super::{resolve, warn_gone, Delivery, Outcome, Resolved};
 use crate::{app::AppContext, Result};
 
 /// One delivery as it would have been sent.
@@ -92,7 +92,7 @@ impl Recorder {
 
     /// Resolves `delivery` as the worker would and records it. A keyed
     /// destination that no longer exists is dropped, as the worker does.
-    pub(super) async fn record(&self, ctx: &AppContext, delivery: Delivery) -> Result<()> {
+    pub(super) async fn record(&self, ctx: &AppContext, delivery: Delivery) -> Result<Outcome> {
         let channel = delivery.target.name().to_string();
         let (to, payload, headers, signed) = match resolve(ctx, delivery.target).await? {
             Resolved::Slack { url, payload } => (vec![url], payload, BTreeMap::new(), false),
@@ -114,12 +114,8 @@ impl Recorder {
                 (to, payload, BTreeMap::new(), false)
             }
             Resolved::Gone { key } => {
-                tracing::warn!(
-                    channel,
-                    key,
-                    "notification destination no longer exists; dropping delivery"
-                );
-                return Ok(());
+                warn_gone(&delivery.event, &channel, &key);
+                return Ok(Outcome::Gone);
             }
         };
         self.lock().push(Recorded {
@@ -131,7 +127,7 @@ impl Recorder {
             headers,
             signed,
         });
-        Ok(())
+        Ok(Outcome::Delivered)
     }
 }
 

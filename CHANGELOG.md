@@ -4,7 +4,7 @@
 
 ### Added
 
-- Notifications: `Channel::slack_for(key)` and `Channel::webhook_for(key)` queue only a key. The URL, signing secret and headers are looked up through the app's `Destinations` (registered with `notifications::set_destinations`) when the job runs, so per-record secrets never reach the queue table and a rotated secret applies to jobs already queued. Existing channels and queued jobs are unchanged.
+- Notifications: `Channel::slack_for(key)` and `Channel::webhook_for(key)` queue only a key. The URL, signing secret and headers are looked up through the app's `Destinations` (registered with `notifications::set_destinations`) when the job runs, so per-record secrets never reach the queue table and a rotated secret applies to jobs already queued. Existing channels and queued jobs are unchanged. Jobs from `_for` channels use new job payload variants that older workers cannot read, so in a rolling deploy upgrade the workers before, or together with, the web nodes that start using `_for` channels. A `_for` key that is gone when the delivery runs inline (`deliver_now`, `ForegroundBlocking`, recording) is counted as `skipped` in the `Report`.
 
 ### Changed
 

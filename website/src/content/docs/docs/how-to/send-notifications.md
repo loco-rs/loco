@@ -54,20 +54,14 @@ impl Notifier for DeployPaused {
     }
 
     fn channels(&self, _ctx: &AppContext) -> Vec<Channel> {
-        vec![
-            Channel::slack(),
-            Channel::webhook(),
-            Channel::email(),
-            // This project's own Slack channel, looked up when the job runs.
-            Channel::slack_for(&self.project),
-        ]
+        vec![Channel::slack(), Channel::webhook(), Channel::email()]
     }
 }
 ```
 
 `Notifier` is in the prelude; `Channel` and `Message` come from `loco_rs::notifications`. The struct must be `Serialize`: its fields are sent as `data` in webhook payloads (fields marked `#[serde(skip)]` are not).
 
-`channels` runs for every notification, so it can depend on the data, as above, or on `ctx` (no Slack outside production, say).
+`channels` runs for every notification, so it can depend on the data (each project's own Slack channel, see [per-record destinations](#per-record-destinations)) or on `ctx` (no Slack outside production, say).
 
 | constructor | destination |
 |---|---|
@@ -132,8 +126,35 @@ A Slack URL or a webhook secret stored on a project row is a credential. Passing
 
 `Channel::slack_for(key)` and `Channel::webhook_for(key)` put only `key` in the job. When the job runs, the worker asks your `Destinations` for the URL, secret and headers, so a rotated secret takes effect for jobs already queued. It works the way an ActiveJob argument is a GlobalID that is loaded again when the job performs.
 
+To send `DeployPaused` to each project's own Slack channel instead of the shared one, give it the project's `pid` and use `slack_for` in place of `slack()`:
+
+```rust
+#[derive(Debug, Clone, Serialize)]
+pub struct DeployPaused {
+    pub project: String,
+    pub project_pid: String,
+    pub by: String,
+    pub reason: String,
+}
+
+impl Notifier for DeployPaused {
+    // message() as before
+
+    fn channels(&self, _ctx: &AppContext) -> Vec<Channel> {
+        vec![
+            Channel::slack_for(&self.project_pid),
+            Channel::webhook(),
+            Channel::email(),
+        ]
+    }
+}
+```
+
+Then tell Loco how to turn a key into a destination:
+
 ```rust
 // src/app.rs
+use loco_rs::model::ModelError;
 use loco_rs::notifications::{self, Destination, Destinations};
 
 struct ProjectHooks;
@@ -146,8 +167,11 @@ impl Destinations for ProjectHooks {
         channel: &str, // "slack" or "webhook"
         key: &str,
     ) -> Result<Option<Destination>> {
-        let Some(project) = projects::Model::find_by_pid(&ctx.db, key).await? else {
-            return Ok(None);
+        let project = match projects::Model::find_by_pid(&ctx.db, key).await {
+            Ok(project) => project,
+            // The project was deleted after the job was queued.
+            Err(ModelError::EntityNotFound) => return Ok(None),
+            Err(err) => return Err(err.into()),
         };
         Ok(match channel {
             "slack" => project.slack_url.map(Destination::new),
@@ -167,12 +191,13 @@ impl Hooks for App {
 }
 ```
 
-- `Ok(None)`, or an empty URL, means the destination is gone (the project was deleted, the hook removed). The delivery is logged and dropped, not retried.
+- `Ok(None)`, or an empty URL, means the destination is gone (the project was deleted, the hook removed). The delivery is logged and dropped, not retried. Map "not found" to `Ok(None)` as above: `find_by_pid` returns `Err(ModelError::EntityNotFound)` for a missing row, and passing that on with `?` would retry a delivery that can never succeed.
+- When the delivery runs inline (`deliver_now`, `workers.mode: ForegroundBlocking`, or while recording in tests), a destination that is gone counts as `skipped` in the `Report`, not `accepted`. A queued delivery only finds out when the job runs.
 - An error (the database is down) fails the job, and the queue retries it.
 - `Destination::header(name, value)` adds webhook headers. A header set on the channel (`Channel::webhook_for(key).header(..)`) wins over one from the destination.
 - A `_for` channel is skipped with a warning when no destinations are registered or `key` is empty.
 
-The key is in the job payload, so use an identifier you don't mind being stored there, such as a `pid`.
+The key is in the job payload, so use an identifier you don't mind being stored there, such as a `pid`. Header names are compared without regard to case, so a channel's `authorization` header replaces the destination's `Authorization` instead of being sent next to it.
 
 ## 5. Run a worker
 
@@ -307,6 +332,6 @@ The API, in `loco_rs::notifications::testing`:
 - `record(&ctx)`: turn recording on for a context whose config does not set `stub`.
 - `is_recording(&ctx)`: whether recording is on.
 
-The recording belongs to the context, so tests that boot their own app do not see each other's deliveries. Channels are skipped while recording just as they are when sending, so a test with an unconfigured `Channel::webhook()` records nothing for it. A delivery whose destination cannot be resolved is counted as failed.
+The recording belongs to the context, so tests that boot their own app do not see each other's deliveries. Channels are skipped while recording just as they are when sending, so a test with an unconfigured `Channel::webhook()` records nothing for it. A delivery whose destination cannot be resolved is counted as failed; a `_for` key your `Destinations` reports gone is counted as skipped and not recorded.
 
 To exercise real sending instead, leave `stub` off and point the channels at a server your test controls. With `workers.mode: ForegroundBlocking` (the test default), `deliver_later` runs the worker inline, so the request has already happened when it returns, and the `Report` reflects what was sent. Email deliveries then go through the mailer, where `mailer.stub: true` captures them as described in [Send an email](/docs/how-to/send-email#7-test-without-sending-real-email).
