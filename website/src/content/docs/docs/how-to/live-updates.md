@@ -98,7 +98,7 @@ async fn after_context(ctx: AppContext) -> Result<AppContext> {
 }
 ```
 
-`Broadcaster::default()` buffers 64 messages per subscriber. A subscriber that falls further behind skips the messages it missed. Use `Broadcaster::new(capacity)` to change the buffer size.
+`Broadcaster::default()` buffers 64 messages per subscriber. A subscriber that falls further behind skips the messages it missed and gets a `refresh` in their place. Use `Broadcaster::new(capacity)` to change the buffer size.
 
 ## 4. Serve the stream and subscribe to it
 
@@ -132,15 +132,43 @@ The connection stays open, and the stream sends a keep-alive comment every 15 se
 
 ## 5. Broadcast changes
 
-Anything holding an `AppContext` can broadcast. This includes handlers, model methods and workers:
+Anything holding an `AppContext` can broadcast. In a handler, render the fragment with the `ViewEngine` you already extract:
 
 ```rust
-let html = v.render("posts/_post.html", data!({ "post": post }))?;
-Broadcaster::from_store(&ctx.shared_store)?
-    .broadcast("posts", TurboStream::prepend("posts", html));
+let stream = TurboStream::prepend("posts", "")
+    .render(&v, "posts/_post.html", data!({ "post": post }))?;
+Broadcaster::from_store(&ctx.shared_store)?.broadcast("posts", stream);
 ```
 
-`broadcast` returns how many subscribers received the message. Zero means nobody is listening. That is not an error, and the stream's channel is dropped until someone subscribes again.
+Model methods and workers have no `ViewEngine` extractor. To render there, put a copy of the view engine in the shared store where you build it, in your view-engine initializer:
+
+```rust
+async fn after_routes(&self, router: AxumRouter, ctx: &AppContext) -> Result<AxumRouter> {
+    let tera_engine = engines::TeraView::build()?;
+    ctx.shared_store.insert(tera_engine.clone());
+    Ok(router.layer(Extension(ViewEngine::from(tera_engine))))
+}
+```
+
+Then read it back next to the broadcaster:
+
+```rust
+let v = ctx
+    .shared_store
+    .get::<engines::TeraView>()
+    .ok_or_else(|| Error::string("no view engine in the shared store"))?;
+let stream = TurboStream::prepend("posts", "")
+    .render(&v, "posts/_post.html", data!({ "post": post }))?;
+Broadcaster::from_store(&ctx.shared_store)?.broadcast("posts", stream);
+```
+
+Or skip the view and pass markup you trust straight to `TurboStream::prepend("posts", html)`.
+
+`broadcast` returns how many subscribers received the message. Zero means nobody is listening. That is not an error, and the stream's channel is dropped until someone subscribes again. A channel is also dropped when the last browser on it disconnects.
+
+A browser that falls more than the buffer size behind gets a `refresh` instead of the messages it missed, so the page reloads its state.
+
+When the server shuts down, the default `Hooks::serve` ends every open stream after `on_shutdown` runs, so connected browsers do not keep the server from stopping. Turbo reconnects when the server is back. If you override `serve`, call `Broadcaster::from_store(&ctx.shared_store)?.shutdown()` in your shutdown path.
 
 ## Limitations
 

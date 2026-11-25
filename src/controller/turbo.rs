@@ -34,9 +34,10 @@ use axum::{
     },
 };
 use dashmap::DashMap;
-use futures_util::{stream, Stream};
+use futures_util::{stream, Stream, StreamExt};
 use serde::Serialize;
 use tokio::sync::broadcast;
+use tokio_util::sync::CancellationToken;
 
 use crate::{controller::views::ViewRenderer, Error, Result};
 
@@ -300,7 +301,8 @@ fn escape_attr(out: &mut String, s: &str) {
 /// Whether the request's `Accept` header asks for a Turbo Stream answer.
 ///
 /// Turbo adds the media type to `Accept` on form submissions, so this is the
-/// check Rails' `format.turbo_stream` makes.
+/// check Rails' `format.turbo_stream` makes. An entry with `q=0` means "not
+/// acceptable" and does not count.
 #[must_use]
 pub fn accepts_turbo_stream(headers: &HeaderMap) -> bool {
     headers
@@ -309,10 +311,19 @@ pub fn accepts_turbo_stream(headers: &HeaderMap) -> bool {
         .filter_map(|v| v.to_str().ok())
         .flat_map(|v| v.split(','))
         .any(|part| {
-            part.split(';')
+            let mut params = part.split(';');
+            params
                 .next()
                 .is_some_and(|m| m.trim().eq_ignore_ascii_case(CONTENT_TYPE))
+                && !params.any(is_zero_quality)
         })
+}
+
+/// `true` for a `q=0` (or `q=0.0`, `q=0.000`) media-type parameter.
+fn is_zero_quality(param: &str) -> bool {
+    param.split_once('=').is_some_and(|(name, value)| {
+        name.trim().eq_ignore_ascii_case("q") && value.trim().parse::<f32>().is_ok_and(|q| q <= 0.0)
+    })
 }
 
 /// Extractor: `true` when the request accepts a Turbo Stream answer.
@@ -368,8 +379,14 @@ const DEFAULT_CAPACITY: usize = 64;
 ///
 /// Messages are not stored: a subscriber gets what is broadcast while it is
 /// connected, and a subscriber that falls more than `capacity` messages behind
-/// skips the oldest ones. Only subscribers connected to the same process
-/// receive a message.
+/// skips the oldest ones (an SSE subscriber is sent
+/// [`TurboStream::refresh`] instead, so the page reloads its state). Only
+/// subscribers connected to the same process receive a message.
+///
+/// The default [`crate::app::Hooks::serve`] calls [`Broadcaster::shutdown`]
+/// on the shared store's broadcaster when the server stops, so open SSE
+/// connections do not hold up a graceful shutdown. An app that overrides
+/// `serve` must call it itself.
 #[derive(Debug, Clone)]
 pub struct Broadcaster {
     inner: Arc<Inner>,
@@ -380,6 +397,28 @@ struct Inner {
     capacity: usize,
     keep_alive: Duration,
     streams: DashMap<String, broadcast::Sender<String>>,
+    shutdown: CancellationToken,
+}
+
+/// An SSE subscription. Dropping it (the client went away, or the stream
+/// ended) removes the stream's channel once nobody else listens, so per-record
+/// streams that never see another broadcast do not pile up.
+struct Subscription {
+    rx: broadcast::Receiver<String>,
+    inner: Arc<Inner>,
+    stream: String,
+}
+
+impl Drop for Subscription {
+    fn drop(&mut self) {
+        // `self.rx` is still alive here, so it counts as one receiver. The
+        // check runs under the map's shard lock, which `subscribe` also
+        // takes, so no new receiver can appear between the count and the
+        // removal.
+        self.inner
+            .streams
+            .remove_if(&self.stream, |_, tx| tx.receiver_count() <= 1);
+    }
 }
 
 impl Default for Broadcaster {
@@ -402,11 +441,16 @@ impl Broadcaster {
                 capacity,
                 keep_alive: Duration::from_secs(15),
                 streams: DashMap::new(),
+                shutdown: CancellationToken::new(),
             }),
         }
     }
 
     /// Subscribe to `stream`. The receiver yields each message as HTML.
+    ///
+    /// The stream's channel is dropped on the next [`Broadcaster::broadcast`]
+    /// after the last receiver goes away. [`Broadcaster::sse`] cleans up as
+    /// soon as the client disconnects.
     #[must_use]
     pub fn subscribe(&self, stream: &str) -> broadcast::Receiver<String> {
         self.inner
@@ -453,17 +497,48 @@ impl Broadcaster {
         &self,
         stream: &str,
     ) -> Sse<impl Stream<Item = Result<Event, Infallible>> + Send + use<>> {
-        let rx = self.subscribe(stream);
-        let events = stream::unfold(rx, |mut rx| async move {
-            loop {
-                match rx.recv().await {
-                    Ok(html) => return Some((Ok(Event::default().data(html)), rx)),
-                    Err(broadcast::error::RecvError::Lagged(_)) => {}
-                    Err(broadcast::error::RecvError::Closed) => return None,
-                }
-            }
-        });
+        let events = self
+            .messages(stream)
+            .map(|html| Ok(Event::default().data(html)));
         Sse::new(events).keep_alive(KeepAlive::new().interval(self.inner.keep_alive))
+    }
+
+    /// The HTML messages an SSE subscriber receives. Ends on
+    /// [`Broadcaster::shutdown`]; a lagging subscriber gets a refresh.
+    fn messages(&self, stream: &str) -> impl Stream<Item = String> + Send + use<> {
+        let sub = Subscription {
+            rx: self.subscribe(stream),
+            inner: Arc::clone(&self.inner),
+            stream: stream.to_string(),
+        };
+        stream::unfold(sub, |mut sub| async move {
+            match sub.rx.recv().await {
+                Ok(html) => Some((html, sub)),
+                // Messages were skipped: have the page reload its state.
+                Err(broadcast::error::RecvError::Lagged(_)) => {
+                    Some((TurboStream::refresh().to_html(), sub))
+                }
+                Err(broadcast::error::RecvError::Closed) => None,
+            }
+        })
+        .take_until(self.inner.shutdown.clone().cancelled_owned())
+    }
+
+    /// End every open [`Broadcaster::sse`] stream, now and from now on, so a
+    /// graceful server shutdown is not held open by connected browsers.
+    /// Turbo reconnects the page's stream source when the server is back.
+    ///
+    /// The default [`crate::app::Hooks::serve`] calls this after
+    /// `on_shutdown`. Call it yourself if you override `serve`.
+    pub fn shutdown(&self) {
+        self.inner.shutdown.cancel();
+    }
+
+    /// Shut down the broadcaster in `store`, if there is one.
+    pub(crate) fn shutdown_in(store: &crate::app::SharedStore) {
+        if let Some(hub) = store.get_ref::<Self>() {
+            hub.shutdown();
+        }
     }
 
     /// Fetch the broadcaster from the shared store.
@@ -580,6 +655,19 @@ mod tests {
             HeaderValue::from_static("text/html;q=0.9, TEXT/VND.TURBO-STREAM.HTML;q=1"),
         );
         assert!(accepts_turbo_stream(&h));
+        for refused in [
+            "text/vnd.turbo-stream.html;q=0, text/html",
+            "text/vnd.turbo-stream.html; Q=0.0",
+            "text/vnd.turbo-stream.html;level=1;q=0.000",
+        ] {
+            h.insert(header::ACCEPT, HeaderValue::from_static(refused));
+            assert!(!accepts_turbo_stream(&h), "{refused}");
+        }
+        h.insert(
+            header::ACCEPT,
+            HeaderValue::from_static("text/vnd.turbo-stream.html;q=0.1"),
+        );
+        assert!(accepts_turbo_stream(&h));
     }
 
     #[test]
@@ -605,6 +693,69 @@ mod tests {
         drop(hub.subscribe("posts"));
         assert_eq!(hub.broadcast("posts", TurboStream::remove("x")), 0);
         assert!(hub.inner.streams.is_empty());
+    }
+
+    #[tokio::test]
+    async fn sse_messages_end_on_shutdown() {
+        let hub = Broadcaster::default();
+        let mut open = Box::pin(hub.messages("posts"));
+        hub.broadcast("posts", TurboStream::remove("a"));
+        assert!(open.next().await.is_some());
+
+        hub.clone().shutdown();
+        let ended = tokio::time::timeout(Duration::from_secs(1), open.next()).await;
+        assert_eq!(ended.expect("stream ends after shutdown"), None);
+
+        // A stream opened after shutdown ends at once.
+        let mut late = Box::pin(hub.messages("posts"));
+        assert_eq!(late.next().await, None);
+    }
+
+    #[tokio::test]
+    async fn shutdown_in_reaches_the_stored_broadcaster() {
+        let store = crate::app::SharedStore::default();
+        Broadcaster::shutdown_in(&store); // nothing stored: no panic
+        let hub = Broadcaster::default();
+        store.insert(hub.clone());
+        let mut open = Box::pin(hub.messages("posts"));
+        Broadcaster::shutdown_in(&store);
+        assert_eq!(open.next().await, None);
+    }
+
+    #[test]
+    fn dropping_an_sse_subscription_drops_its_channel() {
+        let hub = Broadcaster::default();
+        let first = hub.messages("post_1");
+        let second = hub.messages("post_1");
+        let raw = hub.subscribe("post_2");
+        assert_eq!(hub.subscriber_count("post_1"), 2);
+
+        drop(first);
+        assert_eq!(hub.subscriber_count("post_1"), 1);
+        assert!(hub.inner.streams.contains_key("post_1"));
+
+        drop(second);
+        assert!(!hub.inner.streams.contains_key("post_1"));
+        // Plain receivers keep their channel until the next broadcast.
+        drop(raw);
+        assert_eq!(hub.inner.streams.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn lagging_sse_subscriber_gets_a_refresh() {
+        let hub = Broadcaster::new(1);
+        let mut events = Box::pin(hub.messages("posts"));
+        for id in ["a", "b", "c"] {
+            hub.broadcast("posts", TurboStream::remove(id));
+        }
+        assert_eq!(
+            events.next().await.unwrap(),
+            TurboStream::refresh().to_html()
+        );
+        assert_eq!(
+            events.next().await.unwrap(),
+            TurboStream::remove("c").to_html()
+        );
     }
 
     #[test]

@@ -961,6 +961,7 @@ since they restate the trait's own API.
 - `fn` **from_store**`(store: &SharedStore) -> Result<Self>` — Fetch the broadcaster from the shared store
 - `fn` **new**`(capacity: usize) -> Self` — A hub whose subscribers buffer up to `capacity` messages each
 - `fn` **sse**`(self: &Self, stream: &str) -> Sse<impl Trait>` — Subscribe to `stream` and answer with a Server-Sent Events response, for
+- `fn` **shutdown**`(self: &Self)` — End every open [`Broadcaster::sse`] stream, now and from now on, so a
 - `fn` **subscribe**`(self: &Self, stream: &str) -> Receiver<String>` — Subscribe to `stream`. The receiver yields each message as HTML
 - `fn` **subscriber_count**`(self: &Self, stream: &str) -> usize` — Number of subscribers currently connected to `stream`
 
