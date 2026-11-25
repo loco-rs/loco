@@ -6,6 +6,10 @@
 
 - Generated apps also get the skill under `.agents/skills/loco/`, alongside `.claude/skills/loco/`, for Zed, Cursor and other Agent Skills clients (#1857, @paoValle).
 
+### Fixed
+
+- **The test database is dropped `WITH (FORCE)`.** `testing::db` dropped the per-test PostgreSQL database while the app's pool could still hold connections, so the drop failed with "is being accessed by other users" and its `expect` panicked inside `Drop`. `tests_cfg::postgres` already drops this way; needs PostgreSQL 13 or newer (@jirkamotejl).
+
 ## 1.3.1 - 2026-11-05
 
 ### Fixed
