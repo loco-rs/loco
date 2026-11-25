@@ -1286,10 +1286,10 @@ since they restate the trait's own API.
 - `fn` **order**`(self: &Self) -> Order` — Returns the corresponding `Order` enum variant based on the current
 ## `net`
 
-- `enum` **RefusedUrl** — Why [`OutboundGuard::check_url`] refused a URL
 - `struct` **BlockedAddress** — The error for a refused destination. Its message names the host, never
 - `struct` **GuardedResolver** — A DNS resolver that keeps only the addresses an [`OutboundGuard`]
 - `struct` **OutboundGuard**` { allow_private: bool, allow: Vec<String> }` — Which outbound addresses are allowed
+- `enum` **RefusedUrl** — Why [`OutboundGuard::check_url`] refused a URL
 - `fn` **is_blocked**`(err: &Error) -> bool` — Whether a reqwest error was caused by the guard refusing an address
 - `fn` **is_public**`(ip: IpAddr) -> bool` — Whether `ip` is a publicly routable address
 
