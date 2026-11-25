@@ -171,19 +171,21 @@ Table order = coding/config order (`default_middleware_stack`, `mod.rs:80-169`).
 
 - **Config key:** `spa` · **Struct:** `spa::Spa` (`spa.rs`)
 - **Default:** **disabled**.
-- **Purpose:** serves a single-page app build folder under `uri`. Existing files are served as is; a missing path without a file extension gets `index` (client-side routes); a missing path with an extension is a `404`; methods other than `GET`/`HEAD` are a `404`. Successful HTML responses get `cache_control.html`, other successful responses get `cache_control.assets`. Works next to `static`; mounted at `/`, it answers whatever no route matched, so disable `fallback`.
+- **Purpose:** serves a single-page app build folder under `uri`. Existing files are served as is; a missing path without a file extension gets `index` (client-side routes); a missing path with an extension (any dot in the last segment) is a `404`; a folder is treated as a missing path, never listed or redirected; methods other than `GET`/`HEAD` are a `404`. Successful and `304` responses get `cache_control.html` for HTML (decided from the request path as well as the `Content-Type`), `cache_control.assets` for files under `cache_control.assets_prefix`, and `cache_control.other` for the rest. Works next to `static`; mounted at `/`, it answers whatever no route matched, so disable `fallback`. Boot fails when `uri` does not start with `/` or a `cache_control` value is not a valid header; a route at exactly `uri` conflicts with the mount and panics.
 - **Knobs:**
 
 | Name | Type | Default |
 |---|---|---|
 | `enable` | `bool` | `false` |
-| `uri` | `String` | `"/"` |
+| `uri` | `String` | `"/"` (must start with `/`; `""` means `/`) |
 | `path` | `PathBuf` | `"frontend/dist"` |
 | `index` | `PathBuf` | `"index.html"` (relative to `path`) |
 | `must_exist` | `bool` | `true` (boot fails if `path` or `index` is missing) |
 | `precompressed` | `bool` | `false` (serves `.gz` variants when `true`) |
 | `cache_control.assets` | `Option<String>` | `"public, max-age=31536000, immutable"` (`~` sends none) |
+| `cache_control.assets_prefix` | `String` | `"assets/"` (relative to `path`; `""` = every non-HTML file) |
 | `cache_control.html` | `Option<String>` | `"no-cache"` (`~` sends none) |
+| `cache_control.other` | `Option<String>` | `"no-cache"` (`~` sends none) |
 
 > `spa` always reads from disk, also under the `embedded_assets` feature.
 

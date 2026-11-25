@@ -919,7 +919,7 @@ since they restate the trait's own API.
 - `fn` **new**`(config: &SecureHeader) -> Result<Self>` — Creates a new [`SecureHeaders`] instance with the provided
 ## `controller::middleware::spa`
 
-- `struct` **CacheControl**` { assets: Option<String>, html: Option<String> }` — Cache-Control values by response kind
+- `struct` **CacheControl**` { assets: Option<String>, assets_prefix: String, html: Option<String>, other: Option<String> }` — Cache-Control values by response kind
 - `const` **IMMUTABLE** — Cache-Control used for hashed build assets by default
 - `const` **NO_CACHE** — Cache-Control used for HTML (the app shell) by default
 - `struct` **Spa**` { enable: bool, uri: String, path: PathBuf, index: PathBuf, must_exist: bool, precompressed: bool, cache_control: CacheControl }` — SPA middleware configuration

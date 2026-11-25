@@ -12,10 +12,16 @@
 //!   loudly rather than be parsed as HTML.
 //! * Only `GET` and `HEAD` are served; other methods answer `404`, so an
 //!   unmatched `POST` is not swallowed by the app shell.
+//! * A path whose last segment has a dot counts as a file, so a client route
+//!   such as `/app/users/jane.doe` is a `404`, not the app shell.
+//! * A directory is never listed or redirected; it is treated like a missing
+//!   path, so `/app/docs` gets the app shell.
 //!
-//! Cache headers follow how bundlers name their output: built assets carry a
-//! content hash in their names, so they get a long, immutable cache, while
-//! HTML (the entry point that points at those hashes) is always revalidated.
+//! Cache headers follow how bundlers name their output: files under
+//! `assets/` (Vite's default output folder) carry a content hash in their
+//! names, so they get a long, immutable cache. HTML (the entry point that
+//! points at those hashes) and other files that keep their names
+//! (`favicon.ico`, `robots.txt`) are always revalidated.
 //!
 //! ```yaml
 //! server:
@@ -80,12 +86,20 @@ pub struct Spa {
 /// Set one to `~` (null) to send no header for that kind of response.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CacheControl {
-    /// For successful non-HTML responses (JS, CSS, images, fonts).
+    /// For files under `assets_prefix` (hashed JS, CSS, images, fonts).
     #[serde(default = "default_assets_cache")]
     pub assets: Option<String>,
+    /// The folder, relative to `path`, whose files carry a content hash in
+    /// their names. An empty string counts every non-HTML file as hashed.
+    #[serde(default = "default_assets_prefix")]
+    pub assets_prefix: String,
     /// For HTML responses, including the `index.html` fallback.
     #[serde(default = "default_html_cache")]
     pub html: Option<String>,
+    /// For other files, which keep their names between builds
+    /// (`favicon.ico`, `robots.txt`, `manifest.json`).
+    #[serde(default = "default_other_cache")]
+    pub other: Option<String>,
 }
 
 impl Default for Spa {
@@ -125,8 +139,17 @@ fn default_assets_cache() -> Option<String> {
     Some(IMMUTABLE.to_string())
 }
 
+fn default_assets_prefix() -> String {
+    "assets/".to_string()
+}
+
 #[allow(clippy::unnecessary_wraps)]
 fn default_html_cache() -> Option<String> {
+    Some(NO_CACHE.to_string())
+}
+
+#[allow(clippy::unnecessary_wraps)]
+fn default_other_cache() -> Option<String> {
     Some(NO_CACHE.to_string())
 }
 
@@ -138,8 +161,46 @@ fn is_client_route(path: &str) -> bool {
         .is_none_or(|segment| Path::new(segment).extension().is_none())
 }
 
-fn header_value(value: Option<&String>) -> Option<HeaderValue> {
-    value.and_then(|v| HeaderValue::from_str(v).ok())
+fn is_html_path(path: &str) -> bool {
+    Path::new(path)
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("html") || ext.eq_ignore_ascii_case("htm"))
+}
+
+fn header_value(key: &str, value: Option<&String>) -> Result<Option<HeaderValue>> {
+    value
+        .map(|v| {
+            HeaderValue::from_str(v).map_err(|_| {
+                Error::Message(format!(
+                    "spa: `cache_control.{key}` value `{v}` is not a valid header value"
+                ))
+            })
+        })
+        .transpose()
+}
+
+/// Turns the configured `uri` into a mount path: `/` or `/a/b` with no
+/// trailing slash.
+fn mount_path(uri: &str) -> Result<String> {
+    let uri = uri.trim();
+    if uri.is_empty() {
+        return Ok("/".to_string());
+    }
+    if !uri.starts_with('/') {
+        return Err(Error::Message(format!(
+            "spa: `uri` must start with `/`, got `{uri}`"
+        )));
+    }
+    let uri = uri.trim_end_matches('/');
+    if uri.is_empty() {
+        return Ok("/".to_string());
+    }
+    if uri.contains("//") {
+        return Err(Error::Message(format!(
+            "spa: `uri` must not contain an empty segment, got `{uri}`"
+        )));
+    }
+    Ok(uri.to_string())
 }
 
 #[derive(Clone)]
@@ -147,8 +208,10 @@ struct SpaService {
     files: ServeDir,
     index: PathBuf,
     precompressed: bool,
+    assets_prefix: String,
     assets_cache: Option<HeaderValue>,
     html_cache: Option<HeaderValue>,
+    other_cache: Option<HeaderValue>,
 }
 
 impl SpaService {
@@ -156,7 +219,9 @@ impl SpaService {
         if req.method() != Method::GET && req.method() != Method::HEAD {
             return StatusCode::NOT_FOUND.into_response();
         }
-        let client_route = is_client_route(req.uri().path());
+        // Inside a nested mount this path is relative to `uri`.
+        let path = req.uri().path().to_string();
+        let client_route = is_client_route(&path);
         let (parts, body) = req.into_parts();
         let file_req = Request::from_parts(parts.clone(), body);
 
@@ -166,7 +231,9 @@ impl SpaService {
             Err(err) => match err {},
         };
 
+        let mut shell = false;
         if res.status() == StatusCode::NOT_FOUND && client_route {
+            shell = true;
             let mut index = ServeFile::new(&self.index);
             if self.precompressed {
                 index = index.precompressed_gzip();
@@ -177,24 +244,34 @@ impl SpaService {
             };
         }
 
-        self.set_cache_control(&mut res);
+        self.set_cache_control(&mut res, &path, shell);
         res
     }
 
-    fn set_cache_control(&self, res: &mut Response) {
+    /// Picks the header from the request as well as the response: a `304`
+    /// carries no `Content-Type`, and must not turn the app shell into an
+    /// immutable asset.
+    fn set_cache_control(&self, res: &mut Response, path: &str, shell: bool) {
         let status = res.status();
         if !(status.is_success() || status == StatusCode::NOT_MODIFIED) {
             return;
         }
-        let html = res
-            .headers()
-            .get(CONTENT_TYPE)
-            .and_then(|v| v.to_str().ok())
-            .is_some_and(|v| v.starts_with("text/html"));
+        let html = shell
+            || is_html_path(path)
+            || res
+                .headers()
+                .get(CONTENT_TYPE)
+                .and_then(|v| v.to_str().ok())
+                .is_some_and(|v| v.starts_with("text/html"));
         let value = if html {
             &self.html_cache
-        } else {
+        } else if path
+            .trim_start_matches('/')
+            .starts_with(&self.assets_prefix)
+        {
             &self.assets_cache
+        } else {
+            &self.other_cache
         };
         if let Some(value) = value {
             res.headers_mut().insert(CACHE_CONTROL, value.clone());
@@ -215,9 +292,20 @@ impl MiddlewareLayer for Spa {
         serde_json::to_value(self)
     }
 
-    /// Mounts the build folder at `uri`. Fails when `must_exist` is set and
-    /// the folder or its index file is missing.
+    /// Mounts the build folder at `uri`. Fails when `uri` does not start
+    /// with `/`, when a `cache_control` value is not a valid header, or when
+    /// `must_exist` is set and the folder or its index file is missing.
     fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
+        let uri = mount_path(&self.uri)?;
+        let cache = &self.cache_control;
+        let assets_cache = header_value("assets", cache.assets.as_ref())?;
+        let html_cache = header_value("html", cache.html.as_ref())?;
+        let other_cache = header_value("other", cache.other.as_ref())?;
+        let mut assets_prefix = cache.assets_prefix.trim_matches('/').to_string();
+        if !assets_prefix.is_empty() {
+            assets_prefix.push('/');
+        }
+
         let index = self.path.join(&self.index);
         if self.must_exist && (!self.path.exists() || !index.exists()) {
             return Err(Error::Message(format!(
@@ -228,7 +316,10 @@ impl MiddlewareLayer for Spa {
             )));
         }
 
-        let mut files = ServeDir::new(&self.path);
+        // A directory is a missing file: the shell is served for it below.
+        // ServeDir's own handling would redirect `/docs` to `/docs/` using
+        // the path with `uri` stripped, which points outside the mount.
+        let mut files = ServeDir::new(&self.path).append_index_html_on_directories(false);
         if self.precompressed {
             files = files.precompressed_gzip();
         }
@@ -236,22 +327,27 @@ impl MiddlewareLayer for Spa {
             files,
             index,
             precompressed: self.precompressed,
-            assets_cache: header_value(self.cache_control.assets.as_ref()),
-            html_cache: header_value(self.cache_control.html.as_ref()),
+            assets_prefix,
+            assets_cache,
+            html_cache,
+            other_cache,
         };
         let router = AXRouter::new().fallback(move |req: Request| service.clone().serve(req));
 
-        if self.uri == "/" {
+        if uri == "/" {
             Ok(app.fallback_service(router))
         } else {
-            Ok(app.nest_service(self.uri.trim_end_matches('/'), router))
+            Ok(app.nest_service(&uri, router))
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use axum::http::header::ACCEPT_ENCODING;
+    use axum::{
+        http::header::{ACCEPT_ENCODING, IF_MODIFIED_SINCE, LOCATION},
+        routing::get,
+    };
     use tower::ServiceExt;
 
     use super::*;
@@ -262,6 +358,7 @@ mod tests {
             .add("dist/index.html", "<h1>shell</h1>")
             .add("dist/assets/app-abc123.js", "console.log(1)")
             .add("dist/robots.txt", "ok")
+            .add("dist/docs/index.html", "<h1>docs</h1>")
             .create()
             .expect("create build folder")
     }
@@ -286,15 +383,16 @@ mod tests {
         method: Method,
         uri: &str,
     ) -> (StatusCode, Option<String>, String) {
+        send(app, Request::builder().method(method).uri(uri)).await
+    }
+
+    async fn send(
+        app: &AXRouter,
+        req: axum::http::request::Builder,
+    ) -> (StatusCode, Option<String>, String) {
         let res = app
             .clone()
-            .oneshot(
-                Request::builder()
-                    .method(method)
-                    .uri(uri)
-                    .body(Body::empty())
-                    .unwrap(),
-            )
+            .oneshot(req.body(Body::empty()).unwrap())
             .await
             .unwrap();
         let status = res.status();
@@ -318,7 +416,9 @@ mod tests {
         assert!(spa.must_exist);
         assert!(!spa.precompressed);
         assert_eq!(spa.cache_control.assets.as_deref(), Some(IMMUTABLE));
+        assert_eq!(spa.cache_control.assets_prefix, "assets/");
         assert_eq!(spa.cache_control.html.as_deref(), Some(NO_CACHE));
+        assert_eq!(spa.cache_control.other.as_deref(), Some(NO_CACHE));
     }
 
     #[test]
@@ -335,6 +435,39 @@ mod tests {
         assert!(is_client_route("/posts/"));
         assert!(!is_client_route("/assets/app.js"));
         assert!(!is_client_route("/favicon.ico"));
+    }
+
+    #[test]
+    fn mount_paths_are_normalised() {
+        assert_eq!(mount_path("").unwrap(), "/");
+        assert_eq!(mount_path("  ").unwrap(), "/");
+        assert_eq!(mount_path("/").unwrap(), "/");
+        assert_eq!(mount_path("//").unwrap(), "/");
+        assert_eq!(mount_path(" /app/ ").unwrap(), "/app");
+        assert_eq!(mount_path("/a/b").unwrap(), "/a/b");
+        assert!(mount_path("app").is_err());
+        assert!(mount_path("/a//b").is_err());
+    }
+
+    #[test]
+    fn bad_uri_is_an_error_not_a_panic() {
+        let tree = build_folder();
+        for uri in ["app", "/a//b"] {
+            let err = spa(&tree.root, uri).apply(AXRouter::new()).unwrap_err();
+            assert!(err.to_string().contains("`uri`"), "{uri}: {err}");
+        }
+        for uri in ["", "//", "/app/"] {
+            assert!(spa(&tree.root, uri).apply(AXRouter::new()).is_ok(), "{uri}");
+        }
+    }
+
+    #[test]
+    fn invalid_cache_control_is_an_error() {
+        let tree = build_folder();
+        let mut spa = spa(&tree.root, "/app");
+        spa.cache_control.html = Some("no-cache\n".to_string());
+        let err = spa.apply(AXRouter::new()).unwrap_err();
+        assert!(err.to_string().contains("cache_control.html"), "{err}");
     }
 
     #[test]
@@ -376,6 +509,88 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn only_files_under_assets_prefix_are_immutable() {
+        let tree = build_folder();
+        let app = router(&spa(&tree.root, "/app")).await;
+
+        let (status, cache, body) = call(&app, Method::GET, "/app/robots.txt").await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(cache.as_deref(), Some(NO_CACHE));
+        assert_eq!(body, "ok");
+
+        let mut spa = spa(&tree.root, "/");
+        spa.cache_control.assets_prefix = String::new();
+        let app = router(&spa).await;
+        let (_, cache, _) = call(&app, Method::GET, "/robots.txt").await;
+        assert_eq!(cache.as_deref(), Some(IMMUTABLE));
+    }
+
+    #[tokio::test]
+    async fn not_modified_keeps_the_shell_revalidated() {
+        let tree = build_folder();
+        for (mount, prefix) in [("/app", "/app"), ("/", "")] {
+            let app = router(&spa(&tree.root, mount)).await;
+            let cases = [
+                ("/", NO_CACHE),
+                ("/index.html", NO_CACHE),
+                ("/posts/42", NO_CACHE),
+                ("/robots.txt", NO_CACHE),
+                ("/assets/app-abc123.js", IMMUTABLE),
+            ];
+            for (path, expected) in cases {
+                let uri = format!("{prefix}{path}");
+                let (status, cache, _) = send(
+                    &app,
+                    Request::builder()
+                        .uri(&uri)
+                        .header(IF_MODIFIED_SINCE, "Fri, 01 Jan 2100 00:00:00 GMT"),
+                )
+                .await;
+                assert_eq!(status, StatusCode::NOT_MODIFIED, "{uri}");
+                assert_eq!(cache.as_deref(), Some(expected), "{uri}");
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn directories_get_the_shell_not_a_redirect() {
+        let tree = build_folder();
+        let app = router(&spa(&tree.root, "/app")).await;
+
+        for uri in ["/app/docs", "/app/docs/"] {
+            let res = app
+                .clone()
+                .oneshot(Request::builder().uri(uri).body(Body::empty()).unwrap())
+                .await
+                .unwrap();
+            assert_eq!(res.status(), StatusCode::OK, "{uri}");
+            assert!(res.headers().get(LOCATION).is_none(), "{uri}");
+            let body = axum::body::to_bytes(res.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            assert_eq!(body, "<h1>shell</h1>", "{uri}");
+        }
+
+        let (status, _, body) = call(&app, Method::GET, "/app/docs/index.html").await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body, "<h1>docs</h1>");
+    }
+
+    #[tokio::test]
+    async fn routes_under_the_mount_win() {
+        let tree = build_folder();
+        let app = spa(&tree.root, "/app")
+            .apply(AXRouter::new().route("/app/api", get(|| async { "api" })))
+            .expect("apply spa")
+            .with_state(crate::tests_cfg::app::get_app_context().await);
+
+        let (_, _, body) = call(&app, Method::GET, "/app/api").await;
+        assert_eq!(body, "api");
+        let (_, _, body) = call(&app, Method::GET, "/app/posts").await;
+        assert_eq!(body, "<h1>shell</h1>");
+    }
+
+    #[tokio::test]
     async fn missing_files_and_other_methods_are_not_found() {
         let tree = build_folder();
         let app = router(&spa(&tree.root, "/app")).await;
@@ -410,12 +625,16 @@ mod tests {
         let mut spa = spa(&tree.root, "/app");
         spa.cache_control = CacheControl {
             assets: Some("max-age=60".to_string()),
+            assets_prefix: "/assets/".to_string(),
             html: None,
+            other: Some("max-age=300".to_string()),
         };
         let app = router(&spa).await;
 
-        let (_, cache, _) = call(&app, Method::GET, "/app/robots.txt").await;
+        let (_, cache, _) = call(&app, Method::GET, "/app/assets/app-abc123.js").await;
         assert_eq!(cache.as_deref(), Some("max-age=60"));
+        let (_, cache, _) = call(&app, Method::GET, "/app/robots.txt").await;
+        assert_eq!(cache.as_deref(), Some("max-age=300"));
         let (_, cache, _) = call(&app, Method::GET, "/app/posts").await;
         assert_eq!(cache, None);
     }

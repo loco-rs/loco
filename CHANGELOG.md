@@ -4,7 +4,7 @@
 
 ### Added
 
-- `spa` middleware: serves a frontend build (e.g. `frontend/dist`) under a mount path, next to `static`. Client-side routes get `index.html`, missing files get a real `404`, hashed assets are sent with `Cache-Control: public, max-age=31536000, immutable` and HTML with `no-cache`. New clientside apps use it instead of `static`.
+- `spa` middleware: serves a frontend build (e.g. `frontend/dist`) under a mount path, next to `static`. Client-side routes get `index.html`, missing files get a real `404`, hashed files under `assets/` are sent with `Cache-Control: public, max-age=31536000, immutable`, HTML and other files with `no-cache`. New clientside apps use it instead of `static`.
 
 ### Changed
 

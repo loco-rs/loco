@@ -150,7 +150,7 @@ server:
 
 A request for `/posts/42` matches no route and no file, so `index.html` is served and React Router takes over — client-side routing survives a hard refresh. A request for a file that is not there, such as an old `/assets/index-1a2b3c.js`, is a plain `404` instead of HTML.
 
-Vite puts a content hash in every built file name, so `spa` sends `Cache-Control: public, max-age=31536000, immutable` for those and `no-cache` for `index.html`: browsers keep the bundle until a new build changes its name, and always pick up the new `index.html` that points at it. See [Serve a single-page app](/docs/how-to/serve-assets#4-serve-a-single-page-app-spa) for every key, including mounting the app under a path such as `/app`.
+Vite puts a content hash in the name of every file it builds into `assets/`, so `spa` sends `Cache-Control: public, max-age=31536000, immutable` for those and `no-cache` for `index.html` and the files copied from `public/`: browsers keep the bundle until a new build changes its name, and always pick up the new `index.html` that points at it. See [Serve a single-page app](/docs/how-to/serve-assets#4-serve-a-single-page-app-spa) for every key, including mounting the app under a path such as `/app`.
 
 :::caution
 `must_exist: true` means the app **refuses to start until `frontend/dist/index.html` exists**. On a freshly generated clientside app, `cargo loco start` fails before your code runs — that is not a broken app, it is the missing frontend build. Run `pnpm build` once first. The same applies in CI and in your Dockerfile: build the frontend before starting the binary, or set `must_exist: false` and accept 404s until you do.

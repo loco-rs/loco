@@ -75,29 +75,46 @@ server:
       path: "frontend/dist"
 ```
 
-What it serves, for a build folder with `index.html` and `assets/app-3f2a1c.js`:
+What it serves, for a build folder with `index.html`, `favicon.ico` and `assets/app-3f2a1c.js`:
 
 | Request | Response |
 |---|---|
 | `GET /app/assets/app-3f2a1c.js` | the file, `Cache-Control: public, max-age=31536000, immutable` |
+| `GET /app/favicon.ico` | the file, `Cache-Control: no-cache` — it keeps its name between builds |
 | `GET /app/posts/42` (no such file, no extension) | `index.html`, `Cache-Control: no-cache` — the client-side router takes over |
 | `GET /app` | `index.html`, `Cache-Control: no-cache` |
 | `GET /app/assets/old-91bc.js` (no such file) | `404` — a stale bundle reference fails instead of being parsed as HTML |
+| `GET /app/users/jane.doe` (no such file) | `404` — the last segment has a dot, so it counts as a file, not a client route |
+| `GET /app/docs` (a folder in the build) | `index.html` — folders are never listed or redirected |
 | `POST /app/anything` | `404` |
 
-The cache split follows how bundlers name their output: built files carry a content hash in their names, so a new build produces new URLs and the old ones can be cached forever; `index.html` points at those hashes, so it is always revalidated.
+The cache split follows how bundlers name their output: Vite writes its built files to `assets/` with a content hash in their names, so a new build produces new URLs and the old ones can be cached forever. `index.html` points at those hashes, so it is always revalidated, and so are files copied as-is from Vite's `public/` folder (`favicon.ico`, `robots.txt`), which keep their names. A `304 Not Modified` gets the same header as the full response would. If your bundler writes hashed files somewhere else, set `cache_control.assets_prefix`.
 
 | Key | Default | Purpose |
 |---|---|---|
-| `uri` | `/` | where the app is mounted; `/` serves it for every path no route matched |
+| `uri` | `/` | where the app is mounted; must start with `/`; `/` serves it for every path no route matched |
 | `path` | `frontend/dist` | the build folder |
 | `index` | `index.html` | the app shell, relative to `path` |
 | `must_exist` | `true` | refuse to boot when `path` or the index file is missing |
 | `precompressed` | `false` | serve a `.gz` sibling when the client accepts gzip |
-| `cache_control.assets` | `public, max-age=31536000, immutable` | for successful non-HTML responses; `~` sends no header |
+| `cache_control.assets` | `public, max-age=31536000, immutable` | for files under `assets_prefix`; `~` sends no header |
+| `cache_control.assets_prefix` | `assets/` | the folder in the build that holds hashed files; `""` counts every non-HTML file |
 | `cache_control.html` | `no-cache` | for HTML, including the `index.html` fallback; `~` sends no header |
+| `cache_control.other` | `no-cache` | for every other file; `~` sends no header |
 
-Routes you add in `routes()` always win: `spa` only answers what no route matched under its `uri`. Mounted at `/`, it also replaces the welcome-screen `fallback` — disable that one (section 3), or it shadows the app in development.
+The app boots with an error, not a silent default, when `uri` does not start with `/` or a `cache_control` value is not a valid header.
+
+Routes you add in `routes()` under the mount, such as `/app/api/posts`, always win: `spa` only answers what no route matched under its `uri`. The one exception is a route at exactly the mount path (`/app` or `/app/`): it conflicts with the mount and the app panics at boot, so give that route another path. Mounted at `/`, `spa` also replaces the welcome-screen `fallback` — disable that one (section 3), or it shadows the app in development.
+
+Mounted anywhere but `/`, the bundle must know its base path, or `index.html` asks for `/assets/…` instead of `/app/assets/…`. In Vite, set it in `vite.config.ts`:
+
+```ts
+export default defineConfig({
+  base: "/app/",
+});
+```
+
+Your client-side router needs the same base (React Router's `basename: "/app"`).
 
 If the SPA is Loco's own clientside mode — a Vite/React frontend in `frontend/`, with TypeScript types generated from your Rust DTOs — this config is already generated for you (mounted at `/`, pointing at `frontend/dist`). See [Build a typed React SPA](/docs/how-to/build-a-spa).
 
