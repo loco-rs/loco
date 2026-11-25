@@ -132,6 +132,36 @@ async fn loopback_destinations_are_refused_by_default() {
 }
 
 #[tokio::test]
+async fn loopback_is_refused_without_a_notifications_block() {
+    let (base, log) = mock_server(StatusCode::OK).await;
+    let mut ctx = crate::tests_cfg::app::get_app_context().await;
+    ctx.config.notifications = None;
+
+    let report = QueuePaused::to(vec![
+        Channel::slack_url(format!("{base}/s")),
+        Channel::webhook_url(format!("{base}/w")),
+    ])
+    .deliver_later(&ctx)
+    .await;
+
+    assert_eq!(report.failed, 0);
+    assert!(requests(&log).is_empty(), "{:?}", requests(&log));
+}
+
+#[tokio::test]
+async fn invalid_urls_are_dropped_not_retried() {
+    let ctx = guarded_context().await;
+    let report = QueuePaused::to(vec![
+        Channel::webhook_url("not a url"),
+        Channel::slack_url("mailto:ops@example.com"),
+    ])
+    .deliver_later(&ctx)
+    .await;
+    assert_eq!(report.failed, 0);
+    assert_eq!(report.accepted, 2);
+}
+
+#[tokio::test]
 async fn allowed_hosts_reach_private_destinations() {
     let (base, log) = mock_server(StatusCode::OK).await;
     let port = base.rsplit(':').next().unwrap();

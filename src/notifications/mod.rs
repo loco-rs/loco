@@ -502,15 +502,14 @@ fn http_client(ctx: &AppContext) -> reqwest::Client {
         .as_ref()
         .map(|n| n.outbound.clone())
         .unwrap_or_default();
+    // Never fall back to a plain client: it would skip the outbound guard.
+    // Building only fails when the TLS backend cannot start, which no
+    // client could work around.
     let client = guard
         .apply(reqwest::Client::builder().timeout(Duration::from_secs(timeout)))
         .build()
         .unwrap_or_else(|err| {
-            tracing::error!(
-                error = %err,
-                "notifications: could not build the HTTP client with a {timeout}s timeout; using one without it"
-            );
-            guard.apply(reqwest::Client::builder()).build().unwrap_or_default()
+            panic!("notifications: could not build the guarded HTTP client: {err}")
         });
     ctx.shared_store.insert(HttpClient(client.clone()));
     client
@@ -612,6 +611,10 @@ fn refused(channel: &str, config: Option<&Notifications>, url: &str) -> bool {
     let guard = config.map_or(&default, |c| &c.outbound);
     match guard.check_url(url) {
         Ok(()) => false,
+        Err(crate::net::RefusedUrl::Invalid) => {
+            tracing::error!(channel, "invalid notification URL; not retrying");
+            true
+        }
         Err(err) => {
             tracing::error!(channel, error = %err, "notification refused; not retrying");
             true

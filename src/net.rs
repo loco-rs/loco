@@ -28,8 +28,11 @@
 //! client.post(&url).json(&payload).send().await?;
 //! ```
 //!
-//! The guarded client does not use `HTTP_PROXY`/`HTTPS_PROXY`: a proxy
-//! resolves the name itself, out of the guard's reach.
+//! The guarded client does not use `HTTP_PROXY`/`HTTPS_PROXY`, even for
+//! public hosts: a proxy resolves the name itself, out of the guard's reach.
+//! [`OutboundGuard::apply`] logs a warning when one of those variables is set,
+//! since a deployment that can only reach the internet through a proxy will
+//! fail to connect.
 //!
 //! Notifications use the guard for Slack and webhook deliveries, configured
 //! under `notifications.outbound`.
@@ -96,6 +99,45 @@ impl std::error::Error for BlockedAddress {}
 
 impl From<BlockedAddress> for crate::Error {
     fn from(err: BlockedAddress) -> Self {
+        Self::Message(err.to_string())
+    }
+}
+
+/// Why [`OutboundGuard::check_url`] refused a URL.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RefusedUrl {
+    /// The URL does not parse, or has no host (`mailto:`, `data:`).
+    Invalid,
+    /// The host is an address the guard refuses.
+    Blocked(BlockedAddress),
+}
+
+impl fmt::Display for RefusedUrl {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Invalid => f.write_str("invalid URL: it does not parse or has no host"),
+            Self::Blocked(blocked) => blocked.fmt(f),
+        }
+    }
+}
+
+impl std::error::Error for RefusedUrl {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Invalid => None,
+            Self::Blocked(blocked) => Some(blocked),
+        }
+    }
+}
+
+impl From<BlockedAddress> for RefusedUrl {
+    fn from(err: BlockedAddress) -> Self {
+        Self::Blocked(err)
+    }
+}
+
+impl From<RefusedUrl> for crate::Error {
+    fn from(err: RefusedUrl) -> Self {
         Self::Message(err.to_string())
     }
 }
@@ -227,6 +269,7 @@ const V4_BLOCKED: &[(u32, u8)] = &[
 const V6_BLOCKED: &[(u128, u8)] = &[
     (0, 128),                          // :: unspecified
     (1, 128),                          // ::1 loopback
+    (0x0064_ff9b_0001_u128 << 80, 48), // 64:ff9b:1::/48 local-use NAT64
     (0x0100_0000_0000_0000 << 64, 64), // 100::/64 discard
     (0x2001_0000_u128 << 96, 32),      // 2001::/32 Teredo
     (0x2001_0db8_u128 << 96, 32),      // 2001:db8::/32 documentation
@@ -242,7 +285,8 @@ const V6_BLOCKED: &[(u128, u8)] = &[
 /// Refused: loopback, private (RFC 1918), carrier-grade NAT, link-local
 /// (including the cloud metadata address `169.254.169.254`), unspecified,
 /// multicast, broadcast and reserved, documentation and benchmarking ranges,
-/// IPv6 unique-local, link-local, site-local and Teredo — and any IPv6 form
+/// IPv6 unique-local, link-local, site-local, Teredo and local-use NAT64
+/// (`64:ff9b:1::/48`, which reaches the operator's own network) — and any IPv6 form
 /// that embeds one of the refused IPv4 addresses (IPv4-mapped
 /// `::ffff:127.0.0.1`, IPv4-compatible `::127.0.0.1`, NAT64 `64:ff9b::/96` and
 /// 6to4 `2002::/16`).
@@ -296,11 +340,38 @@ mod client {
         redirect, ClientBuilder, Url,
     };
 
-    use super::{BlockedAddress, OutboundGuard};
+    use super::{BlockedAddress, OutboundGuard, RefusedUrl};
 
     /// Redirects a guarded client follows before giving up, as reqwest's
     /// default.
     const MAX_REDIRECTS: usize = 10;
+
+    /// Proxy variables reqwest reads by default, which a guarded client
+    /// ignores.
+    const PROXY_VARS: [&str; 6] = [
+        "HTTPS_PROXY",
+        "https_proxy",
+        "HTTP_PROXY",
+        "http_proxy",
+        "ALL_PROXY",
+        "all_proxy",
+    ];
+
+    /// The first proxy variable that `get` reports as set and non-empty.
+    pub(super) fn proxy_var_set(
+        get: impl Fn(&str) -> Option<std::ffi::OsString>,
+    ) -> Option<&'static str> {
+        PROXY_VARS
+            .into_iter()
+            .find(|var| get(var).is_some_and(|v| !v.is_empty()))
+    }
+
+    /// Whether a redirect is over the limit, given the number of URLs
+    /// visited so far (the first is the original request, not a redirect).
+    /// Same rule as reqwest's `Policy::limited`.
+    pub(super) const fn too_many_redirects(previous: usize) -> bool {
+        previous > MAX_REDIRECTS
+    }
 
     /// A DNS resolver that keeps only the addresses an [`OutboundGuard`]
     /// allows, and fails a lookup that has none left. Installed by
@@ -369,23 +440,16 @@ mod client {
         ///
         /// # Errors
         ///
-        /// [`BlockedAddress`] for a refused or unparseable URL.
-        pub fn check_url(&self, url: &str) -> Result<(), BlockedAddress> {
-            let parsed = Url::parse(url).map_err(|_| BlockedAddress {
-                host: "<invalid url>".to_string(),
-            })?;
+        /// [`RefusedUrl::Invalid`] for a URL that does not parse or has no
+        /// host, [`RefusedUrl::Blocked`] for a refused IP-literal host.
+        pub fn check_url(&self, url: &str) -> Result<(), RefusedUrl> {
+            let parsed = Url::parse(url).map_err(|_| RefusedUrl::Invalid)?;
             self.check_parsed(&parsed)
         }
 
-        fn check_parsed(&self, url: &Url) -> Result<(), BlockedAddress> {
-            url.host_str().map_or_else(
-                || {
-                    Err(BlockedAddress {
-                        host: "<no host>".to_string(),
-                    })
-                },
-                |host| self.check_host(host),
-            )
+        fn check_parsed(&self, url: &Url) -> Result<(), RefusedUrl> {
+            let host = url.host_str().ok_or(RefusedUrl::Invalid)?;
+            Ok(self.check_host(host)?)
         }
 
         /// Installs the guard on a reqwest client: a resolver that drops
@@ -393,21 +457,33 @@ mod client {
         /// no system proxy. Pair it with [`OutboundGuard::check_url`] for
         /// IP-literal URLs. A guard with `allow_private` set leaves the
         /// builder as it is.
+        ///
+        /// `HTTP_PROXY`, `HTTPS_PROXY` and `ALL_PROXY` are ignored, even for
+        /// public hosts, because a proxy resolves names out of the guard's
+        /// reach; a warning is logged when one of them is set.
         pub fn apply(&self, builder: ClientBuilder) -> ClientBuilder {
             if self.allow_private {
                 return builder;
+            }
+            if let Some(var) = proxy_var_set(|name| std::env::var_os(name)) {
+                tracing::warn!(
+                    var,
+                    "outbound guard: {var} is set but ignored; guarded requests connect directly, \
+                     so hosts reachable only through the proxy will fail"
+                );
             }
             let guard = self.clone();
             builder
                 .no_proxy()
                 .dns_resolver(Arc::new(GuardedResolver::new(self.clone())))
                 .redirect(redirect::Policy::custom(move |attempt| {
-                    if attempt.previous().len() >= MAX_REDIRECTS {
+                    if too_many_redirects(attempt.previous().len()) {
                         return attempt.error("too many redirects");
                     }
                     match guard.check_parsed(attempt.url()) {
                         Ok(()) => attempt.follow(),
-                        Err(blocked) => attempt.error(blocked),
+                        Err(RefusedUrl::Blocked(blocked)) => attempt.error(blocked),
+                        Err(invalid @ RefusedUrl::Invalid) => attempt.error(invalid),
                     }
                 }))
         }
@@ -469,6 +545,9 @@ mod tests {
             "::ffff:169.254.169.254",
             "::127.0.0.1",
             "64:ff9b::7f00:1",
+            "64:ff9b:1::7f00:1",
+            "64:ff9b:1::808:808",
+            "64:ff9b:1:ffff::1",
             "2002:7f00:1::",
             "2002:a00:1::1",
             "fc00::1",
@@ -579,11 +658,39 @@ mod tests {
             assert!(guard.check_url("http://169.254.169.254/latest").is_err());
             assert!(guard.check_url("http://2130706433/").is_err()); // 127.0.0.1 as an integer
             assert!(guard.check_url("http://0x7f.1/").is_err());
-            assert!(guard.check_url("not a url").is_err());
+            assert_eq!(guard.check_url("not a url"), Err(RefusedUrl::Invalid));
+            assert_eq!(
+                guard.check_url("mailto:ops@example.com"),
+                Err(RefusedUrl::Invalid)
+            );
+            assert!(matches!(
+                guard.check_url("http://10.0.0.1/"),
+                Err(RefusedUrl::Blocked(b)) if b.host() == "10.0.0.1"
+            ));
             assert!(guard
                 .check_url("https://hooks.slack.com/services/x")
                 .is_ok());
             assert!(guard.check_url("https://8.8.8.8/").is_ok());
+        }
+
+        #[test]
+        fn redirect_limit_matches_reqwest_default() {
+            // `previous` includes the original URL, so ten redirects leave
+            // eleven entries before the eleventh is refused.
+            assert!(!super::super::client::too_many_redirects(10));
+            assert!(super::super::client::too_many_redirects(11));
+        }
+
+        #[test]
+        fn proxy_variables_are_detected() {
+            use std::ffi::OsString;
+            let found = super::super::client::proxy_var_set(|name| {
+                (name == "http_proxy").then(|| OsString::from("http://proxy:3128"))
+            });
+            assert_eq!(found, Some("http_proxy"));
+            let empty = super::super::client::proxy_var_set(|_| Some(OsString::new()));
+            assert_eq!(empty, None);
+            assert_eq!(super::super::client::proxy_var_set(|_| None), None);
         }
 
         #[test]

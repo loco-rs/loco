@@ -1286,6 +1286,7 @@ since they restate the trait's own API.
 - `fn` **order**`(self: &Self) -> Order` — Returns the corresponding `Order` enum variant based on the current
 ## `net`
 
+- `enum` **RefusedUrl** — Why [`OutboundGuard::check_url`] refused a URL
 - `struct` **BlockedAddress** — The error for a refused destination. Its message names the host, never
 - `struct` **GuardedResolver** — A DNS resolver that keeps only the addresses an [`OutboundGuard`]
 - `struct` **OutboundGuard**` { allow_private: bool, allow: Vec<String> }` — Which outbound addresses are allowed
@@ -1307,8 +1308,13 @@ since they restate the trait's own API.
 - `fn` **allows_host**`(self: &Self, host: &str) -> bool` — Whether `host` (a name, not an address) is allowed by name
 - `fn` **apply**`(self: &Self, builder: ClientBuilder) -> ClientBuilder` — Installs the guard on a reqwest client: a resolver that drops
 - `fn` **check_host**`(self: &Self, host: &str) -> Result<(), BlockedAddress>` — Checks a host as it appears in a URL: an IP literal (`127.0.0.1`,
-- `fn` **check_url**`(self: &Self, url: &str) -> Result<(), BlockedAddress>` — Checks a URL before sending: it must parse and have a host, and
+- `fn` **check_url**`(self: &Self, url: &str) -> Result<(), RefusedUrl>` — Checks a URL before sending: it must parse and have a host, and
 - `fn` **is_allowed**`(self: &Self, ip: IpAddr) -> bool` — Whether a connection to `ip` is allowed: it is public, or the guard
+
+### `RefusedUrl`
+
+- `variant` **Blocked** — The host is an address the guard refuses
+- `variant` **Invalid** — The URL does not parse, or has no host (`mailto:`, `data:`)
 ## `notifications`
 
 - `enum` **Channel** — Where a notification goes. Returned by [`super::Notifier::channels`]

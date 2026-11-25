@@ -11,3 +11,5 @@ notifications:
   stub: true
   slack:
     webhook_url: "https://hooks.slack.com/services/test"
+  outbound:
+    allow: [localhost, 127.0.0.1, "::1"]
