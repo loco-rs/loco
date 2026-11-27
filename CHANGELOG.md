@@ -5,9 +5,21 @@
 ### Added
 
 - Notifications: `Channel::slack_for(key)` and `Channel::webhook_for(key)` queue only a key. The URL, signing secret and headers are looked up through the app's `Destinations` (registered with `notifications::set_destinations`) when the job runs, so per-record secrets never reach the queue table and a rotated secret applies to jobs already queued. Existing channels and queued jobs are unchanged. Jobs from `_for` channels use new job payload variants that older workers cannot read, so in a rolling deploy upgrade the workers before, or together with, the web nodes that start using `_for` channels. A `_for` key that is gone when the delivery runs inline (`deliver_now`, `ForegroundBlocking`, recording) is counted as `skipped` in the `Report`.
+- `loco_rs::net::OutboundGuard`: refuse outbound requests to loopback, private, link-local and other non-public addresses, checked on the address actually connected to (resolver, redirects and IP-literal URLs). The equivalent of Ruby's `ssrf_filter`.
 
 ### Changed
 
+- **Slack and webhook notifications refuse non-public addresses by default.** A delivery to `localhost`, `10.0.0.0/8`, `169.254.169.254` and similar is logged and dropped. Allow specific hosts, IPs or CIDRs with `notifications.outbound.allow`, or everything with `notifications.outbound.allow_private: true`.
+
+  **Upgrading:** `cargo loco generate notifier` adds the allow list below only to config files that have no `notifications:` block yet, so an existing app does not get it. If you send to a receiver on your own machine in development, or to a test server with `stub: false` in tests, add it to `config/development.yaml` and `config/test.yaml` yourself:
+
+  ```yaml
+  notifications:
+    outbound:
+      allow: [localhost, 127.0.0.1, "::1"]
+  ```
+- **Slack and webhook notifications no longer use `HTTP_PROXY`, `HTTPS_PROXY` or `ALL_PROXY`**, even for public hosts: a proxy looks up the name out of the guard's reach. A deployment that reaches the internet only through a proxy will fail to deliver; a warning is logged when one of those variables is set. Open direct outbound access to Slack and your webhook hosts, or set `notifications.outbound.allow_private: true` to turn the guard off.
+- `config::Notifications` has a new public field, `outbound`. Code that builds it with a struct literal must add `outbound: Default::default()` or end with `..Notifications::default()`.
 - Generated apps also get the skill under `.agents/skills/loco/`, alongside `.claude/skills/loco/`, for Zed, Cursor and other Agent Skills clients (#1857, @paoValle).
 
 ## 1.3.1 - 2026-11-05

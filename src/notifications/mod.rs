@@ -350,7 +350,8 @@ impl Report {
 /// What became of one delivery that was sent (or recorded) without an error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Outcome {
-    /// Sent, recorded, or permanently rejected by the receiver (logged).
+    /// Sent, recorded, permanently rejected by the receiver, or refused by
+    /// `notifications.outbound` (both logged).
     Delivered,
     /// The keyed destination no longer exists; logged and dropped.
     Gone,
@@ -515,7 +516,7 @@ impl Target {
 ///
 /// Registered automatically at boot when the `notifications` feature is on;
 /// a failed send returns an error so the queue retries it
-/// (`notifications.max_retries`, Postgres and `SQLite`). Permanent rejections (4xx other than 408 and 429) are logged and dropped.
+/// (`notifications.max_retries`, Postgres and `SQLite`). Permanent rejections (4xx other than 408 and 429) and destinations refused by `notifications.outbound` are logged and dropped.
 pub struct NotificationWorker {
     ctx: AppContext,
     http: reqwest::Client,
@@ -544,14 +545,25 @@ impl NotificationWorker {
     /// Resolves and sends one delivery, saying whether it went anywhere.
     async fn send(&self, delivery: Delivery) -> Result<Outcome> {
         let channel = delivery.target.name();
+        let config = self.ctx.config.notifications.as_ref();
         match resolve(&self.ctx, delivery.target).await? {
-            Resolved::Slack { url, payload } => slack::send(&self.http, &url, &payload).await?,
+            // A refused address is checked on the resolved URL, so keyed
+            // (`_for`) destinations read at run time are guarded too.
+            Resolved::Slack { url, payload } => {
+                if refused("slack", config, &url) {
+                    return Ok(Outcome::Delivered);
+                }
+                slack::send(&self.http, &url, &payload).await?;
+            }
             Resolved::Webhook {
                 url,
                 secret,
                 headers,
                 payload,
             } => {
+                if refused("webhook", config, &url) {
+                    return Ok(Outcome::Delivered);
+                }
                 webhook::send(
                     &self.http,
                     webhook::Request {
@@ -703,15 +715,20 @@ fn http_client(ctx: &AppContext) -> reqwest::Client {
         .notifications
         .as_ref()
         .map_or(10, |n| n.timeout_secs);
-    let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(timeout))
+    let guard = ctx
+        .config
+        .notifications
+        .as_ref()
+        .map(|n| n.outbound.clone())
+        .unwrap_or_default();
+    // Never fall back to a plain client: it would skip the outbound guard.
+    // Building only fails when the TLS backend cannot start, which no
+    // client could work around.
+    let client = guard
+        .apply(reqwest::Client::builder().timeout(Duration::from_secs(timeout)))
         .build()
         .unwrap_or_else(|err| {
-            tracing::error!(
-                error = %err,
-                "notifications: could not build the HTTP client with a {timeout}s timeout; using one without it"
-            );
-            reqwest::Client::default()
+            panic!("notifications: could not build the guarded HTTP client: {err}")
         });
     ctx.shared_store.insert(HttpClient(client.clone()));
     client
@@ -801,6 +818,36 @@ pub(crate) async fn register_worker(ctx: &AppContext, queue: &Queue) -> Result<(
             },
         )
         .await
+}
+
+/// Whether `url` is refused by `notifications.outbound` before sending
+/// (IP-literal hosts; names are checked as they resolve). A refusal cannot
+/// succeed on retry, so it is logged and the delivery dropped.
+fn refused(channel: &str, config: Option<&Notifications>, url: &str) -> bool {
+    let default = crate::net::OutboundGuard::default();
+    let guard = config.map_or(&default, |c| &c.outbound);
+    match guard.check_url(url) {
+        Ok(()) => false,
+        Err(crate::net::RefusedUrl::Invalid) => {
+            tracing::error!(channel, "invalid notification URL; not retrying");
+            true
+        }
+        Err(err) => {
+            tracing::error!(channel, error = %err, "notification refused; not retrying");
+            true
+        }
+    }
+}
+
+/// Turns a transport error into the worker's result: an address refused by
+/// `notifications.outbound` is logged and dropped, anything else retries.
+pub(crate) fn transport_error(channel: &str, err: reqwest::Error) -> Result<()> {
+    if crate::net::is_blocked(&err) {
+        tracing::error!(channel, error = %err.without_url(), "notification refused; not retrying");
+        Ok(())
+    } else {
+        Err(http_error(channel, err))
+    }
 }
 
 /// A transport error without its URL: Slack webhook URLs are secrets, and
