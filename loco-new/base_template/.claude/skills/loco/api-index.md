@@ -11,13 +11,13 @@ since they restate the trait's own API.
 
 `use loco_rs::prelude::*;` brings these into scope. They are already available — importing them again is redundant.
 
-`ActiveModelBehavior`, `ActiveModelTrait`, `ActiveValue`, `AppContext`, `Authenticable`, `BackgroundWorker`, `ColumnTrait`, `Condition`, `ConnectionTrait`, `CurrentUser`, `DatabaseConnection`, `Date`, `DateTime`, `DateTimeUtc`, `DateTimeWithTimeZone`, `DbErr`, `Decimal`, `Dir`, `EncryptedCookies`, `EntityTrait`, `Error`, `Expr`, `Form`, `Format`, `Identity`, `Initializer`, `IntoActiveModel`, `IntoResponse`, `Json`, `JsonValidate`, `JsonValidateWithMessage`, `Mailer`, `MaybeCurrentUser`, `MiddlewareStackExt`, `ModelError`, `ModelResult`, `ModelTrait`, `Multipart`, `Notifier`, `OAuthFailure`, `OAuthHandler`, `OrErr`, `Order`, `Pager`, `PagerMeta`, `PaginatorTrait`, `Path`, `Query`, `QueryFilter`, `QueryOrder`, `QuerySelect`, `Queue`, `RemoteIP`, `RespondTo`, `Response`, `Result`, `Routes`, `Session`, `SessionUser`, `Set`, `SharedStore`, `SignIn`, `SignedCookies`, `State`, `Task`, `TaskInfo`, `TenantActiveModelExt`, `TenantEntity`, `TenantQueryExt`, `TeraView`, `TransactionTrait`, `Uuid`, `Validatable`, `Validate`, `ValidatorTrait`, `ViewEngine`, `ViewRenderer`, `async_trait`, `auth`, `bad_request`, `cookie`, `data`, `debug_handler`, `delete`, `format`, `get`, `head`, `include_dir`, `mailer`, `not_found`, `notifications`, `options`, `patch`, `post`, `prelude`, `put`, `query`, `task`, `trace`, `unauthorized`, `validation`
+`ActiveModelBehavior`, `ActiveModelTrait`, `ActiveValue`, `AppContext`, `Authenticable`, `BackgroundWorker`, `ColumnTrait`, `Condition`, `ConnectionTrait`, `CsrfToken`, `CurrentUser`, `DatabaseConnection`, `Date`, `DateTime`, `DateTimeUtc`, `DateTimeWithTimeZone`, `DbErr`, `Decimal`, `Dir`, `EncryptedCookies`, `EntityTrait`, `Error`, `Expr`, `Form`, `Format`, `Identity`, `Initializer`, `IntoActiveModel`, `IntoResponse`, `Json`, `JsonValidate`, `JsonValidateWithMessage`, `Mailer`, `MaybeCurrentUser`, `MiddlewareStackExt`, `ModelError`, `ModelResult`, `ModelTrait`, `Multipart`, `Notifier`, `OAuthFailure`, `OAuthHandler`, `OrErr`, `Order`, `Pager`, `PagerMeta`, `PaginatorTrait`, `Path`, `Query`, `QueryFilter`, `QueryOrder`, `QuerySelect`, `Queue`, `RemoteIP`, `RespondTo`, `Response`, `Result`, `Routes`, `Session`, `SessionUser`, `Set`, `SharedStore`, `SignIn`, `SignedCookies`, `SignedWebhook`, `State`, `Task`, `TaskInfo`, `TenantActiveModelExt`, `TenantEntity`, `TenantQueryExt`, `TeraView`, `TransactionTrait`, `Uuid`, `Validatable`, `Validate`, `ValidatorTrait`, `ViewEngine`, `ViewRenderer`, `WebhookSource`, `async_trait`, `auth`, `bad_request`, `cookie`, `data`, `debug_handler`, `delete`, `format`, `get`, `head`, `include_dir`, `mailer`, `not_found`, `notifications`, `options`, `patch`, `post`, `prelude`, `put`, `query`, `task`, `trace`, `unauthorized`, `validation`
 
 ## `loco_rs::testing::prelude`
 
 `use loco_rs::testing::prelude::*;` brings these into scope. They are already available — importing them again is redundant.
 
-`db`, `redaction`, `request`, `selector`
+`db`, `redaction`, `request`, `selector`, `sign_in`
 
 ## `loco_rs`
 
@@ -166,9 +166,12 @@ since they restate the trait's own API.
 - `struct` **OAuthFailure**` { provider: String, kind: FailureKind, detail: Option<String>, retry_path: String }` — A failed sign-in, handed to [`OAuthHandler::on_failure`]
 - `trait` **OAuthHandler** — The app side of the sign-in flow
 - `struct` **SignIn**` { user_id: String, redirect_to: Option<String>, remember: bool }` — What [`OAuthHandler::on_sign_in`] decided
-- `struct` **StartParams**` { return_to: Option<String>, remember: Option<String> }` — Query of `/auth/{provider}`
+- `struct` **StartParams**` { return_to: Option<String>, remember: Option<String>, other: BTreeMap<String, String> }` — Query of `/auth/{provider}`
 - `fn` **default_failure**`(ctx: &AppContext, failure: &OAuthFailure) -> Result<Response>` — [`OAuthHandler::on_failure`]'s default
+- `fn` **origin_param**`(ctx: &AppContext) -> &str` — The query parameter `/auth/{provider}` reads the post-sign-in path from
 - `fn` **routes**`() -> Routes` — The routes for handler `H`, under `/auth`. Add your own with `.add(..)` or
+- `fn` **state_cookie_name**`(ctx: &AppContext, provider: &str) -> String` — The state cookie for `provider`: `auth.oauth.state_cookie_name` (default
+- `fn` **validate**`(config: &Config) -> Result<()>` — Rejects an `auth.oauth` configuration that cannot work. Checked at boot
 
 ### `FailureKind`
 
@@ -186,13 +189,13 @@ since they restate the trait's own API.
 ### `OAuthHandler`
 
 - `fn` **after_sign_out_path**`(ctx: &AppContext) -> String` — Where `/auth/sign_out` lands. Default
-- `fn` **on_failure**`(ctx: &AppContext, failure: &OAuthFailure) -> Pin<Box<dyn Future + Send>>` — The response for a failed sign-in. Default: redirect to
+- `fn` **on_failure**`(ctx: &AppContext, parts: &Parts, failure: &OAuthFailure) -> Pin<Box<dyn Future + Send>>` — The response for a failed sign-in, Devise's
 - `fn` **on_sign_in**`(ctx: &AppContext, identity: &Identity) -> Pin<Box<dyn Future + Send>>` — Find or create the user for `identity` and return their session id
 
 ### `SignIn`
 
 - `fn` **new**`(user_id: impl Trait) -> Self` — Sign in the user with session id `user_id`
-- `fn` **redirect_to**`(self: Self, path: impl Trait) -> Self` — Land on `path` unless the flow carried a `return_to`
+- `fn` **redirect_to**`(self: Self, path: impl Trait) -> Self` — Land on `path` unless the sign-in link carried a `return_to`. Wins
 - `fn` **remember**`(self: Self) -> Self` — Remember this sign-in, whatever the sign-in link asked for
 ## `auth::oauth::provider`
 
@@ -210,10 +213,12 @@ since they restate the trait's own API.
 - `fn` **resolve**`(name: &str, config: &OAuthProviderConfig) -> Result<Self, String>` — Resolves `config` for the provider called `name`
 ## `auth::oauth::state`
 
-- `struct` **FlowState**` { state: String, verifier: Option<String>, return_to: Option<String>, remember: bool }` — What the start of the flow leaves for the callback
+- `const` **DEFAULT_STATE_COOKIE** — The default state cookie prefix; `auth.oauth.state_cookie_name` replaces
+- `struct` **FlowState**` { state: String, verifier: Option<String>, return_to: Option<String>, referer: Option<String>, remember: bool }` — What the start of the flow leaves for the callback
 - `const` **STATE_TTL_SECONDS** — How long a user has to finish at the provider: 10 minutes
-- `fn` **cookie_name**`(provider: &str) -> String` — The state cookie for `provider`. One per provider, so two tabs signing in
+- `fn` **cookie_name**`(provider: &str) -> String` — The default state cookie for `provider`. One per provider, so two tabs
 - `fn` **pkce_challenge**`(verifier: &str) -> String` — `BASE64URL(SHA256(verifier))` (RFC 7636 S256)
+- `fn` **prefixed_cookie_name**`(prefix: &str, provider: &str) -> String` — The state cookie for `provider` under `prefix`: `<prefix>_<provider>`
 - `fn` **random_token**`() -> String` — 32 random bytes, base64url
 - `fn` **safe_return_to**`(value: &str) -> Option<String>` — `value` if it is a path on this site, else `None`
 
@@ -225,11 +230,16 @@ since they restate the trait's own API.
 ## `auth::session`
 
 - `struct` **CurrentUser** — The signed-in user; rejects signed-out requests
+- `const` **DEFAULT_RETURN_TO_PARAM** — The default query parameter carrying the path back to the page that
 - `struct` **MaybeCurrentUser** — The signed-in user, or `None`. Never rejects for being signed out
 - `struct` **Session** — The session. See the [module docs](self)
 - `trait` **SessionUser** — How [`CurrentUser`] loads the signed-in user from the id in the session
 - `const` **USER_ID_KEY** — The session key holding the signed-in user's id
 - `fn` **encode**`(value: &str) -> String` — Percent-encodes `value` for a query string
+- `fn` **is_navigational**`(parts: &Parts, ctx: &AppContext) -> bool` — Whether a signed-out request is redirected to sign in
+- `fn` **return_to_param**`(ctx: &AppContext) -> &str` — The query parameter [`signed_out`] puts the original path in:
+- `fn` **sign_in_cookies**`(ctx: &AppContext, user_id: impl Trait) -> Result<Vec<Cookie>>` — The cookies of a fresh session signed in as `user_id`
+- `fn` **signed_out**`(parts: &Parts, ctx: &AppContext) -> Response` — The answer to a signed-out request, like Devise's failure app
 
 ### `Session`
 
@@ -252,6 +262,7 @@ since they restate the trait's own API.
 ### `SessionUser`
 
 - `fn` **find_by_session_id**`(ctx: &AppContext, id: &str) -> Pin<Box<dyn Future + Send>>` — Loads the user whose session id is `id`
+- `fn` **on_signed_out**`(ctx: &AppContext, parts: &Parts) -> Pin<Box<dyn Future + Send>>` — The response [`CurrentUser`] rejects a signed-out request with, like
 ## `auth::session_store`
 
 - `const` **DEFAULT_REMEMBER_COOKIE** — Default remember-me cookie name
@@ -575,7 +586,7 @@ since they restate the trait's own API.
 - `struct` **AwsStorageConfig**` { bucket: String, region: String, endpoint: Option<String>, access_key_id: Option<String>, secret_access_key: Option<String>, session_token: Option<String> }`
 - `struct` **AzureStorageConfig**` { container: String, account_name: String, access_key: String, endpoint: String }`
 - `enum` **CacheConfig** — Cache configurations for the application
-- `struct` **Config**` { logger: Logger, server: Server, database: Database, cache: CacheConfig, storage: StorageConfig, queue: Option<QueueConfig>, auth: Option<Auth>, workers: Workers, mailer: Option<Mailer>, notifications: Option<Notifications>, initializers: Option<Initializers>, settings: Option<Value>, scheduler: Option<Config> }` — Main application configuration structure
+- `struct` **Config**` { logger: Logger, server: Server, database: Database, cache: CacheConfig, storage: StorageConfig, queue: Option<QueueConfig>, auth: Option<Auth>, workers: Workers, mailer: Option<Mailer>, notifications: Option<Notifications>, webhooks: BTreeMap<String, Webhook>, initializers: Option<Initializers>, settings: Option<Value>, scheduler: Option<Config> }` — Main application configuration structure
 - `const` **DEV_SESSION_SECRET** — The secret every signed cookie is keyed off when `auth.session.secret` is
 - `struct` **Database**` { uri: String, enable_logging: bool, min_connections: u32, max_connections: u32, connect_timeout: u64, idle_timeout: u64, acquire_timeout: Option<u64>, auto_migrate: bool, dangerously_truncate: bool, dangerously_recreate: bool, run_on_start: Option<String>, sqlite: SqliteConfig }` — Database configuration
 - `struct` **DatabaseCacheConfig**` { sweep_every: u64, sweep_batch: u64 }` — Settings of the database cache (`cache.kind: Database`). Both fields have
@@ -593,7 +604,7 @@ since they restate the trait's own API.
 - `struct` **MailerAuth**` { user: String, password: String }` — Authentication details for the mailer
 - `enum` **MailerTls** — TLS mode for the SMTP connection
 - `struct` **Notifications**` { slack: Option<SlackNotifications>, webhook: Option<WebhookNotifications>, email: Option<EmailNotifications>, max_retries: u32, retry_backoff_secs: u64, timeout_secs: u64, stub: bool, outbound: OutboundGuard }` — Notifications configuration: the default destination of each channel and
-- `struct` **OAuthConfig**` { base_url: Option<String>, after_sign_in_path: Option<String>, after_sign_out_path: Option<String>, failure_path: Option<String>, providers: BTreeMap<String, OAuthProviderConfig> }` — `OAuth2` / `OpenID` Connect sign-in, `OmniAuth`-style
+- `struct` **OAuthConfig**` { base_url: Option<String>, after_sign_in_path: Option<String>, after_sign_out_path: Option<String>, failure_path: Option<String>, origin_param: Option<String>, state_cookie_name: Option<String>, providers: BTreeMap<String, OAuthProviderConfig> }` — `OAuth2` / `OpenID` Connect sign-in, `OmniAuth`-style
 - `struct` **OAuthProviderConfig**` { strategy: Option<OAuthStrategy>, client_id: String, client_secret: String, scopes: Option<Vec<String>>, base_url: Option<String>, api_url: Option<String>, authorize_url: Option<String>, token_url: Option<String>, userinfo_url: Option<String>, emails_url: Option<String>, redirect_uri: Option<String>, authorize_params: BTreeMap<String, String>, pkce: Option<bool>, token_auth: Option<OAuthTokenAuth> }` — One OAuth provider. Every URL is overridable, for GitHub Enterprise,
 - `enum` **OAuthStrategy** — Which provider preset a configured provider uses
 - `enum` **OAuthTokenAuth** — How the client authenticates to the token endpoint
@@ -604,14 +615,17 @@ since they restate the trait's own API.
 - `struct` **RedisQueueConfig**` { uri: String, dangerously_flush: bool, queues: Option<Vec<String>>, num_workers: u32, reaper: Option<ReaperConfig> }`
 - `struct` **RetentionConfig**` { completed_days: Option<i64>, cancelled_days: Option<i64>, failed_days: Option<i64>, interval_seconds: u64 }` — Configuration for opt-in retention of finished jobs
 - `struct` **Server**` { binding: String, port: i32, host: String, ident: Option<String>, middlewares: Config }` — Server configuration structure
-- `struct` **SessionConfig**` { secret: Option<String>, cookie_name: Option<String>, max_age: Option<u64>, secure: Option<bool>, sign_in_path: Option<String>, store: SessionStoreKind, ttl: Option<u64>, remember_for: Option<u64>, remember_cookie_name: Option<String>, redis_uri: Option<String> }` — Signed cookies and the cookie session, Rails' `secret_key_base` plus its
+- `struct` **SessionConfig**` { secret: Option<String>, cookie_name: Option<String>, max_age: Option<u64>, secure: Option<bool>, sign_in_path: Option<String>, return_to_param: Option<String>, navigational_formats: Option<Vec<String>>, store: SessionStoreKind, ttl: Option<u64>, remember_for: Option<u64>, remember_cookie_name: Option<String>, redis_uri: Option<String> }` — Signed cookies and the cookie session, Rails' `secret_key_base` plus its
 - `enum` **SessionStoreKind** — Where [`SessionConfig::store`] keeps the session
+- `enum` **SignatureEncoding** — How the digest bytes are written in the header
 - `struct` **SlackNotifications**` { webhook_url: String }` — Default Slack destination
 - `struct` **SmtpMailer**` { enable: bool, host: String, port: u16, secure: bool, tls: Option<MailerTls>, auth: Option<MailerAuth>, hello_name: Option<String> }` — SMTP mailer configuration structure
 - `struct` **SqliteConfig**` { pragmas: BTreeMap<String, String> }` — `SQLite` settings shared by the database and the `SQLite` queue
 - `struct` **SqliteQueueConfig**` { uri: String, dangerously_flush: bool, enable_logging: bool, max_connections: u32, min_connections: u32, connect_timeout: u64, idle_timeout: u64, poll_interval_sec: u32, num_workers: u32, reaper: Option<ReaperConfig>, retention: Option<RetentionConfig>, pragmas: BTreeMap<String, String> }`
 - `enum` **StorageConfig** — Storage configuration for the application
+- `struct` **Webhook**` { secret: String, scheme: WebhookScheme, header: Option<String>, prefix: Option<String>, encoding: SignatureEncoding, tolerance_secs: u64 }` — An incoming webhook source whose requests are signed with a shared secret,
 - `struct` **WebhookNotifications**` { url: String, secret: Option<String>, headers: BTreeMap<String, String> }` — Default webhook destination
+- `enum` **WebhookScheme** — The signature layouts `SignedWebhook` understands
 - `enum` **WorkerMode** — Worker mode configuration
 - `struct` **Workers**` { mode: WorkerMode }` — Background worker configuration
 - `fn` **db_connect_timeout**`() -> u64`
@@ -678,7 +692,9 @@ since they restate the trait's own API.
 
 ### `SessionConfig`
 
+- `field` **navigational_formats** — Which requests are redirected to [`sign_in_path`](Self::sign_in_path)
 - `field` **remember_for** — Lifetime of the remember-me cookie and its server-side token, in
+- `field` **sign_in_path** — Where `CurrentUser` redirects a signed-out browser (a request in one
 - `field` **store** — Where the session data lives. Default [`SessionStoreKind::Cookie`]
 - `field` **ttl** — How long an idle server-side session lives, in seconds; each use
 
@@ -688,6 +704,11 @@ since they restate the trait's own API.
 - `variant` **Database** — A `loco_sessions` table in the app database (`with-db`)
 - `variant` **Redis** — Redis keys with a TTL (`cache_redis` feature)
 - `fn` **is_server_side**`(self: Self) -> bool` — Whether the session data lives on the server
+
+### `SignatureEncoding`
+
+- `variant` **Base64** — Standard base64 with padding
+- `variant` **Hex** — Lowercase or uppercase hex
 
 ### `SmtpMailer`
 
@@ -702,6 +723,12 @@ since they restate the trait's own API.
 - `variant` **Gcp** — Google Cloud Storage
 - `variant` **Local** — Local filesystem storage
 - `variant` **Null** — Null storage: every operation errors. The default when no `storage:`
+
+### `WebhookScheme`
+
+- `variant` **Hmac** — `HMAC-SHA256(secret, body)` in one header, after an optional prefix
+- `variant` **Loco** — What Loco's own notification webhooks send: `X-Loco-Timestamp` and
+- `variant` **Timestamped** — `t=<unix secs>,v1=<hex>[,v1=<hex>]` in one header, signing
 
 ### `WorkerMode`
 
@@ -781,15 +808,46 @@ since they restate the trait's own API.
 - `struct` **JsonValidateWithMessage** — Axum middleware for validating JSON request bodies
 - `struct` **QueryValidate** — Axum middleware for validating query parameters with simplified error
 - `struct` **QueryValidateWithMessage** — Axum middleware for validating query parameters
+## `controller::extractor::webhook`
+
+- `const` **HMAC_HEADER** — Default signature header of [`WebhookScheme::Hmac`] (GitHub's)
+- `const` **LOCO_SIGNATURE_HEADER** — Signature header of [`WebhookScheme::Loco`]
+- `const` **LOCO_TIMESTAMP_HEADER** — Timestamp header of [`WebhookScheme::Loco`]
+- `struct` **SignedWebhook** — A request body whose signature has been verified against
+- `const` **TIMESTAMPED_HEADER** — Default signature header of [`WebhookScheme::Timestamped`] (Stripe's)
+- `enum` **WebhookError** — Why a webhook was refused
+- `trait` **WebhookSource** — Names the `webhooks:` config entry a [`SignedWebhook`] verifies against
+- `fn` **sign**`(config: &Webhook, body: &[u8], now: i64) -> Vec<(String, String)>` — The headers a sender would attach to `body` at `now` (Unix seconds) under
+- `fn` **verify**`(config: &Webhook, headers: &HeaderMap, body: &[u8], now: i64) -> Result<(), WebhookError>` — Checks that `headers` carry a valid signature of `body` under `config`, at
+
+### `SignedWebhook<S>`
+
+- `fn` **body**`(self: &Self) -> &Bytes` — The verified raw body
+- `fn` **header**`(self: &Self, name: &str) -> Option<&str>` — One request header as text, if present and valid UTF-8
+- `fn` **headers**`(self: &Self) -> &HeaderMap` — The request headers (event name, delivery ID, ...)
+- `fn` **into_body**`(self: Self) -> Bytes` — Takes the verified raw body
+- `fn` **json**`(self: &Self) -> Result<T>` — Parses the verified body as JSON
+
+### `WebhookError`
+
+- `variant` **EmptySecret** — The configured secret is empty
+- `variant` **Expired** — The signed timestamp is outside the tolerance window
+- `variant` **Malformed** — The signature header could not be parsed
+- `variant` **Mismatch** — The signature does not sign this body under the secret
+- `variant` **MissingHeader** — A header the scheme needs is absent
+- `variant` **NotConfigured** — No `webhooks.<name>` entry in the config
 ## `controller::format`
 
 - `struct` **RenderBuilder**
+- `struct` **Responder** — Built by [`respond_to`]; see there
 - `fn` **empty**`() -> Result<Response>` — Returns an empty response
 - `fn` **empty_json**`() -> Result<Response>` — Respond with empty json (`{}`)
 - `fn` **html**`(content: &str) -> Result<Response>` — Returns an HTML response
 - `fn` **json**`(t: T) -> Result<Response>` — Returns a JSON response containing the provided data
 - `fn` **redirect**`(to: &str) -> Result<Response>` — Returns an redirect response
 - `fn` **render**`() -> RenderBuilder`
+- `fn` **respond_to**`(format: &RespondTo) -> Responder` — Answers one action in the format the request asked for, like Rails'
+- `fn` **respond_with**`(v: &V, format: &RespondTo, key: &str, data: S) -> Result<Response> where V: ViewRenderer, S: Serialize` — Renders `key` with `data` for a browser, or `data` itself as JSON for a
 - `fn` **template**`(template: &str, data: S) -> Result<Response> where S: Serialize` — Render template from string
 - `fn` **text**`(t: &str) -> Result<Response>` — Returns a response containing the provided text
 - `fn` **view**`(v: &V, key: &str, data: S) -> Result<Response> where V: ViewRenderer, S: Serialize` — Render template located by `key`
@@ -811,9 +869,17 @@ since they restate the trait's own API.
 - `fn` **template**`(self: Self, template: &str, data: S) -> Result<Response> where S: Serialize` — Render template located by `key`
 - `fn` **text**`(self: Self, content: &str) -> Result<Response>` — Finalize and return a text response
 - `fn` **view**`(self: Self, v: &V, key: &str, data: S) -> Result<Response> where V: ViewRenderer, S: Serialize` — Render template located by `key`
+
+### `Responder`
+
+- `fn` **any**`(self: Self, f: F) -> Self where F: FnOnce` — The answer for any format no earlier branch took, like Rails'
+- `fn` **html**`(self: Self, f: F) -> Self where F: FnOnce` — The answer for a browser (`text/html`)
+- `fn` **json**`(self: Self, f: F) -> Self where F: FnOnce` — The answer for `application/json`, `.json` paths and the JSON
+- `fn` **render**`(self: Self) -> Result<Response>` — The chosen branch's response
+- `fn` **xml**`(self: Self, f: F) -> Self where F: FnOnce` — The answer for `application/xml` or `text/xml`
 ## `controller::middleware`
 
-- `struct` **Config**` { compression: Option<Compression>, etag: Option<Etag>, limit_payload: Option<LimitPayload>, logger: Option<Config>, catch_panic: Option<CatchPanic>, timeout_request: Option<TimeOut>, cors: Option<Cors>, static_assets: Option<StaticAssets>, secure_headers: Option<SecureHeader>, remote_ip: Option<RemoteIpMiddleware>, fallback: Option<Fallback>, request_id: Option<RequestId> }` — Server middleware configuration structure
+- `struct` **Config**` { compression: Option<Compression>, etag: Option<Etag>, limit_payload: Option<LimitPayload>, logger: Option<Config>, catch_panic: Option<CatchPanic>, timeout_request: Option<TimeOut>, cors: Option<Cors>, static_assets: Option<StaticAssets>, spa: Option<Spa>, secure_headers: Option<SecureHeader>, remote_ip: Option<RemoteIpMiddleware>, fallback: Option<Fallback>, request_id: Option<RequestId>, respond_to: Option<Config>, forgery_protection: Option<ForgeryProtection> }` — Server middleware configuration structure
 - `trait` **MiddlewareLayer** — Trait representing the behavior of middleware components in the application
 - `trait` **MiddlewareStackExt** — Ergonomic, Rails-style edits to a middleware stack
 - `fn` **default_middleware_stack**`(ctx: &AppContext) -> Vec<Box<dyn MiddlewareLayer>>`
@@ -858,10 +924,38 @@ since they restate the trait's own API.
 
 - `struct` **Fallback**` { enable: bool, code: StatusCode, file: Option<String>, not_found: Option<String> }`
 - `struct` **StatusCodeWrapper**
+## `controller::middleware::forgery_protection`
+
+- `struct` **CsrfToken** — The request's authenticity token (`mode: token`)
+- `const` **DEFAULT_COOKIE** — Default name of the cookie that holds the token
+- `const` **DEFAULT_FIELD** — Default name of the form field that carries the token
+- `const` **DEFAULT_HEADER** — Default name of the request header that carries the token
+- `struct` **ForgeryProtection**` { enable: bool, mode: Mode, exempt: Vec<String>, trusted_origins: Vec<String>, field: String, header: String, cookie: String }` — `server.middlewares.forgery_protection` configuration
+- `struct` **Middleware** — The configured middleware, ready to apply. Built by
+- `enum` **Mode** — How requests are checked
+- `fn` **current_token**`() -> Option<CsrfToken>` — The token of the request being handled, if `forgery_protection` runs
+- `fn` **is_cross_site**`(headers: &HeaderMap, trusted: &[String]) -> bool` — Whether `headers` say a browser sent the request from another site
+- `fn` **is_unsafe**`(method: &Method) -> bool` — Whether `method` can change state. `GET`, `HEAD`, `OPTIONS` and `TRACE`
+
+### `CsrfToken`
+
+- `fn` **field**`(self: &Self) -> &str` — The form field name the middleware reads
+- `fn` **header**`(self: &Self) -> &str` — The request header the middleware reads
+- `fn` **masked**`(self: &Self) -> String` — A masked copy of the token, safe to embed in a page
+- `fn` **verify**`(self: &Self, candidate: &str) -> bool` — Whether `candidate` (a value from [`masked`](Self::masked)) matches
+
+### `Middleware`
+
+- `fn` **new**`(config: ForgeryProtection, ctx: &AppContext) -> Self` — The middleware for `config` in `ctx`
+
+### `Mode`
+
+- `variant` **Header** — Refuse requests whose `Sec-Fetch-Site` / `Origin` say they came from
+- `variant` **Token** — Require the authenticity token on every unsafe request
 ## `controller::middleware::format`
 
 - `struct` **Format**
-- `enum` **RespondTo**
+- `enum` **RespondTo** — The format a request asked for
 - `fn` **get_respond_to**`(headers: &HeaderMap) -> RespondTo`
 
 ### `RespondTo`
@@ -908,6 +1002,11 @@ since they restate the trait's own API.
 ### `LocoRequestId`
 
 - `fn` **get**`(self: &Self) -> &str` — Retrieves the request ID as a string slice
+## `controller::middleware::respond_to`
+
+- `struct` **Config**` { enable: bool, prefix: Option<String>, extension: bool, sign_in_path: Option<String> }` — `server.middlewares.respond_to` configuration
+- `struct` **Middleware** — The `respond_to` middleware. Build it with [`new`]
+- `fn` **new**`(config: &Config, ctx: &AppContext) -> Middleware` — Creates the middleware. It needs the [`AppContext`] because it routes
 ## `controller::middleware::secure_headers`
 
 - `struct` **SecureHeader**` { enable: bool, preset: String, overrides: Option<BTreeMap<String, String>> }` — Sets a predefined or custom set of secure headers
@@ -917,6 +1016,12 @@ since they restate the trait's own API.
 ### `SecureHeaders`
 
 - `fn` **new**`(config: &SecureHeader) -> Result<Self>` — Creates a new [`SecureHeaders`] instance with the provided
+## `controller::middleware::spa`
+
+- `struct` **CacheControl**` { assets: Option<String>, assets_prefix: String, html: Option<String>, other: Option<String> }` — Cache-Control values by response kind
+- `const` **IMMUTABLE** — Cache-Control used for hashed build assets by default
+- `const` **NO_CACHE** — Cache-Control used for HTML (the app shell) by default
+- `struct` **Spa**` { enable: bool, uri: String, path: PathBuf, index: PathBuf, must_exist: bool, precompressed: bool, cache_control: CacheControl }` — SPA middleware configuration
 ## `controller::middleware::static_assets_embedded`
 
 - `struct` **EmbeddedAssets**
@@ -959,6 +1064,21 @@ since they restate the trait's own API.
 - `fn` **from_embedded_templates**`() -> Result<Self>` — Load and initialize templates from embedded assets
 - `fn` **post_process**`(self: Self, post_process: impl Trait) -> Result<Self>` — Attach the Tera view engine with a post-processing function for subsequent instantiation
 - `fn` **render_component**`(self: &Self, component: &str, data: S, body: Option<&str>) -> Result<String>` — Render one Tera 2 component by name, autoescaped like [`ViewRenderer::render`]
+## `controller::views::helpers`
+
+- `struct` **SentenceConnectors**` { words_connector: &str, two_words_connector: &str, last_word_connector: &str }` — The connectors [`to_sentence_with`] joins words with. The default is
+- `fn` **distance_of_time_in_words**`(from: impl Trait, to: impl Trait, include_seconds: bool) -> String` — Approximate distance between two times, in words
+- `fn` **number_to_human**`(number: f64) -> String` — A number in words for people: `1234` → `"1.23 Thousand"`,
+- `fn` **number_to_human_with**`(number: f64, precision: u32, significant: bool) -> String` — [`number_to_human`] with Rails' `precision:` and `significant:` options
+- `fn` **number_with_delimiter**`(number: impl Trait) -> String` — A number with `,` between thousands: `1234567.89` → `"1,234,567.89"`
+- `fn` **number_with_delimiter_using**`(number: impl Trait, delimiter: &str, separator: &str) -> String` — [`number_with_delimiter`] with a custom delimiter and decimal separator,
+- `fn` **ordinal**`(number: i64) -> &str` — The suffix [`ordinalize`] adds: `"st"`, `"nd"`, `"rd"` or `"th"`
+- `fn` **ordinalize**`(number: i64) -> String` — A number as an ordinal: `"1st"`, `"2nd"`, `"11th"`, `"23rd"`, `"-1st"`
+- `fn` **pluralize**`(count: impl Trait, singular: &str, plural: Option<&str>) -> String` — `count` followed by `singular` or its plural: `"1 person"`, `"2 people"`
+- `fn` **pluralize_word**`(word: &str) -> String` — The plural of an English noun, using the same inflector Loco uses for
+- `fn` **time_ago_in_words**`(from: impl Trait, include_seconds: bool) -> String` — Distance between `from` and now, in words: `"3 days"`, `"about 1 hour"`
+- `fn` **to_sentence**`(words: &[S]) -> String` — Joins words into a sentence: `"a"`, `"a and b"`, `"a, b, and c"`
+- `fn` **to_sentence_with**`(words: &[S], connectors: &SentenceConnectors) -> String` — [`to_sentence`] with custom connectors
 ## `controller::views::pagination`
 
 - `struct` **Pager**` { results: T, info: PagerMeta }` — A page of results plus its pagination metadata
@@ -972,9 +1092,19 @@ since they restate the trait's own API.
 - `fn` **register_filters**`(tera: &mut Tera)`
 ## `controller::views::tera_builtins::filters::number`
 
+- `fn` **number_to_human**`(value: &Value, kwargs: Kwargs, _: &State) -> TeraResult<Value>` — Writes a number in words for people: `1234` → `"1.23 Thousand"`,
 - `fn` **number_to_human_size**`(value: &Value, _: Kwargs, _: &State) -> TeraResult<Value>` — Converts a numeric value (in bytes) into a human-readable size string with
 - `fn` **number_to_percentage**`(value: &Value, kwargs: Kwargs, _: &State) -> TeraResult<Value>` — Converts a numeric value into a formatted percentage string
-- `fn` **number_with_delimiter**`(value: &Value, _: Kwargs, _: &State) -> TeraResult<Value>` — Formats a numeric value by adding commas as thousands separators
+- `fn` **number_with_delimiter**`(value: &Value, kwargs: Kwargs, _: &State) -> TeraResult<Value>` — Formats a numeric value by adding commas as thousands separators
+## `controller::views::tera_builtins::filters::text`
+
+- `fn` **ordinalize**`(value: &Value, _: Kwargs, _: &State) -> TeraResult<Value>` — `{{ place | ordinalize }}` renders `"1st"`, `"22nd"`, `"113th"`
+- `fn` **pluralize**`(value: &Value, kwargs: Kwargs, _: &State) -> TeraResult<Value>` — `{{ count | pluralize(word="person") }}` renders `"2 people"`
+- `fn` **to_sentence**`(value: &Value, kwargs: Kwargs, _: &State) -> TeraResult<Value>` — `{{ names | to_sentence }}` renders `"a, b, and c"`
+## `controller::views::tera_builtins::filters::time`
+
+- `fn` **distance_of_time_in_words**`(value: &Value, kwargs: Kwargs, _: &State) -> TeraResult<Value>` — `{{ started_at | distance_of_time_in_words(to=finished_at) }}` renders
+- `fn` **time_ago_in_words**`(value: &Value, kwargs: Kwargs, _: &State) -> TeraResult<Value>` — `{{ post.created_at | time_ago_in_words }}` renders `"3 days"`
 ## `data`
 
 - `fn` **load_json_file**`(path: &str) -> Result<T>` — Load a data JSON file asynchronously
@@ -1896,6 +2026,9 @@ since they restate the trait's own API.
 - `fn` **assert_css_not_exists**`(html: &str, selector: &str)` — Asserts that an element matching the given CSS selector does **not** exist
 - `fn` **assert_link**`(html: &str, selector: &str, expected_href: &str)` — Asserts that an `<a>` element matching the given CSS selector has the `href`
 - `fn` **select**`(html: &str, selector: &str) -> Vec<String>` — Parses the given HTML string and selects the elements matching the specified CSS selector
+## `testing::session`
+
+- `fn` **sign_in**`(server: &mut TestServer, ctx: &AppContext, user_id: impl Trait) -> Result<()>` — Signs `server` in as the user whose session id is `user_id`
 ## `validation`
 
 - `struct` **ModelValidationErrors**` { errors: BTreeMap<String, Vec<ValidationError>> }`

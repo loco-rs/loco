@@ -672,6 +672,24 @@ impl IntoResponseParts for Session {
 pub trait SessionUser: Clone + Send + Sync + Sized + 'static {
     /// Loads the user whose session id is `id`.
     async fn find_by_session_id(ctx: &AppContext, id: &str) -> Result<Option<Self>>;
+
+    /// The response [`CurrentUser`] rejects a signed-out request with, like
+    /// Devise's failure app. The default, [`signed_out`], redirects
+    /// navigational requests to `auth.session.sign_in_path` and answers the
+    /// rest `401`. Override it to render a page, answer JSON in your own
+    /// shape, or pick the sign-in page by path:
+    ///
+    /// ```rust,ignore
+    /// async fn on_signed_out(ctx: &AppContext, parts: &Parts) -> Response {
+    ///     if parts.uri.path().starts_with("/admin") {
+    ///         return Redirect::to("/admin/sign_in").into_response();
+    ///     }
+    ///     session::signed_out(parts, ctx)
+    /// }
+    /// ```
+    async fn on_signed_out(ctx: &AppContext, parts: &Parts) -> Response {
+        signed_out(parts, ctx)
+    }
 }
 
 /// The id itself — for apps that need only "who", not a loaded model.
@@ -684,7 +702,9 @@ impl SessionUser for String {
 
 /// The signed-in user; rejects signed-out requests.
 ///
-/// A browser request (one that accepts `text/html`) is redirected to
+/// A signed-out request is answered by [`SessionUser::on_signed_out`]. By
+/// default a browser request (one whose `Accept` is in
+/// `auth.session.navigational_formats`, default `[html]`) is redirected to
 /// `auth.session.sign_in_path?return_to=<path>` when that is configured;
 /// anything else gets `401`. Take [`MaybeCurrentUser`] or
 /// `Option<CurrentUser<U>>` for pages that serve both.
@@ -712,37 +732,143 @@ async fn load<U: SessionUser>(parts: &mut Parts, ctx: &AppContext) -> Result<Opt
     Ok(user)
 }
 
-fn sign_in_required(parts: &Parts, ctx: &AppContext) -> Response {
-    let sign_in_path = ctx
-        .config
-        .auth
-        .as_ref()
-        .and_then(|a| a.session.as_ref())
-        .and_then(|s| s.sign_in_path.as_deref());
-    let wants_html = parts
+/// The default query parameter carrying the path back to the page that
+/// asked for sign-in.
+pub const DEFAULT_RETURN_TO_PARAM: &str = "return_to";
+
+/// The query parameter [`signed_out`] puts the original path in:
+/// `auth.session.return_to_param`, default `return_to`.
+#[must_use]
+pub fn return_to_param(ctx: &AppContext) -> &str {
+    session_config(ctx)
+        .and_then(|s| s.return_to_param.as_deref())
+        .unwrap_or(DEFAULT_RETURN_TO_PARAM)
+}
+
+/// Whether a signed-out request is redirected to sign in.
+///
+/// True when its `Accept` names one of `auth.session.navigational_formats`
+/// (default `[html]`); other requests get `401`. Devise's
+/// `is_navigational_format?`.
+#[must_use]
+pub fn is_navigational(parts: &Parts, ctx: &AppContext) -> bool {
+    let accept = parts
         .headers
         .get(header::ACCEPT)
         .and_then(|v| v.to_str().ok())
-        .is_some_and(|v| v.contains("text/html"));
+        .map(str::to_ascii_lowercase);
+    session_config(ctx)
+        .and_then(|s| s.navigational_formats.as_deref())
+        .map_or_else(
+            || accepts(accept.as_deref(), "html"),
+            |formats| formats.iter().any(|f| accepts(accept.as_deref(), f)),
+        )
+}
+
+/// Whether an `Accept` header value asks for `format`: a short name (`html`,
+/// `turbo_stream`, `json`, `xml`), a media type, `*/*` (a missing `Accept`,
+/// or one that takes anything), or `any` (every request, whatever it
+/// accepts).
+fn accepts(accept: Option<&str>, format: &str) -> bool {
+    let format = format.trim().to_ascii_lowercase();
+    let mimes: &[&str] = match format.as_str() {
+        "any" => return true,
+        "*/*" | "*" => {
+            return accept.is_none_or(|a| a.trim().is_empty() || a.contains("*/*"));
+        }
+        "html" => &["text/html", "application/xhtml+xml"],
+        "turbo_stream" => &["text/vnd.turbo-stream.html"],
+        "json" => &["application/json"],
+        "xml" => &["application/xml", "text/xml"],
+        other => &[other],
+    };
+    accept.is_some_and(|accept| {
+        accept
+            .split(',')
+            .filter_map(|part| part.split(';').next())
+            .any(|candidate| mimes.contains(&candidate.trim()))
+    })
+}
+
+/// The answer to a signed-out request, like Devise's failure app.
+///
+/// A navigational request (see [`is_navigational`]) is sent to
+/// `auth.session.sign_in_path?return_to=<original path>` when that is set;
+/// anything else gets `401`. The default of [`SessionUser::on_signed_out`].
+///
+/// The original path is the full one the client asked for, read from
+/// [`OriginalUri`], so a handler under a nested router returns to
+/// `/admin/settings`, not `/settings`. Its `/` are kept as they are.
+#[must_use]
+pub fn signed_out(parts: &Parts, ctx: &AppContext) -> Response {
+    let sign_in_path = session_config(ctx).and_then(|s| s.sign_in_path.as_deref());
     match sign_in_path {
-        Some(path) if wants_html => {
+        Some(path) if is_navigational(parts, ctx) => {
             let uri = parts
                 .extensions
                 .get::<OriginalUri>()
                 .map_or(&parts.uri, |o| &o.0);
             let here = uri.path_and_query().map_or("/", |p| p.as_str());
             let sep = if path.contains('?') { '&' } else { '?' };
-            let location = format!("{path}{sep}return_to={}", encode(here));
+            let location = format!(
+                "{path}{sep}{}={}",
+                encode(return_to_param(ctx)),
+                encode_return_to(here)
+            );
             (StatusCode::SEE_OTHER, [(header::LOCATION, location)]).into_response()
         }
         _ => Error::Unauthorized("sign in required".to_string()).into_response(),
     }
 }
 
+/// The cookies of a fresh session signed in as `user_id`.
+///
+/// Made outside any request: what a test sends to act as that user without
+/// going through a sign-in form or provider. On a server-side store the
+/// session is written to the store first. Tests use it through
+/// `loco_rs::testing::session::sign_in` (feature `testing`), Devise's
+/// `sign_in user`.
+///
+/// # Errors
+///
+/// When the cookie key is unavailable (see [`cookies::key`]) or the
+/// server-side store cannot be written.
+pub async fn sign_in_cookies(
+    ctx: &AppContext,
+    user_id: impl Into<String> + Send,
+) -> Result<Vec<cookie::Cookie<'static>>> {
+    let (mut parts, ()) = axum::http::Request::new(()).into_parts();
+    parts.extensions.insert(Arc::new(Runtime::default()));
+    let session = Session::from_parts(&parts, ctx)
+        .await?
+        .renew()
+        .set_user_id(user_id);
+    let (jar, pending) = session.finalize()?;
+    if let Some(Pending { store, ops }) = pending {
+        store.apply(ops).await?;
+    }
+    let response = (jar, ()).into_response();
+    Ok(response
+        .headers()
+        .get_all(header::SET_COOKIE)
+        .iter()
+        .filter_map(|v| v.to_str().ok())
+        .filter_map(|v| cookie::Cookie::parse(v.to_string()).ok())
+        .filter(|c| !c.value().is_empty())
+        .collect())
+}
+
 /// Percent-encodes `value` for a query string.
 #[must_use]
 pub fn encode(value: &str) -> String {
     url::form_urlencoded::byte_serialize(value.as_bytes()).collect()
+}
+
+/// [`encode`], but keeping `/`, which a query value may hold as is: the
+/// return address stays readable (`?return_to=/orgs/acme`). `%2F` in the
+/// output can only come from a `/`, since a literal `%` is written `%25`.
+fn encode_return_to(path: &str) -> String {
+    encode(path).replace("%2F", "/")
 }
 
 impl<S, U> FromRequestParts<S> for CurrentUser<U>
@@ -757,7 +883,7 @@ where
         let ctx = AppContext::from_ref(state);
         match load::<U>(parts, &ctx).await {
             Ok(Some(user)) => Ok(Self(user)),
-            Ok(None) => Err(sign_in_required(parts, &ctx)),
+            Ok(None) => Err(U::on_signed_out(&ctx, parts).await),
             Err(err) => Err(err.into_response()),
         }
     }
@@ -920,7 +1046,7 @@ mod tests {
         assert_eq!(rejection.status(), StatusCode::SEE_OTHER);
         assert_eq!(
             rejection.headers()[header::LOCATION],
-            "/login?return_to=%2Forgs%2Facme%3Ftab%3D1"
+            "/login?return_to=/orgs/acme%3Ftab%3D1"
         );
 
         let mut p = parts("application/json", "/api/me");
@@ -938,6 +1064,170 @@ mod tests {
             .await
             .unwrap();
         assert!(none.is_none());
+    }
+
+    async fn ctx_with(session: crate::config::SessionConfig) -> AppContext {
+        let mut ctx = crate::tests_cfg::app::get_app_context().await;
+        ctx.config.auth = Some(crate::config::Auth {
+            session: Some(session),
+            ..Default::default()
+        });
+        ctx
+    }
+
+    #[tokio::test]
+    async fn navigational_formats_and_return_to_param_are_configurable() {
+        let ctx = ctx_with(crate::config::SessionConfig {
+            sign_in_path: Some("/users/sign_in?locale=en".to_string()),
+            return_to_param: Some("next".to_string()),
+            navigational_formats: Some(vec!["html".to_string(), "turbo_stream".to_string()]),
+            ..Default::default()
+        })
+        .await;
+
+        let res = signed_out(&parts("text/vnd.turbo-stream.html, text/html", "/a"), &ctx);
+        assert_eq!(res.status(), StatusCode::SEE_OTHER);
+        assert_eq!(
+            res.headers()[header::LOCATION],
+            "/users/sign_in?locale=en&next=/a"
+        );
+        assert_eq!(
+            signed_out(&parts("application/json", "/a"), &ctx).status(),
+            StatusCode::UNAUTHORIZED
+        );
+
+        let ctx = ctx_with(crate::config::SessionConfig {
+            sign_in_path: Some("/login".to_string()),
+            navigational_formats: Some(vec!["*/*".to_string()]),
+            ..Default::default()
+        })
+        .await;
+        assert!(is_navigational(&parts("*/*", "/"), &ctx));
+        assert!(!is_navigational(&parts("application/json", "/"), &ctx));
+
+        let ctx = ctx_with(crate::config::SessionConfig {
+            sign_in_path: Some("/login".to_string()),
+            navigational_formats: Some(vec!["any".to_string()]),
+            ..Default::default()
+        })
+        .await;
+        assert_eq!(
+            signed_out(&parts("application/json", "/api/me"), &ctx).status(),
+            StatusCode::SEE_OTHER,
+            "`any` redirects every request"
+        );
+        let (mut p, ()) = Request::builder()
+            .uri("/api/me")
+            .body(())
+            .unwrap()
+            .into_parts();
+        p.headers.remove(header::ACCEPT);
+        assert!(is_navigational(&p, &ctx), "even one with no Accept");
+
+        let ctx = ctx_with(crate::config::SessionConfig {
+            sign_in_path: Some("/login".to_string()),
+            navigational_formats: Some(vec![]),
+            ..Default::default()
+        })
+        .await;
+        assert_eq!(
+            signed_out(&parts("text/html", "/"), &ctx).status(),
+            StatusCode::UNAUTHORIZED,
+            "no navigational formats: everything gets 401"
+        );
+    }
+
+    #[tokio::test]
+    async fn return_to_is_the_full_path_under_a_nested_router() {
+        use tower::ServiceExt as _;
+
+        async fn settings(_user: CurrentUser<String>) -> &'static str {
+            "secret"
+        }
+
+        let ctx = ctx_with(crate::config::SessionConfig {
+            sign_in_path: Some("/login".to_string()),
+            ..Default::default()
+        })
+        .await;
+        let app = axum::Router::new()
+            .nest(
+                "/admin",
+                axum::Router::new().route("/settings", axum::routing::get(settings)),
+            )
+            .with_state(ctx);
+
+        let res = app
+            .oneshot(
+                Request::builder()
+                    .uri("/admin/settings?tab=a%2Fb")
+                    .header(header::ACCEPT, "text/html")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::SEE_OTHER);
+        assert_eq!(
+            res.headers()[header::LOCATION],
+            "/login?return_to=/admin/settings%3Ftab%3Da%252Fb"
+        );
+    }
+
+    #[test]
+    fn return_to_keeps_slashes_and_encodes_the_rest() {
+        assert_eq!(encode_return_to("/a/b"), "/a/b");
+        assert_eq!(
+            encode_return_to("/a b?x=1&y=%2F"),
+            "/a+b%3Fx%3D1%26y%3D%252F"
+        );
+    }
+
+    #[test]
+    fn accepts_matches_whole_media_types() {
+        assert!(accepts(Some("text/html;q=0.9"), "html"));
+        assert!(accepts(Some("application/xhtml+xml"), "html"));
+        assert!(!accepts(Some("text/htmlx"), "html"));
+        assert!(accepts(Some("application/json"), "JSON"));
+        assert!(accepts(
+            Some("application/vnd.api+json"),
+            "application/vnd.api+json"
+        ));
+        assert!(accepts(None, "*/*"));
+        assert!(!accepts(None, "html"));
+    }
+
+    #[derive(Clone, Debug)]
+    struct Admin;
+
+    #[async_trait::async_trait]
+    impl SessionUser for Admin {
+        async fn find_by_session_id(_ctx: &AppContext, _id: &str) -> Result<Option<Self>> {
+            Ok(None)
+        }
+
+        async fn on_signed_out(_ctx: &AppContext, parts: &Parts) -> Response {
+            (
+                StatusCode::FORBIDDEN,
+                format!("no entry to {}", parts.uri.path()),
+            )
+                .into_response()
+        }
+    }
+
+    #[tokio::test]
+    async fn on_signed_out_can_be_overridden() {
+        let ctx = ctx_with(crate::config::SessionConfig {
+            sign_in_path: Some("/login".to_string()),
+            ..Default::default()
+        })
+        .await;
+        let mut p = parts("text/html", "/admin");
+        let rejection =
+            <CurrentUser<Admin> as FromRequestParts<AppContext>>::from_request_parts(&mut p, &ctx)
+                .await
+                .unwrap_err();
+        assert_eq!(rejection.status(), StatusCode::FORBIDDEN);
     }
 
     #[tokio::test]

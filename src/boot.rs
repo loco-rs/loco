@@ -445,6 +445,8 @@ pub async fn create_context<H: Hooks>(
     // (migrations, tasks) need neither its table nor Redis.
     #[cfg(feature = "auth_session")]
     crate::auth::session_store::validate(&ctx.config)?;
+    #[cfg(feature = "auth_oauth")]
+    crate::auth::oauth::validate(&ctx.config)?;
 
     H::after_context(ctx).await
 }

@@ -416,6 +416,60 @@ async fn static_assets() {
     handle.abort();
 }
 
+/// An SPA mounted at `/app` works next to the app's own routes: built files
+/// get an immutable cache, client-side routes get `index.html` with
+/// `no-cache`, and a missing asset is a real 404.
+#[tokio::test]
+async fn spa() {
+    async fn action() -> Result<Response> {
+        format::json("api")
+    }
+
+    let tree = tree_fs::TreeBuilder::default()
+        .drop(true)
+        .add("frontend/dist/index.html", "<h1>shell</h1>")
+        .add("frontend/dist/assets/app-abc123.js", "console.log(1)")
+        .create()
+        .expect("create build folder");
+
+    let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
+    ctx.config.server.middlewares.spa = Some(middleware::spa::Spa {
+        enable: true,
+        uri: "/app".to_string(),
+        path: tree.root.join("frontend").join("dist"),
+        ..Default::default()
+    });
+
+    let port = get_available_port().await;
+    let handle = infra_cfg::server::start_with_route(ctx, "/api", get(action), Some(port)).await;
+    let base = get_base_url_port(port);
+
+    let res = reqwest::get(format!("{base}app/assets/app-abc123.js"))
+        .await
+        .expect("valid response");
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.headers()["cache-control"], middleware::spa::IMMUTABLE);
+
+    let res = reqwest::get(format!("{base}app/posts/42"))
+        .await
+        .expect("valid response");
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.headers()["cache-control"], middleware::spa::NO_CACHE);
+    assert_eq!(res.text().await.expect("text response"), "<h1>shell</h1>");
+
+    let res = reqwest::get(format!("{base}app/assets/missing.js"))
+        .await
+        .expect("valid response");
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    let res = reqwest::get(format!("{base}api"))
+        .await
+        .expect("valid response");
+    assert_eq!(res.text().await.expect("text response"), "\"api\"");
+
+    handle.abort();
+}
+
 #[rstest]
 #[case(None, None)]
 #[case(Some("empty".to_string()), None)]
@@ -566,6 +620,54 @@ async fn powered_by_header(#[case] ident: Option<String>) {
     } else {
         assert_eq!(header_value.to_str().expect("value"), "loco.rs");
     }
+
+    handle.abort();
+}
+
+#[tokio::test]
+async fn respond_to_json_paths() {
+    async fn action(Format(respond_to): Format) -> Result<Response> {
+        format::respond_to(&respond_to)
+            .html(|| format::html("<p>post</p>"))
+            .json(|| format::json(serde_json::json!({ "id": 1 })))
+            .render()
+    }
+
+    let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
+    ctx.config.server.middlewares.respond_to = Some(middleware::respond_to::Config {
+        enable: true,
+        prefix: Some("/api".to_string()),
+        extension: true,
+        sign_in_path: None,
+    });
+
+    let port = get_available_port().await;
+    let handle =
+        infra_cfg::server::start_with_route(ctx, "/posts/{id}", get(action), Some(port)).await;
+    let base = get_base_url_port(port);
+    let client = reqwest::Client::new();
+    let fetch = |path: &str| {
+        client
+            .get(format!("{base}{}", path.trim_start_matches('/')))
+            .header("accept", "text/html")
+            .send()
+    };
+
+    let res = fetch("/posts/1").await.expect("response");
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(res.headers().contains_key("x-powered-by"));
+    assert_eq!(res.text().await.expect("body"), "<p>post</p>");
+
+    for path in ["/posts/1.json", "/api/posts/1"] {
+        let res = fetch(path).await.expect("response");
+        assert_eq!(res.status(), StatusCode::OK, "{path}");
+        assert_eq!(res.text().await.expect("body"), r#"{"id":1}"#, "{path}");
+    }
+
+    // The fallback page for a missing route comes back as JSON.
+    let res = fetch("/api/nope").await.expect("response");
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    assert_eq!(res.text().await.expect("body"), r#"{"error":"not_found"}"#);
 
     handle.abort();
 }

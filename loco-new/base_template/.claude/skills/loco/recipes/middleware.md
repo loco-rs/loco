@@ -8,7 +8,7 @@ Rails puts cross-cutting behaviour in `ApplicationController` via
 - **Per-handler requirements** ("must be logged in") are **extractors** in the
   handler signature. See `auth.md`.
 
-Loco ships 13 built-in middlewares, each implementing `MiddlewareLayer` and
+Loco ships 14 built-in middlewares, each implementing `MiddlewareLayer` and
 configured under `server.middlewares.<key>`.
 
 ## Two traps that account for most middleware bugs
@@ -75,10 +75,41 @@ server:
         uri: "/static"
         path: "assets/static"
       fallback: "assets/static/404.html"
+    spa:                       # a frontend build, next to `static`
+      enable: true
+      uri: "/app"              # "/" = whatever no route matched
+      path: "frontend/dist"    # index.html for client routes, 404 for missing files
     remote_ip:
       enable: true
       source: RightmostXForwardedFor
 ```
+
+## Forms and CSRF: `forgery_protection`
+
+Rails' `protect_from_forgery`. Off by default; the server-rendered starter turns
+it on. It refuses a cross-site `POST`/`PUT`/`PATCH`/`DELETE` with `403`. Do not
+hand-write a CSRF layer or add a crate for it.
+
+```yaml
+forgery_protection:
+  enable: true
+  mode: header             # header (default) | token
+  exempt: ["/api/webhooks/"]   # path prefixes never checked
+  trusted_origins: []      # e.g. "https://admin.example.com"
+```
+
+- `header` mode checks `Sec-Fetch-Site`, then `Origin` against `Host`. Forms
+  need no changes. A request with neither header (curl, server-to-server) passes.
+- `token` mode is Rails' authenticity token. It needs the `auth_session` feature.
+  Templates call `{{ csrf_field() }}` inside each `<form>`, or put
+  `{{ csrf_meta_tags() }}` in the layout and send `X-CSRF-Token` from JS.
+  `{{ csrf_token() }}` is the bare value. Handlers take the `CsrfToken`
+  extractor (prelude) and call `.masked()`. In production, boot fails unless
+  `auth.session.secret` is set. Token mode runs the `header` check too.
+- Form bodies are read up to the app-wide `limit_payload`, before any per-route
+  limit. A bigger upload sends the token in `X-CSRF-Token` or is `exempt`.
+- A webhook or bearer-token API that gets `403 cross_site_request` belongs in
+  `exempt`, not behind `enable: false`.
 
 The full catalog — every key, its type, and its real default — is in the docs
 under **Reference → Middleware catalog**. Check there before inventing a key;
