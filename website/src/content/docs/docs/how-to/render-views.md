@@ -144,6 +144,7 @@ curl -s localhost:5150/home
 
 ## Next
 
+- [Use view helpers](/docs/how-to/use-view-helpers) — `time_ago_in_words`, `pluralize`, `to_sentence`, `number_to_human` and friends
 - [Respond with different formats](/docs/how-to/respond-formats) — JSON/HTML/YAML and content negotiation
 - [Serve static & SPA assets](/docs/how-to/serve-assets)
 - [Handle errors](/docs/how-to/handle-errors)

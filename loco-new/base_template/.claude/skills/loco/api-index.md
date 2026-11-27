@@ -1009,6 +1009,21 @@ since they restate the trait's own API.
 - `fn` **from_embedded_templates**`() -> Result<Self>` — Load and initialize templates from embedded assets
 - `fn` **post_process**`(self: Self, post_process: impl Trait) -> Result<Self>` — Attach the Tera view engine with a post-processing function for subsequent instantiation
 - `fn` **render_component**`(self: &Self, component: &str, data: S, body: Option<&str>) -> Result<String>` — Render one Tera 2 component by name, autoescaped like [`ViewRenderer::render`]
+## `controller::views::helpers`
+
+- `struct` **SentenceConnectors**` { words_connector: &str, two_words_connector: &str, last_word_connector: &str }` — The connectors [`to_sentence_with`] joins words with. The default is
+- `fn` **distance_of_time_in_words**`(from: impl Trait, to: impl Trait, include_seconds: bool) -> String` — Approximate distance between two times, in words
+- `fn` **number_to_human**`(number: f64) -> String` — A number in words for people: `1234` → `"1.23 Thousand"`,
+- `fn` **number_to_human_with**`(number: f64, precision: u32, significant: bool) -> String` — [`number_to_human`] with Rails' `precision:` and `significant:` options
+- `fn` **number_with_delimiter**`(number: impl Trait) -> String` — A number with `,` between thousands: `1234567.89` → `"1,234,567.89"`
+- `fn` **number_with_delimiter_using**`(number: impl Trait, delimiter: &str, separator: &str) -> String` — [`number_with_delimiter`] with a custom delimiter and decimal separator,
+- `fn` **ordinal**`(number: i64) -> &str` — The suffix [`ordinalize`] adds: `"st"`, `"nd"`, `"rd"` or `"th"`
+- `fn` **ordinalize**`(number: i64) -> String` — A number as an ordinal: `"1st"`, `"2nd"`, `"11th"`, `"23rd"`, `"-1st"`
+- `fn` **pluralize**`(count: impl Trait, singular: &str, plural: Option<&str>) -> String` — `count` followed by `singular` or its plural: `"1 person"`, `"2 people"`
+- `fn` **pluralize_word**`(word: &str) -> String` — The plural of an English noun, using the same inflector Loco uses for
+- `fn` **time_ago_in_words**`(from: impl Trait, include_seconds: bool) -> String` — Distance between `from` and now, in words: `"3 days"`, `"about 1 hour"`
+- `fn` **to_sentence**`(words: &[S]) -> String` — Joins words into a sentence: `"a"`, `"a and b"`, `"a, b, and c"`
+- `fn` **to_sentence_with**`(words: &[S], connectors: &SentenceConnectors) -> String` — [`to_sentence`] with custom connectors
 ## `controller::views::pagination`
 
 - `struct` **Pager**` { results: T, info: PagerMeta }` — A page of results plus its pagination metadata
@@ -1022,9 +1037,19 @@ since they restate the trait's own API.
 - `fn` **register_filters**`(tera: &mut Tera)`
 ## `controller::views::tera_builtins::filters::number`
 
+- `fn` **number_to_human**`(value: &Value, kwargs: Kwargs, _: &State) -> TeraResult<Value>` — Writes a number in words for people: `1234` → `"1.23 Thousand"`,
 - `fn` **number_to_human_size**`(value: &Value, _: Kwargs, _: &State) -> TeraResult<Value>` — Converts a numeric value (in bytes) into a human-readable size string with
 - `fn` **number_to_percentage**`(value: &Value, kwargs: Kwargs, _: &State) -> TeraResult<Value>` — Converts a numeric value into a formatted percentage string
-- `fn` **number_with_delimiter**`(value: &Value, _: Kwargs, _: &State) -> TeraResult<Value>` — Formats a numeric value by adding commas as thousands separators
+- `fn` **number_with_delimiter**`(value: &Value, kwargs: Kwargs, _: &State) -> TeraResult<Value>` — Formats a numeric value by adding commas as thousands separators
+## `controller::views::tera_builtins::filters::text`
+
+- `fn` **ordinalize**`(value: &Value, _: Kwargs, _: &State) -> TeraResult<Value>` — `{{ place | ordinalize }}` renders `"1st"`, `"22nd"`, `"113th"`
+- `fn` **pluralize**`(value: &Value, kwargs: Kwargs, _: &State) -> TeraResult<Value>` — `{{ count | pluralize(word="person") }}` renders `"2 people"`
+- `fn` **to_sentence**`(value: &Value, kwargs: Kwargs, _: &State) -> TeraResult<Value>` — `{{ names | to_sentence }}` renders `"a, b, and c"`
+## `controller::views::tera_builtins::filters::time`
+
+- `fn` **distance_of_time_in_words**`(value: &Value, kwargs: Kwargs, _: &State) -> TeraResult<Value>` — `{{ started_at | distance_of_time_in_words(to=finished_at) }}` renders
+- `fn` **time_ago_in_words**`(value: &Value, kwargs: Kwargs, _: &State) -> TeraResult<Value>` — `{{ post.created_at | time_ago_in_words }}` renders `"3 days"`
 ## `data`
 
 - `fn` **load_json_file**`(path: &str) -> Result<T>` — Load a data JSON file asynchronously
