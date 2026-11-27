@@ -5,7 +5,7 @@ sidebar:
   order: 5
 ---
 
-Loco ships 15 built-in middlewares, all implementing the `MiddlewareLayer`
+Loco ships 16 built-in middlewares, all implementing the `MiddlewareLayer`
 trait (`src/controller/middleware/mod.rs:46-72`). Each is configured under
 `server.middlewares.<key>` in your environment YAML (`src/config/server.rs:44`)
 and is optional (`Option<T>`) — omit the key entirely to get the framework's
@@ -164,7 +164,7 @@ Table order = coding/config order (`default_middleware_stack`, `mod.rs:80-169`).
 
 - **Config key:** `static` (Rust field `static_assets`, `#[serde(rename = "static")]`, `mod.rs:197-199`) · **Struct:** `static_assets::StaticAssets` (`static_assets.rs:24-43`)
 - **Default:** **disabled**.
-- **Purpose:** serves a static-file folder, with an optional fallback file for SPA routing.
+- **Purpose:** serves a static-file folder, with an optional fallback file for unmatched paths. For a frontend build, `spa` (below) adds client-route fallback and per-type cache headers.
 - **Knobs:**
 
 | Name | Type | Default |
@@ -179,7 +179,29 @@ Table order = coding/config order (`default_middleware_stack`, `mod.rs:80-169`).
 
 > Under the `embedded_assets` feature, this swaps at compile time for `static_assets_embedded::StaticAssets` (`mod.rs:21-27`) — same config key (`"static"`) and knob surface, assets baked into the binary instead of read from disk.
 
-### 9. `secure_headers`
+### 9. `spa`
+
+- **Config key:** `spa` · **Struct:** `spa::Spa` (`spa.rs`)
+- **Default:** **disabled**.
+- **Purpose:** serves a single-page app build folder under `uri`. Existing files are served as is; a missing path without a file extension gets `index` (client-side routes); a missing path with an extension (any dot in the last segment) is a `404`; a folder is treated as a missing path, never listed or redirected; methods other than `GET`/`HEAD` are a `404`. Successful and `304` responses get `cache_control.html` for HTML (decided from the request path as well as the `Content-Type`), `cache_control.assets` for files under `cache_control.assets_prefix`, and `cache_control.other` for the rest. Works next to `static`; mounted at `/`, it answers whatever no route matched, so disable `fallback`. Boot fails when `uri` does not start with `/` or a `cache_control` value is not a valid header; a route at exactly `uri` conflicts with the mount and panics.
+- **Knobs:**
+
+| Name | Type | Default |
+|---|---|---|
+| `enable` | `bool` | `false` |
+| `uri` | `String` | `"/"` (must start with `/`; `""` means `/`) |
+| `path` | `PathBuf` | `"frontend/dist"` |
+| `index` | `PathBuf` | `"index.html"` (relative to `path`) |
+| `must_exist` | `bool` | `true` (boot fails if `path` or `index` is missing) |
+| `precompressed` | `bool` | `false` (serves `.gz` variants when `true`) |
+| `cache_control.assets` | `Option<String>` | `"public, max-age=31536000, immutable"` (`~` sends none) |
+| `cache_control.assets_prefix` | `String` | `"assets/"` (relative to `path`; `""` = every non-HTML file) |
+| `cache_control.html` | `Option<String>` | `"no-cache"` (`~` sends none) |
+| `cache_control.other` | `Option<String>` | `"no-cache"` (`~` sends none) |
+
+> `spa` always reads from disk, also under the `embedded_assets` feature.
+
+### 10. `secure_headers`
 
 - **Config key:** `secure_headers` · **Struct:** `secure_headers::SecureHeader { enable, preset, overrides }` (`secure_headers.rs:78-86`)
 - **Default:** **disabled**.
@@ -192,7 +214,7 @@ Table order = coding/config order (`default_middleware_stack`, `mod.rs:80-169`).
 | `preset` | `String` | `"github"` (`secure_headers.rs:94-96`) — other presets: `owasp`, `empty` (`secure_headers.json`) |
 | `overrides` | `Option<BTreeMap<String, String>>` | `None` |
 
-### 10. `forgery_protection`
+### 11. `forgery_protection`
 
 - **Config key:** `forgery_protection` · **Struct:** `forgery_protection::ForgeryProtection { enable, mode, exempt, trusted_origins, field, header, cookie }` → `forgery_protection::Middleware` (`forgery_protection.rs`)
 - **Default:** **disabled**. The server-rendered starter turns it on.
@@ -220,7 +242,7 @@ extractor (in the prelude) and call `.masked()`. The cookie is only set on a
 response that rendered the token. See
 [Protect forms from forgery](/docs/how-to/forgery-protection/).
 
-### 11. `logger`
+### 12. `logger`
 
 - **Config key:** `logger` · **Struct:** `logger::Config { enable }` → `logger::Middleware` via `logger::new(config, &env)` (`logger.rs:21-25, 36-42`)
 - **Default:** **enabled**.
@@ -231,7 +253,7 @@ response that rendered the token. See
 |---|---|---|
 | `enable` | `bool` | `true` (framework default when key absent) |
 
-### 12. `request_id`
+### 13. `request_id`
 
 - **Config key:** `request_id` · **Struct:** `request_id::RequestId { enable }` (`request_id.rs:28-32`)
 - **Default:** **enabled**.
@@ -242,7 +264,7 @@ response that rendered the token. See
 |---|---|---|
 | `enable` | `bool` | `true` (framework default when key absent) |
 
-### 13. `fallback`
+### 14. `fallback`
 
 - **Config key:** `fallback` · **Struct:** `fallback::Fallback { enable, code, file, not_found }` (`fallback.rs:17-37`); `StatusCodeWrapper(pub StatusCode)` (`fallback.rs:15`)
 - **Default:** enabled **only when `environment != Production`** (`mod.rs:158-167`).
@@ -258,7 +280,7 @@ response that rendered the token. See
 
 If neither `file` nor `not_found` is set, the bundled `fallback.html` is served.
 
-### 14. `respond_to`
+### 15. `respond_to`
 
 - **Config key:** `respond_to` · **Struct:** `respond_to::Config { enable, prefix, extension, sign_in_path }` (`respond_to.rs`)
 - **Default:** **disabled**.
@@ -275,7 +297,7 @@ If neither `file` nor `not_found` is set, the bundled `fallback.html` is served.
 | `prefix` | `Option<String>` | `None` — e.g. `/api/v1` serves every route as JSON under it; a missing leading `/` is added |
 | `sign_in_path` | `Option<String>` | `None` — same-host redirects to this path (or below it, e.g. `/session/new?next=..`) answer `401 {"error":"signed_out"}` |
 
-### 15. `powered_by`
+### 16. `powered_by`
 
 - **Config key:** none — **not** part of `middleware::Config`; controlled by `server.ident: Option<String>` (`src/config/server.rs:40`). Struct: `powered_by::Middleware` via `powered_by::new(ctx.config.server.ident.as_deref())` (`powered_by.rs:27-58`)
 - **Default:** **enabled**, sets `Server`-identifying header `X-Powered-By: loco.rs`.

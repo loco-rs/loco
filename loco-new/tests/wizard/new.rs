@@ -176,7 +176,7 @@ fn test_combination(
 
     // Compiling is not the same as running. Boot the app and make it answer.
     //
-    // Clientside apps are excluded: their static middleware is `must_exist`
+    // Clientside apps are excluded: their spa middleware is `must_exist`
     // against `frontend/dist`, which only exists after a frontend build, so a
     // freshly generated one refuses to start by design. That leaves the
     // clientside boot path uncovered here.

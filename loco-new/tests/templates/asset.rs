@@ -87,14 +87,11 @@ fn test_config_file_middleware_asset_client(
         r"
 fallback:
     enable: false
-static:
+spa:
     enable: true
     must_exist: true
-    precompressed: false
-    folder:
-        uri: /
-        path: frontend/dist
-    fallback: frontend/dist/index.html
+    uri: /
+    path: frontend/dist
 ",
     )
     .unwrap();

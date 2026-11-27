@@ -55,14 +55,14 @@ server:
   {%- elif settings.asset.kind == "client" %}
     fallback:
       enable: false
-    static:
+    # Serves the frontend build. Hashed files under `assets/` are cached
+    # for a year; `index.html` is served for client-side routes and is
+    # always revalidated.
+    spa:
       enable: true
       must_exist: true
-      precompressed: false
-      folder:
-        uri: "/"
-        path: "frontend/dist"
-      fallback: "frontend/dist/index.html"
+      uri: "/"
+      path: "frontend/dist"
   {%- endif -%}
 
   {%- endif -%}

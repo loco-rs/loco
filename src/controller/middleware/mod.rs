@@ -22,6 +22,7 @@ pub mod remote_ip;
 pub mod request_id;
 pub mod respond_to;
 pub mod secure_headers;
+pub mod spa;
 #[cfg(feature = "embedded_assets")]
 pub mod static_assets_embedded;
 #[cfg(feature = "embedded_assets")]
@@ -145,6 +146,11 @@ pub fn default_middleware_stack(ctx: &AppContext) -> Vec<Box<dyn MiddlewareLayer
                     enable: false,
                     ..Default::default()
                 }
+            })),
+            // SPA middleware with a default if none
+            Box::new(middlewares.spa.clone().unwrap_or_else(|| spa::Spa {
+                enable: false,
+                ..Default::default()
             })),
             // Secure Headers middleware with a default if none
             Box::new(middlewares.secure_headers.clone().unwrap_or_else(|| {
@@ -303,6 +309,10 @@ pub struct Config {
     /// Serving static assets
     #[serde(rename = "static")]
     pub static_assets: Option<static_assets::StaticAssets>,
+
+    /// Serving a single-page app build (for example `frontend/dist`) with an
+    /// `index.html` fallback for client-side routes
+    pub spa: Option<spa::Spa>,
 
     /// Sets a set of secure headers
     pub secure_headers: Option<secure_headers::SecureHeader>,
