@@ -13,7 +13,12 @@ use crate::Error;
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Format(pub RespondTo);
 
-#[derive(Debug, Deserialize, Serialize)]
+/// The format a request asked for.
+///
+/// Read from `Content-Type`, then `Accept`. A middleware can decide it
+/// instead by inserting a `RespondTo` into the request extensions, which is
+/// how [`respond_to`](super::respond_to) marks `/posts/1.json`.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub enum RespondTo {
     None,
     Html,
@@ -48,6 +53,14 @@ pub fn get_respond_to(headers: &HeaderMap) -> RespondTo {
     }
 }
 
+fn respond_to_of(parts: &Parts) -> RespondTo {
+    parts
+        .extensions
+        .get::<RespondTo>()
+        .cloned()
+        .unwrap_or_else(|| get_respond_to(&parts.headers))
+}
+
 impl<S> FromRequestParts<S> for Format
 where
     S: Send + Sync,
@@ -58,7 +71,7 @@ where
     // shape stays anyway.
     #[allow(clippy::unused_async_trait_impl)]
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Error> {
-        Ok(Self(get_respond_to(&parts.headers)))
+        Ok(Self(respond_to_of(parts)))
     }
 }
 
@@ -71,6 +84,6 @@ where
     // As above.
     #[allow(clippy::unused_async_trait_impl)]
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Error> {
-        Ok(get_respond_to(&parts.headers))
+        Ok(respond_to_of(parts))
     }
 }
