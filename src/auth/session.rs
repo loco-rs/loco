@@ -766,11 +766,13 @@ pub fn is_navigational(parts: &Parts, ctx: &AppContext) -> bool {
 }
 
 /// Whether an `Accept` header value asks for `format`: a short name (`html`,
-/// `turbo_stream`, `json`, `xml`), a media type, or `*/*` (a missing
-/// `Accept`, or one that takes anything).
+/// `turbo_stream`, `json`, `xml`), a media type, `*/*` (a missing `Accept`,
+/// or one that takes anything), or `any` (every request, whatever it
+/// accepts).
 fn accepts(accept: Option<&str>, format: &str) -> bool {
     let format = format.trim().to_ascii_lowercase();
     let mimes: &[&str] = match format.as_str() {
+        "any" => return true,
         "*/*" | "*" => {
             return accept.is_none_or(|a| a.trim().is_empty() || a.contains("*/*"));
         }
@@ -793,6 +795,10 @@ fn accepts(accept: Option<&str>, format: &str) -> bool {
 /// A navigational request (see [`is_navigational`]) is sent to
 /// `auth.session.sign_in_path?return_to=<original path>` when that is set;
 /// anything else gets `401`. The default of [`SessionUser::on_signed_out`].
+///
+/// The original path is the full one the client asked for, read from
+/// [`OriginalUri`], so a handler under a nested router returns to
+/// `/admin/settings`, not `/settings`. Its `/` are kept as they are.
 #[must_use]
 pub fn signed_out(parts: &Parts, ctx: &AppContext) -> Response {
     let sign_in_path = session_config(ctx).and_then(|s| s.sign_in_path.as_deref());
@@ -807,7 +813,7 @@ pub fn signed_out(parts: &Parts, ctx: &AppContext) -> Response {
             let location = format!(
                 "{path}{sep}{}={}",
                 encode(return_to_param(ctx)),
-                encode(here)
+                encode_return_to(here)
             );
             (StatusCode::SEE_OTHER, [(header::LOCATION, location)]).into_response()
         }
@@ -856,6 +862,13 @@ pub async fn sign_in_cookies(
 #[must_use]
 pub fn encode(value: &str) -> String {
     url::form_urlencoded::byte_serialize(value.as_bytes()).collect()
+}
+
+/// [`encode`], but keeping `/`, which a query value may hold as is: the
+/// return address stays readable (`?return_to=/orgs/acme`). `%2F` in the
+/// output can only come from a `/`, since a literal `%` is written `%25`.
+fn encode_return_to(path: &str) -> String {
+    encode(path).replace("%2F", "/")
 }
 
 impl<S, U> FromRequestParts<S> for CurrentUser<U>
@@ -1033,7 +1046,7 @@ mod tests {
         assert_eq!(rejection.status(), StatusCode::SEE_OTHER);
         assert_eq!(
             rejection.headers()[header::LOCATION],
-            "/login?return_to=%2Forgs%2Facme%3Ftab%3D1"
+            "/login?return_to=/orgs/acme%3Ftab%3D1"
         );
 
         let mut p = parts("application/json", "/api/me");
@@ -1076,7 +1089,7 @@ mod tests {
         assert_eq!(res.status(), StatusCode::SEE_OTHER);
         assert_eq!(
             res.headers()[header::LOCATION],
-            "/users/sign_in?locale=en&next=%2Fa"
+            "/users/sign_in?locale=en&next=/a"
         );
         assert_eq!(
             signed_out(&parts("application/json", "/a"), &ctx).status(),
@@ -1094,6 +1107,25 @@ mod tests {
 
         let ctx = ctx_with(crate::config::SessionConfig {
             sign_in_path: Some("/login".to_string()),
+            navigational_formats: Some(vec!["any".to_string()]),
+            ..Default::default()
+        })
+        .await;
+        assert_eq!(
+            signed_out(&parts("application/json", "/api/me"), &ctx).status(),
+            StatusCode::SEE_OTHER,
+            "`any` redirects every request"
+        );
+        let (mut p, ()) = Request::builder()
+            .uri("/api/me")
+            .body(())
+            .unwrap()
+            .into_parts();
+        p.headers.remove(header::ACCEPT);
+        assert!(is_navigational(&p, &ctx), "even one with no Accept");
+
+        let ctx = ctx_with(crate::config::SessionConfig {
+            sign_in_path: Some("/login".to_string()),
             navigational_formats: Some(vec![]),
             ..Default::default()
         })
@@ -1102,6 +1134,52 @@ mod tests {
             signed_out(&parts("text/html", "/"), &ctx).status(),
             StatusCode::UNAUTHORIZED,
             "no navigational formats: everything gets 401"
+        );
+    }
+
+    #[tokio::test]
+    async fn return_to_is_the_full_path_under_a_nested_router() {
+        use tower::ServiceExt as _;
+
+        async fn settings(_user: CurrentUser<String>) -> &'static str {
+            "secret"
+        }
+
+        let ctx = ctx_with(crate::config::SessionConfig {
+            sign_in_path: Some("/login".to_string()),
+            ..Default::default()
+        })
+        .await;
+        let app = axum::Router::new()
+            .nest(
+                "/admin",
+                axum::Router::new().route("/settings", axum::routing::get(settings)),
+            )
+            .with_state(ctx);
+
+        let res = app
+            .oneshot(
+                Request::builder()
+                    .uri("/admin/settings?tab=a%2Fb")
+                    .header(header::ACCEPT, "text/html")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::SEE_OTHER);
+        assert_eq!(
+            res.headers()[header::LOCATION],
+            "/login?return_to=/admin/settings%3Ftab%3Da%252Fb"
+        );
+    }
+
+    #[test]
+    fn return_to_keeps_slashes_and_encodes_the_rest() {
+        assert_eq!(encode_return_to("/a/b"), "/a/b");
+        assert_eq!(
+            encode_return_to("/a b?x=1&y=%2F"),
+            "/a+b%3Fx%3D1%26y%3D%252F"
         );
     }
 

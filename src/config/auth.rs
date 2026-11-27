@@ -107,8 +107,9 @@ pub struct SessionConfig {
     /// Which requests are redirected to [`sign_in_path`](Self::sign_in_path)
     /// when signed out; the rest get `401`. Devise's `navigational_formats`.
     /// Each entry is `html`, `turbo_stream`, `json`, `xml`, a media type
-    /// (`application/vnd.api+json`), or `*/*` (a request with no `Accept`, or
-    /// one that accepts anything, like `curl`). Default `[html]`.
+    /// (`application/vnd.api+json`), `*/*` (a request with no `Accept`, or
+    /// one that accepts anything, like `curl`), or `any` (every request,
+    /// whatever its `Accept`). Default `[html]`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub navigational_formats: Option<Vec<String>>,
     /// Where the session data lives. Default [`SessionStoreKind::Cookie`].

@@ -284,7 +284,7 @@ async fn signs_in_end_to_end_and_out_again() {
         .add_header(header::ACCEPT, "text/html")
         .await;
     res.assert_status(StatusCode::SEE_OTHER);
-    assert_eq!(location!(res), "/login?return_to=%2Fme%3Ftab%3D1");
+    assert_eq!(location!(res), "/login?return_to=/me%3Ftab%3D1");
 
     let res = server.get("/auth/github?return_to=/me").await;
     res.assert_status(StatusCode::SEE_OTHER);
@@ -646,8 +646,8 @@ async fn the_origin_param_is_configurable() {
         .get("/me?tab=1")
         .add_header(header::ACCEPT, "text/html")
         .await;
-    assert_eq!(location!(res), "/login?next=%2Fme%3Ftab%3D1");
-    let res = server.get("/auth/github?next=%2Fme%3Ftab%3D1").await;
+    assert_eq!(location!(res), "/login?next=/me%3Ftab%3D1");
+    let res = server.get("/auth/github?next=/me%3Ftab%3D1").await;
     let res = server.get(&visit_provider(&location!(res)).await).await;
     assert_eq!(location!(res), "/me?tab=1");
 }

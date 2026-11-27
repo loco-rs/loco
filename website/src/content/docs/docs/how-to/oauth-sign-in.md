@@ -247,7 +247,7 @@ async fn profile(CurrentUser(user): CurrentUser<users::Model>) -> Result<Respons
 
 When nobody is signed in, `CurrentUser` answers `401`. A browser request is redirected to `auth.session.sign_in_path?return_to=<current path>` instead, when that path is set. Send that `return_to` on to `/auth/{provider}?return_to=...` and the user comes back where they started. A user that `find_by_session_id` no longer finds (deleted, say) counts as signed out. The lookup runs once per request, however many extractors ask for it.
 
-What counts as a browser request is `auth.session.navigational_formats` (Devise's setting of the same name): the `Accept` types that get the redirect. The default is `[html]` (`text/html` or `application/xhtml+xml`). Add `turbo_stream` for Hotwire forms, or `"*/*"` to redirect requests that send no `Accept` at all. Other names are `json`, `xml` or any media type. The query parameter is `auth.session.return_to_param`.
+What counts as a browser request is `auth.session.navigational_formats` (Devise's setting of the same name): the `Accept` types that get the redirect. The default is `[html]` (`text/html` or `application/xhtml+xml`). Add `turbo_stream` for Hotwire forms, or `"*/*"` to redirect requests that send no `Accept` at all. Other names are `json`, `xml` or any media type. To redirect every signed-out request, whatever it accepts, set `navigational_formats: [any]`. The query parameter is `auth.session.return_to_param`.
 
 For anything else, override `SessionUser::on_signed_out`, Devise's failure app. It gets the request and returns the response:
 

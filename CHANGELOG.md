@@ -6,8 +6,10 @@
 
 - **Configurable signed-out handling.** `auth.session.navigational_formats`
   (Devise's setting, default `[html]`) picks which requests `CurrentUser`
-  redirects to `sign_in_path` rather than answering `401`, and
-  `auth.session.return_to_param` names the parameter it adds. For anything
+  redirects to `sign_in_path` rather than answering `401` (`any` redirects
+  every request), and `auth.session.return_to_param` names the parameter it
+  adds. The return address is the full original path, under a nested router
+  too, with its `/` left unencoded. For anything
   else, override `SessionUser::on_signed_out` (Devise's failure app);
   `session::signed_out` is the default.
 - **`/auth/{provider}` origin.** `auth.oauth.origin_param` (OmniAuth's
