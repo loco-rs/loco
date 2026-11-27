@@ -10,6 +10,7 @@
 - `spa` middleware: serves a frontend build (e.g. `frontend/dist`) under a mount path, next to `static`. Client-side routes get `index.html`, missing files get a real `404`, hashed files under `assets/` are sent with `Cache-Control: public, max-age=31536000, immutable`, HTML and other files with `no-cache`. New clientside apps use it instead of `static`.
 - View helpers with Rails wording: `time_ago_in_words`, `distance_of_time_in_words`, `pluralize`, `to_sentence`, `ordinalize`, `number_with_delimiter` and `number_to_human`. Each is a Tera filter and a Rust function in `loco_rs::controller::views::helpers`. The time helpers take RFC 3339 strings, dates or Unix seconds, and `now=` for tests. `pluralize` replaces Tera's built-in filter but keeps its behaviour when no `word=` is given. `number_with_delimiter` gained `delimiter=` and `separator=`. (#1913)
 - `loco_rs::net::OutboundGuard`: refuse outbound requests to loopback, private, link-local and other non-public addresses, checked on the address actually connected to (resolver, redirects and IP-literal URLs). The equivalent of Ruby's `ssrf_filter`.
+- `SignedWebhook<S>` extractor: verifies HMAC-SHA256 signatures on incoming webhooks (GitHub-style, Stripe-style timestamped, and Loco's own notification webhooks) against secrets under `webhooks:` in config, with constant-time comparison and a replay window. A source with no entry or an empty secret answers `500` and logs an error naming the `webhooks.<name>.secret` key to set.
 
 ### Changed
 

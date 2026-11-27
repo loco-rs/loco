@@ -11,7 +11,7 @@ since they restate the trait's own API.
 
 `use loco_rs::prelude::*;` brings these into scope. They are already available — importing them again is redundant.
 
-`ActiveModelBehavior`, `ActiveModelTrait`, `ActiveValue`, `AppContext`, `Authenticable`, `BackgroundWorker`, `ColumnTrait`, `Condition`, `ConnectionTrait`, `CsrfToken`, `CurrentUser`, `DatabaseConnection`, `Date`, `DateTime`, `DateTimeUtc`, `DateTimeWithTimeZone`, `DbErr`, `Decimal`, `Dir`, `EncryptedCookies`, `EntityTrait`, `Error`, `Expr`, `Form`, `Format`, `Identity`, `Initializer`, `IntoActiveModel`, `IntoResponse`, `Json`, `JsonValidate`, `JsonValidateWithMessage`, `Mailer`, `MaybeCurrentUser`, `MiddlewareStackExt`, `ModelError`, `ModelResult`, `ModelTrait`, `Multipart`, `Notifier`, `OAuthFailure`, `OAuthHandler`, `OrErr`, `Order`, `Pager`, `PagerMeta`, `PaginatorTrait`, `Path`, `Query`, `QueryFilter`, `QueryOrder`, `QuerySelect`, `Queue`, `RemoteIP`, `RespondTo`, `Response`, `Result`, `Routes`, `Session`, `SessionUser`, `Set`, `SharedStore`, `SignIn`, `SignedCookies`, `State`, `Task`, `TaskInfo`, `TenantActiveModelExt`, `TenantEntity`, `TenantQueryExt`, `TeraView`, `TransactionTrait`, `Uuid`, `Validatable`, `Validate`, `ValidatorTrait`, `ViewEngine`, `ViewRenderer`, `async_trait`, `auth`, `bad_request`, `cookie`, `data`, `debug_handler`, `delete`, `format`, `get`, `head`, `include_dir`, `mailer`, `not_found`, `notifications`, `options`, `patch`, `post`, `prelude`, `put`, `query`, `task`, `trace`, `unauthorized`, `validation`
+`ActiveModelBehavior`, `ActiveModelTrait`, `ActiveValue`, `AppContext`, `Authenticable`, `BackgroundWorker`, `ColumnTrait`, `Condition`, `ConnectionTrait`, `CsrfToken`, `CurrentUser`, `DatabaseConnection`, `Date`, `DateTime`, `DateTimeUtc`, `DateTimeWithTimeZone`, `DbErr`, `Decimal`, `Dir`, `EncryptedCookies`, `EntityTrait`, `Error`, `Expr`, `Form`, `Format`, `Identity`, `Initializer`, `IntoActiveModel`, `IntoResponse`, `Json`, `JsonValidate`, `JsonValidateWithMessage`, `Mailer`, `MaybeCurrentUser`, `MiddlewareStackExt`, `ModelError`, `ModelResult`, `ModelTrait`, `Multipart`, `Notifier`, `OAuthFailure`, `OAuthHandler`, `OrErr`, `Order`, `Pager`, `PagerMeta`, `PaginatorTrait`, `Path`, `Query`, `QueryFilter`, `QueryOrder`, `QuerySelect`, `Queue`, `RemoteIP`, `RespondTo`, `Response`, `Result`, `Routes`, `Session`, `SessionUser`, `Set`, `SharedStore`, `SignIn`, `SignedCookies`, `SignedWebhook`, `State`, `Task`, `TaskInfo`, `TenantActiveModelExt`, `TenantEntity`, `TenantQueryExt`, `TeraView`, `TransactionTrait`, `Uuid`, `Validatable`, `Validate`, `ValidatorTrait`, `ViewEngine`, `ViewRenderer`, `WebhookSource`, `async_trait`, `auth`, `bad_request`, `cookie`, `data`, `debug_handler`, `delete`, `format`, `get`, `head`, `include_dir`, `mailer`, `not_found`, `notifications`, `options`, `patch`, `post`, `prelude`, `put`, `query`, `task`, `trace`, `unauthorized`, `validation`
 
 ## `loco_rs::testing::prelude`
 
@@ -575,7 +575,7 @@ since they restate the trait's own API.
 - `struct` **AwsStorageConfig**` { bucket: String, region: String, endpoint: Option<String>, access_key_id: Option<String>, secret_access_key: Option<String>, session_token: Option<String> }`
 - `struct` **AzureStorageConfig**` { container: String, account_name: String, access_key: String, endpoint: String }`
 - `enum` **CacheConfig** — Cache configurations for the application
-- `struct` **Config**` { logger: Logger, server: Server, database: Database, cache: CacheConfig, storage: StorageConfig, queue: Option<QueueConfig>, auth: Option<Auth>, workers: Workers, mailer: Option<Mailer>, notifications: Option<Notifications>, initializers: Option<Initializers>, settings: Option<Value>, scheduler: Option<Config> }` — Main application configuration structure
+- `struct` **Config**` { logger: Logger, server: Server, database: Database, cache: CacheConfig, storage: StorageConfig, queue: Option<QueueConfig>, auth: Option<Auth>, workers: Workers, mailer: Option<Mailer>, notifications: Option<Notifications>, webhooks: BTreeMap<String, Webhook>, initializers: Option<Initializers>, settings: Option<Value>, scheduler: Option<Config> }` — Main application configuration structure
 - `const` **DEV_SESSION_SECRET** — The secret every signed cookie is keyed off when `auth.session.secret` is
 - `struct` **Database**` { uri: String, enable_logging: bool, min_connections: u32, max_connections: u32, connect_timeout: u64, idle_timeout: u64, acquire_timeout: Option<u64>, auto_migrate: bool, dangerously_truncate: bool, dangerously_recreate: bool, run_on_start: Option<String>, sqlite: SqliteConfig }` — Database configuration
 - `struct` **DatabaseCacheConfig**` { sweep_every: u64, sweep_batch: u64 }` — Settings of the database cache (`cache.kind: Database`). Both fields have
@@ -606,12 +606,15 @@ since they restate the trait's own API.
 - `struct` **Server**` { binding: String, port: i32, host: String, ident: Option<String>, middlewares: Config }` — Server configuration structure
 - `struct` **SessionConfig**` { secret: Option<String>, cookie_name: Option<String>, max_age: Option<u64>, secure: Option<bool>, sign_in_path: Option<String>, store: SessionStoreKind, ttl: Option<u64>, remember_for: Option<u64>, remember_cookie_name: Option<String>, redis_uri: Option<String> }` — Signed cookies and the cookie session, Rails' `secret_key_base` plus its
 - `enum` **SessionStoreKind** — Where [`SessionConfig::store`] keeps the session
+- `enum` **SignatureEncoding** — How the digest bytes are written in the header
 - `struct` **SlackNotifications**` { webhook_url: String }` — Default Slack destination
 - `struct` **SmtpMailer**` { enable: bool, host: String, port: u16, secure: bool, tls: Option<MailerTls>, auth: Option<MailerAuth>, hello_name: Option<String> }` — SMTP mailer configuration structure
 - `struct` **SqliteConfig**` { pragmas: BTreeMap<String, String> }` — `SQLite` settings shared by the database and the `SQLite` queue
 - `struct` **SqliteQueueConfig**` { uri: String, dangerously_flush: bool, enable_logging: bool, max_connections: u32, min_connections: u32, connect_timeout: u64, idle_timeout: u64, poll_interval_sec: u32, num_workers: u32, reaper: Option<ReaperConfig>, retention: Option<RetentionConfig>, pragmas: BTreeMap<String, String> }`
 - `enum` **StorageConfig** — Storage configuration for the application
+- `struct` **Webhook**` { secret: String, scheme: WebhookScheme, header: Option<String>, prefix: Option<String>, encoding: SignatureEncoding, tolerance_secs: u64 }` — An incoming webhook source whose requests are signed with a shared secret,
 - `struct` **WebhookNotifications**` { url: String, secret: Option<String>, headers: BTreeMap<String, String> }` — Default webhook destination
+- `enum` **WebhookScheme** — The signature layouts `SignedWebhook` understands
 - `enum` **WorkerMode** — Worker mode configuration
 - `struct` **Workers**` { mode: WorkerMode }` — Background worker configuration
 - `fn` **db_connect_timeout**`() -> u64`
@@ -689,6 +692,11 @@ since they restate the trait's own API.
 - `variant` **Redis** — Redis keys with a TTL (`cache_redis` feature)
 - `fn` **is_server_side**`(self: Self) -> bool` — Whether the session data lives on the server
 
+### `SignatureEncoding`
+
+- `variant` **Base64** — Standard base64 with padding
+- `variant` **Hex** — Lowercase or uppercase hex
+
 ### `SmtpMailer`
 
 - `field` **secure** — Enable TLS
@@ -702,6 +710,12 @@ since they restate the trait's own API.
 - `variant` **Gcp** — Google Cloud Storage
 - `variant` **Local** — Local filesystem storage
 - `variant` **Null** — Null storage: every operation errors. The default when no `storage:`
+
+### `WebhookScheme`
+
+- `variant` **Hmac** — `HMAC-SHA256(secret, body)` in one header, after an optional prefix
+- `variant` **Loco** — What Loco's own notification webhooks send: `X-Loco-Timestamp` and
+- `variant` **Timestamped** — `t=<unix secs>,v1=<hex>[,v1=<hex>]` in one header, signing
 
 ### `WorkerMode`
 
@@ -781,6 +795,34 @@ since they restate the trait's own API.
 - `struct` **JsonValidateWithMessage** — Axum middleware for validating JSON request bodies
 - `struct` **QueryValidate** — Axum middleware for validating query parameters with simplified error
 - `struct` **QueryValidateWithMessage** — Axum middleware for validating query parameters
+## `controller::extractor::webhook`
+
+- `const` **HMAC_HEADER** — Default signature header of [`WebhookScheme::Hmac`] (GitHub's)
+- `const` **LOCO_SIGNATURE_HEADER** — Signature header of [`WebhookScheme::Loco`]
+- `const` **LOCO_TIMESTAMP_HEADER** — Timestamp header of [`WebhookScheme::Loco`]
+- `struct` **SignedWebhook** — A request body whose signature has been verified against
+- `const` **TIMESTAMPED_HEADER** — Default signature header of [`WebhookScheme::Timestamped`] (Stripe's)
+- `enum` **WebhookError** — Why a webhook was refused
+- `trait` **WebhookSource** — Names the `webhooks:` config entry a [`SignedWebhook`] verifies against
+- `fn` **sign**`(config: &Webhook, body: &[u8], now: i64) -> Vec<(String, String)>` — The headers a sender would attach to `body` at `now` (Unix seconds) under
+- `fn` **verify**`(config: &Webhook, headers: &HeaderMap, body: &[u8], now: i64) -> Result<(), WebhookError>` — Checks that `headers` carry a valid signature of `body` under `config`, at
+
+### `SignedWebhook<S>`
+
+- `fn` **body**`(self: &Self) -> &Bytes` — The verified raw body
+- `fn` **header**`(self: &Self, name: &str) -> Option<&str>` — One request header as text, if present and valid UTF-8
+- `fn` **headers**`(self: &Self) -> &HeaderMap` — The request headers (event name, delivery ID, ...)
+- `fn` **into_body**`(self: Self) -> Bytes` — Takes the verified raw body
+- `fn` **json**`(self: &Self) -> Result<T>` — Parses the verified body as JSON
+
+### `WebhookError`
+
+- `variant` **EmptySecret** — The configured secret is empty
+- `variant` **Expired** — The signed timestamp is outside the tolerance window
+- `variant` **Malformed** — The signature header could not be parsed
+- `variant` **Mismatch** — The signature does not sign this body under the secret
+- `variant` **MissingHeader** — A header the scheme needs is absent
+- `variant` **NotConfigured** — No `webhooks.<name>` entry in the config
 ## `controller::format`
 
 - `struct` **RenderBuilder**

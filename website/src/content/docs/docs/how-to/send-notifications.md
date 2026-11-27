@@ -230,13 +230,31 @@ The default webhook body:
 
 Headers: `X-Loco-Event` (the event name), `X-Loco-Delivery` (the `id`, which stays the same across retries, so receivers can deduplicate on it), and `X-Loco-Timestamp` (the attempt time, in Unix seconds). When the channel has a secret it also sends `X-Loco-Signature: sha256=<hex>`, an HMAC-SHA256 over `"{timestamp}.{raw body}"`.
 
-A receiver checks the signature, then rejects old timestamps to stop replays. If the receiver is a Loco app:
+A receiver checks the signature, then rejects old timestamps to stop replays. If the receiver is a Loco app, give the sender an entry with `scheme: loco` and take `SignedWebhook<S>` in the handler; it does both checks before your code runs:
+
+```yaml
+# receiver's config/<env>.yaml
+webhooks:
+  ci:
+    secret: <%= get_env(name="CI_WEBHOOK_SECRET", default="") %>
+    scheme: loco
+```
 
 ```rust
-use loco_rs::notifications::webhook;
+use loco_rs::prelude::*;
 
-let ok = webhook::verify_signature(&secret, timestamp, &raw_body, signature);
+pub struct Ci;
+impl WebhookSource for Ci {
+    const NAME: &'static str = "ci";
+}
+
+async fn ci(hook: SignedWebhook<Ci>) -> Result<Response> {
+    tracing::info!(event = ?hook.header("X-Loco-Event"), "notification received");
+    format::empty()
+}
 ```
+
+See [Verify signed webhooks](/docs/how-to/verify-webhooks) for the details.
 
 ## Test notifiers
 
