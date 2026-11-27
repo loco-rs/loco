@@ -11,7 +11,7 @@ since they restate the trait's own API.
 
 `use loco_rs::prelude::*;` brings these into scope. They are already available — importing them again is redundant.
 
-`ActiveModelBehavior`, `ActiveModelTrait`, `ActiveValue`, `AppContext`, `Authenticable`, `BackgroundWorker`, `ColumnTrait`, `Condition`, `ConnectionTrait`, `CurrentUser`, `DatabaseConnection`, `Date`, `DateTime`, `DateTimeUtc`, `DateTimeWithTimeZone`, `DbErr`, `Decimal`, `Dir`, `EncryptedCookies`, `EntityTrait`, `Error`, `Expr`, `Form`, `Format`, `Identity`, `Initializer`, `IntoActiveModel`, `IntoResponse`, `Json`, `JsonValidate`, `JsonValidateWithMessage`, `Mailer`, `MaybeCurrentUser`, `MiddlewareStackExt`, `ModelError`, `ModelResult`, `ModelTrait`, `Multipart`, `Notifier`, `OAuthFailure`, `OAuthHandler`, `OrErr`, `Order`, `Pager`, `PagerMeta`, `PaginatorTrait`, `Path`, `Query`, `QueryFilter`, `QueryOrder`, `QuerySelect`, `Queue`, `RemoteIP`, `RespondTo`, `Response`, `Result`, `Routes`, `Session`, `SessionUser`, `Set`, `SharedStore`, `SignIn`, `SignedCookies`, `SignedWebhook`, `State`, `Task`, `TaskInfo`, `TenantActiveModelExt`, `TenantEntity`, `TenantQueryExt`, `TeraView`, `TransactionTrait`, `Uuid`, `Validatable`, `Validate`, `ValidatorTrait`, `ViewEngine`, `ViewRenderer`, `WebhookSource`, `async_trait`, `auth`, `bad_request`, `cookie`, `data`, `debug_handler`, `delete`, `format`, `get`, `head`, `include_dir`, `mailer`, `not_found`, `notifications`, `options`, `patch`, `post`, `prelude`, `put`, `query`, `task`, `trace`, `unauthorized`, `validation`
+`ActiveModelBehavior`, `ActiveModelTrait`, `ActiveValue`, `AppContext`, `Authenticable`, `BackgroundWorker`, `ColumnTrait`, `Condition`, `ConnectionTrait`, `CsrfToken`, `CurrentUser`, `DatabaseConnection`, `Date`, `DateTime`, `DateTimeUtc`, `DateTimeWithTimeZone`, `DbErr`, `Decimal`, `Dir`, `EncryptedCookies`, `EntityTrait`, `Error`, `Expr`, `Form`, `Format`, `Identity`, `Initializer`, `IntoActiveModel`, `IntoResponse`, `Json`, `JsonValidate`, `JsonValidateWithMessage`, `Mailer`, `MaybeCurrentUser`, `MiddlewareStackExt`, `ModelError`, `ModelResult`, `ModelTrait`, `Multipart`, `Notifier`, `OAuthFailure`, `OAuthHandler`, `OrErr`, `Order`, `Pager`, `PagerMeta`, `PaginatorTrait`, `Path`, `Query`, `QueryFilter`, `QueryOrder`, `QuerySelect`, `Queue`, `RemoteIP`, `RespondTo`, `Response`, `Result`, `Routes`, `Session`, `SessionUser`, `Set`, `SharedStore`, `SignIn`, `SignedCookies`, `SignedWebhook`, `State`, `Task`, `TaskInfo`, `TenantActiveModelExt`, `TenantEntity`, `TenantQueryExt`, `TeraView`, `TransactionTrait`, `Uuid`, `Validatable`, `Validate`, `ValidatorTrait`, `ViewEngine`, `ViewRenderer`, `WebhookSource`, `async_trait`, `auth`, `bad_request`, `cookie`, `data`, `debug_handler`, `delete`, `format`, `get`, `head`, `include_dir`, `mailer`, `not_found`, `notifications`, `options`, `patch`, `post`, `prelude`, `put`, `query`, `task`, `trace`, `unauthorized`, `validation`
 
 ## `loco_rs::testing::prelude`
 
@@ -592,7 +592,7 @@ since they restate the trait's own API.
 - `struct` **Mailer**` { smtp: Option<SmtpMailer>, stub: bool }` — Mailer configuration
 - `struct` **MailerAuth**` { user: String, password: String }` — Authentication details for the mailer
 - `enum` **MailerTls** — TLS mode for the SMTP connection
-- `struct` **Notifications**` { slack: Option<SlackNotifications>, webhook: Option<WebhookNotifications>, email: Option<EmailNotifications>, max_retries: u32, retry_backoff_secs: u64, timeout_secs: u64, stub: bool }` — Notifications configuration: the default destination of each channel and
+- `struct` **Notifications**` { slack: Option<SlackNotifications>, webhook: Option<WebhookNotifications>, email: Option<EmailNotifications>, max_retries: u32, retry_backoff_secs: u64, timeout_secs: u64, stub: bool, outbound: OutboundGuard }` — Notifications configuration: the default destination of each channel and
 - `struct` **OAuthConfig**` { base_url: Option<String>, after_sign_in_path: Option<String>, after_sign_out_path: Option<String>, failure_path: Option<String>, providers: BTreeMap<String, OAuthProviderConfig> }` — `OAuth2` / `OpenID` Connect sign-in, `OmniAuth`-style
 - `struct` **OAuthProviderConfig**` { strategy: Option<OAuthStrategy>, client_id: String, client_secret: String, scopes: Option<Vec<String>>, base_url: Option<String>, api_url: Option<String>, authorize_url: Option<String>, token_url: Option<String>, userinfo_url: Option<String>, emails_url: Option<String>, redirect_uri: Option<String>, authorize_params: BTreeMap<String, String>, pkce: Option<bool>, token_auth: Option<OAuthTokenAuth> }` — One OAuth provider. Every URL is overridable, for GitHub Enterprise,
 - `enum` **OAuthStrategy** — Which provider preset a configured provider uses
@@ -826,12 +826,15 @@ since they restate the trait's own API.
 ## `controller::format`
 
 - `struct` **RenderBuilder**
+- `struct` **Responder** — Built by [`respond_to`]; see there
 - `fn` **empty**`() -> Result<Response>` — Returns an empty response
 - `fn` **empty_json**`() -> Result<Response>` — Respond with empty json (`{}`)
 - `fn` **html**`(content: &str) -> Result<Response>` — Returns an HTML response
 - `fn` **json**`(t: T) -> Result<Response>` — Returns a JSON response containing the provided data
 - `fn` **redirect**`(to: &str) -> Result<Response>` — Returns an redirect response
 - `fn` **render**`() -> RenderBuilder`
+- `fn` **respond_to**`(format: &RespondTo) -> Responder` — Answers one action in the format the request asked for, like Rails'
+- `fn` **respond_with**`(v: &V, format: &RespondTo, key: &str, data: S) -> Result<Response> where V: ViewRenderer, S: Serialize` — Renders `key` with `data` for a browser, or `data` itself as JSON for a
 - `fn` **template**`(template: &str, data: S) -> Result<Response> where S: Serialize` — Render template from string
 - `fn` **text**`(t: &str) -> Result<Response>` — Returns a response containing the provided text
 - `fn` **view**`(v: &V, key: &str, data: S) -> Result<Response> where V: ViewRenderer, S: Serialize` — Render template located by `key`
@@ -853,9 +856,17 @@ since they restate the trait's own API.
 - `fn` **template**`(self: Self, template: &str, data: S) -> Result<Response> where S: Serialize` — Render template located by `key`
 - `fn` **text**`(self: Self, content: &str) -> Result<Response>` — Finalize and return a text response
 - `fn` **view**`(self: Self, v: &V, key: &str, data: S) -> Result<Response> where V: ViewRenderer, S: Serialize` — Render template located by `key`
+
+### `Responder`
+
+- `fn` **any**`(self: Self, f: F) -> Self where F: FnOnce` — The answer for any format no earlier branch took, like Rails'
+- `fn` **html**`(self: Self, f: F) -> Self where F: FnOnce` — The answer for a browser (`text/html`)
+- `fn` **json**`(self: Self, f: F) -> Self where F: FnOnce` — The answer for `application/json`, `.json` paths and the JSON
+- `fn` **render**`(self: Self) -> Result<Response>` — The chosen branch's response
+- `fn` **xml**`(self: Self, f: F) -> Self where F: FnOnce` — The answer for `application/xml` or `text/xml`
 ## `controller::middleware`
 
-- `struct` **Config**` { compression: Option<Compression>, etag: Option<Etag>, limit_payload: Option<LimitPayload>, logger: Option<Config>, catch_panic: Option<CatchPanic>, timeout_request: Option<TimeOut>, cors: Option<Cors>, static_assets: Option<StaticAssets>, secure_headers: Option<SecureHeader>, remote_ip: Option<RemoteIpMiddleware>, fallback: Option<Fallback>, request_id: Option<RequestId> }` — Server middleware configuration structure
+- `struct` **Config**` { compression: Option<Compression>, etag: Option<Etag>, limit_payload: Option<LimitPayload>, logger: Option<Config>, catch_panic: Option<CatchPanic>, timeout_request: Option<TimeOut>, cors: Option<Cors>, static_assets: Option<StaticAssets>, spa: Option<Spa>, secure_headers: Option<SecureHeader>, remote_ip: Option<RemoteIpMiddleware>, fallback: Option<Fallback>, request_id: Option<RequestId>, respond_to: Option<Config>, forgery_protection: Option<ForgeryProtection> }` — Server middleware configuration structure
 - `trait` **MiddlewareLayer** — Trait representing the behavior of middleware components in the application
 - `trait` **MiddlewareStackExt** — Ergonomic, Rails-style edits to a middleware stack
 - `fn` **default_middleware_stack**`(ctx: &AppContext) -> Vec<Box<dyn MiddlewareLayer>>`
@@ -900,10 +911,38 @@ since they restate the trait's own API.
 
 - `struct` **Fallback**` { enable: bool, code: StatusCode, file: Option<String>, not_found: Option<String> }`
 - `struct` **StatusCodeWrapper**
+## `controller::middleware::forgery_protection`
+
+- `struct` **CsrfToken** — The request's authenticity token (`mode: token`)
+- `const` **DEFAULT_COOKIE** — Default name of the cookie that holds the token
+- `const` **DEFAULT_FIELD** — Default name of the form field that carries the token
+- `const` **DEFAULT_HEADER** — Default name of the request header that carries the token
+- `struct` **ForgeryProtection**` { enable: bool, mode: Mode, exempt: Vec<String>, trusted_origins: Vec<String>, field: String, header: String, cookie: String }` — `server.middlewares.forgery_protection` configuration
+- `struct` **Middleware** — The configured middleware, ready to apply. Built by
+- `enum` **Mode** — How requests are checked
+- `fn` **current_token**`() -> Option<CsrfToken>` — The token of the request being handled, if `forgery_protection` runs
+- `fn` **is_cross_site**`(headers: &HeaderMap, trusted: &[String]) -> bool` — Whether `headers` say a browser sent the request from another site
+- `fn` **is_unsafe**`(method: &Method) -> bool` — Whether `method` can change state. `GET`, `HEAD`, `OPTIONS` and `TRACE`
+
+### `CsrfToken`
+
+- `fn` **field**`(self: &Self) -> &str` — The form field name the middleware reads
+- `fn` **header**`(self: &Self) -> &str` — The request header the middleware reads
+- `fn` **masked**`(self: &Self) -> String` — A masked copy of the token, safe to embed in a page
+- `fn` **verify**`(self: &Self, candidate: &str) -> bool` — Whether `candidate` (a value from [`masked`](Self::masked)) matches
+
+### `Middleware`
+
+- `fn` **new**`(config: ForgeryProtection, ctx: &AppContext) -> Self` — The middleware for `config` in `ctx`
+
+### `Mode`
+
+- `variant` **Header** — Refuse requests whose `Sec-Fetch-Site` / `Origin` say they came from
+- `variant` **Token** — Require the authenticity token on every unsafe request
 ## `controller::middleware::format`
 
 - `struct` **Format**
-- `enum` **RespondTo**
+- `enum` **RespondTo** — The format a request asked for
 - `fn` **get_respond_to**`(headers: &HeaderMap) -> RespondTo`
 
 ### `RespondTo`
@@ -950,6 +989,11 @@ since they restate the trait's own API.
 ### `LocoRequestId`
 
 - `fn` **get**`(self: &Self) -> &str` — Retrieves the request ID as a string slice
+## `controller::middleware::respond_to`
+
+- `struct` **Config**` { enable: bool, prefix: Option<String>, extension: bool, sign_in_path: Option<String> }` — `server.middlewares.respond_to` configuration
+- `struct` **Middleware** — The `respond_to` middleware. Build it with [`new`]
+- `fn` **new**`(config: &Config, ctx: &AppContext) -> Middleware` — Creates the middleware. It needs the [`AppContext`] because it routes
 ## `controller::middleware::secure_headers`
 
 - `struct` **SecureHeader**` { enable: bool, preset: String, overrides: Option<BTreeMap<String, String>> }` — Sets a predefined or custom set of secure headers
@@ -959,6 +1003,12 @@ since they restate the trait's own API.
 ### `SecureHeaders`
 
 - `fn` **new**`(config: &SecureHeader) -> Result<Self>` — Creates a new [`SecureHeaders`] instance with the provided
+## `controller::middleware::spa`
+
+- `struct` **CacheControl**` { assets: Option<String>, assets_prefix: String, html: Option<String>, other: Option<String> }` — Cache-Control values by response kind
+- `const` **IMMUTABLE** — Cache-Control used for hashed build assets by default
+- `const` **NO_CACHE** — Cache-Control used for HTML (the app shell) by default
+- `struct` **Spa**` { enable: bool, uri: String, path: PathBuf, index: PathBuf, must_exist: bool, precompressed: bool, cache_control: CacheControl }` — SPA middleware configuration
 ## `controller::middleware::static_assets_embedded`
 
 - `struct` **EmbeddedAssets**
@@ -1001,6 +1051,21 @@ since they restate the trait's own API.
 - `fn` **from_embedded_templates**`() -> Result<Self>` — Load and initialize templates from embedded assets
 - `fn` **post_process**`(self: Self, post_process: impl Trait) -> Result<Self>` — Attach the Tera view engine with a post-processing function for subsequent instantiation
 - `fn` **render_component**`(self: &Self, component: &str, data: S, body: Option<&str>) -> Result<String>` — Render one Tera 2 component by name, autoescaped like [`ViewRenderer::render`]
+## `controller::views::helpers`
+
+- `struct` **SentenceConnectors**` { words_connector: &str, two_words_connector: &str, last_word_connector: &str }` — The connectors [`to_sentence_with`] joins words with. The default is
+- `fn` **distance_of_time_in_words**`(from: impl Trait, to: impl Trait, include_seconds: bool) -> String` — Approximate distance between two times, in words
+- `fn` **number_to_human**`(number: f64) -> String` — A number in words for people: `1234` → `"1.23 Thousand"`,
+- `fn` **number_to_human_with**`(number: f64, precision: u32, significant: bool) -> String` — [`number_to_human`] with Rails' `precision:` and `significant:` options
+- `fn` **number_with_delimiter**`(number: impl Trait) -> String` — A number with `,` between thousands: `1234567.89` → `"1,234,567.89"`
+- `fn` **number_with_delimiter_using**`(number: impl Trait, delimiter: &str, separator: &str) -> String` — [`number_with_delimiter`] with a custom delimiter and decimal separator,
+- `fn` **ordinal**`(number: i64) -> &str` — The suffix [`ordinalize`] adds: `"st"`, `"nd"`, `"rd"` or `"th"`
+- `fn` **ordinalize**`(number: i64) -> String` — A number as an ordinal: `"1st"`, `"2nd"`, `"11th"`, `"23rd"`, `"-1st"`
+- `fn` **pluralize**`(count: impl Trait, singular: &str, plural: Option<&str>) -> String` — `count` followed by `singular` or its plural: `"1 person"`, `"2 people"`
+- `fn` **pluralize_word**`(word: &str) -> String` — The plural of an English noun, using the same inflector Loco uses for
+- `fn` **time_ago_in_words**`(from: impl Trait, include_seconds: bool) -> String` — Distance between `from` and now, in words: `"3 days"`, `"about 1 hour"`
+- `fn` **to_sentence**`(words: &[S]) -> String` — Joins words into a sentence: `"a"`, `"a and b"`, `"a, b, and c"`
+- `fn` **to_sentence_with**`(words: &[S], connectors: &SentenceConnectors) -> String` — [`to_sentence`] with custom connectors
 ## `controller::views::pagination`
 
 - `struct` **Pager**` { results: T, info: PagerMeta }` — A page of results plus its pagination metadata
@@ -1014,9 +1079,19 @@ since they restate the trait's own API.
 - `fn` **register_filters**`(tera: &mut Tera)`
 ## `controller::views::tera_builtins::filters::number`
 
+- `fn` **number_to_human**`(value: &Value, kwargs: Kwargs, _: &State) -> TeraResult<Value>` — Writes a number in words for people: `1234` → `"1.23 Thousand"`,
 - `fn` **number_to_human_size**`(value: &Value, _: Kwargs, _: &State) -> TeraResult<Value>` — Converts a numeric value (in bytes) into a human-readable size string with
 - `fn` **number_to_percentage**`(value: &Value, kwargs: Kwargs, _: &State) -> TeraResult<Value>` — Converts a numeric value into a formatted percentage string
-- `fn` **number_with_delimiter**`(value: &Value, _: Kwargs, _: &State) -> TeraResult<Value>` — Formats a numeric value by adding commas as thousands separators
+- `fn` **number_with_delimiter**`(value: &Value, kwargs: Kwargs, _: &State) -> TeraResult<Value>` — Formats a numeric value by adding commas as thousands separators
+## `controller::views::tera_builtins::filters::text`
+
+- `fn` **ordinalize**`(value: &Value, _: Kwargs, _: &State) -> TeraResult<Value>` — `{{ place | ordinalize }}` renders `"1st"`, `"22nd"`, `"113th"`
+- `fn` **pluralize**`(value: &Value, kwargs: Kwargs, _: &State) -> TeraResult<Value>` — `{{ count | pluralize(word="person") }}` renders `"2 people"`
+- `fn` **to_sentence**`(value: &Value, kwargs: Kwargs, _: &State) -> TeraResult<Value>` — `{{ names | to_sentence }}` renders `"a, b, and c"`
+## `controller::views::tera_builtins::filters::time`
+
+- `fn` **distance_of_time_in_words**`(value: &Value, kwargs: Kwargs, _: &State) -> TeraResult<Value>` — `{{ started_at | distance_of_time_in_words(to=finished_at) }}` renders
+- `fn` **time_ago_in_words**`(value: &Value, kwargs: Kwargs, _: &State) -> TeraResult<Value>` — `{{ post.created_at | time_ago_in_words }}` renders `"3 days"`
 ## `data`
 
 - `fn` **load_json_file**`(path: &str) -> Result<T>` — Load a data JSON file asynchronously
@@ -1326,6 +1401,37 @@ since they restate the trait's own API.
 - `variant` **Asc**
 - `variant` **Desc**
 - `fn` **order**`(self: &Self) -> Order` — Returns the corresponding `Order` enum variant based on the current
+## `net`
+
+- `struct` **BlockedAddress** — The error for a refused destination. Its message names the host, never
+- `struct` **GuardedResolver** — A DNS resolver that keeps only the addresses an [`OutboundGuard`]
+- `struct` **OutboundGuard**` { allow_private: bool, allow: Vec<String> }` — Which outbound addresses are allowed
+- `enum` **RefusedUrl** — Why [`OutboundGuard::check_url`] refused a URL
+- `fn` **is_blocked**`(err: &Error) -> bool` — Whether a reqwest error was caused by the guard refusing an address
+- `fn` **is_public**`(ip: IpAddr) -> bool` — Whether `ip` is a publicly routable address
+
+### `BlockedAddress`
+
+- `fn` **host**`(self: &Self) -> &str` — The refused host or address
+
+### `GuardedResolver`
+
+- `fn` **filter**`(self: &Self, host: &str, addrs: impl Trait) -> Result<Vec<SocketAddr>, BlockedAddress>` — Keeps the allowed addresses among `addrs` resolved for `host`
+- `fn` **new**`(guard: OutboundGuard) -> Self` — A resolver enforcing `guard`
+
+### `OutboundGuard`
+
+- `fn` **allow_all**`() -> Self` — A guard that allows everything
+- `fn` **allows_host**`(self: &Self, host: &str) -> bool` — Whether `host` (a name, not an address) is allowed by name
+- `fn` **apply**`(self: &Self, builder: ClientBuilder) -> ClientBuilder` — Installs the guard on a reqwest client: a resolver that drops
+- `fn` **check_host**`(self: &Self, host: &str) -> Result<(), BlockedAddress>` — Checks a host as it appears in a URL: an IP literal (`127.0.0.1`,
+- `fn` **check_url**`(self: &Self, url: &str) -> Result<(), RefusedUrl>` — Checks a URL before sending: it must parse and have a host, and
+- `fn` **is_allowed**`(self: &Self, ip: IpAddr) -> bool` — Whether a connection to `ip` is allowed: it is public, or the guard
+
+### `RefusedUrl`
+
+- `variant` **Blocked** — The host is an address the guard refuses
+- `variant` **Invalid** — The URL does not parse, or has no host (`mailto:`, `data:`)
 ## `notifications`
 
 - `enum` **Channel** — Where a notification goes. Returned by [`super::Notifier::channels`]

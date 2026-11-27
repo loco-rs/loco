@@ -56,6 +56,8 @@ pub use crate::controller::extractor::{
     shared_store::SharedStore,
     validate::{JsonValidate, JsonValidateWithMessage},
 };
+#[cfg(feature = "auth_session")]
+pub use crate::controller::middleware::forgery_protection::CsrfToken;
 #[cfg(feature = "with-db")]
 pub use crate::model::{query, Authenticable, ModelError, ModelResult};
 #[cfg(feature = "multi-tenancy")]

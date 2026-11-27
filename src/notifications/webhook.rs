@@ -21,7 +21,7 @@ use hmac::{Hmac, Mac};
 use serde_json::Value;
 use sha2::Sha256;
 
-use super::{check_status, http_error};
+use super::{check_status, transport_error};
 use crate::Result;
 
 /// Header carrying the event name.
@@ -104,11 +104,10 @@ pub(super) async fn send(http: &reqwest::Client, req: Request<'_>) -> Result<()>
         builder = builder.header(name, value);
     }
 
-    let response = builder
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| http_error("webhook", e))?;
+    let response = match builder.body(body).send().await {
+        Ok(response) => response,
+        Err(err) => return transport_error("webhook", err),
+    };
     check_status("webhook", response.status(), String::new)
 }
 
