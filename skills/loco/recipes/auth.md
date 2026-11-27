@@ -143,6 +143,10 @@ loco_rs::auth::session_store::sign_out_everywhere(&ctx, &pid).await?;
 - `remember_for` (seconds) with `store: cookie` is a boot error: remember-me needs the server to hold the series. So is a `remember_for` that is not longer than `ttl` (server-side idle timeout, default 1 day; the session cookie has no `Max-Age`, `max_age` is cookie-store only). `.remember()?` errors on the cookie store. Also boot errors: `ttl: 0`, `remember_for` over 400 days, `remember_cookie_name` equal to `cookie_name`. A rotated token lost to a panic or failed write looks like theft and signs the user out everywhere, by design. The series has a fixed lifetime (rotation never extends it) and a replayed old token signs the user out everywhere. The `redis` store needs a single node (no Cluster).
 - `store: database` needs `with-db`; `redis` needs `cache_redis`. Tables are created on first use.
 - Server-side stores need the `auth_session` middleware: keep it if you override `Hooks::middlewares`.
+- Signed out, `CurrentUser` redirects navigational requests to `auth.session.sign_in_path?return_to=<path>` and answers `401` otherwise. Tune it with config, not a custom extractor: `navigational_formats` (default `[html]`; add `turbo_stream` for Hotwire) and `return_to_param`. For anything else override `SessionUser::on_signed_out(ctx, parts)` (Devise's failure app); `session::signed_out(parts, ctx)` is the default to fall back to.
+- `/auth/{provider}?return_to=/path` picks where the user lands (same-site paths only; `auth.oauth.origin_param` renames it). Without it, `SignIn::redirect_to`, then `auth.oauth.after_sign_in_path`, then a same-site `Referer` decide. Never redirect to a `return_to` yourself without `oauth::state::safe_return_to`.
+- `OAuthHandler::on_failure(ctx, parts, failure)` gets the callback request's `Parts` (headers, view engine). The state cookie is encrypted (`auth_oauth` enables `auth_session_encrypted`).
+- In tests, `sign_in(&mut request, &ctx, pid)` from `loco_rs::testing::prelude` signs in on any store; see `recipes/testing.md`.
 
 ## Incoming webhooks (GitHub, Stripe, another Loco app)
 

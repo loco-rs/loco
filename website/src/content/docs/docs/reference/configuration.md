@@ -96,6 +96,8 @@ auth:
     max_age: 2592000            # optional, seconds (cookie store only)
     secure: true                # optional, default: server.host is https://
     sign_in_path: /login        # optional
+    return_to_param: return_to  # optional
+    navigational_formats: [html] # optional
     store: cookie               # cookie | database | redis
     ttl: 86400                  # optional, seconds; database or redis
     remember_for: 1209600       # optional, seconds; needs database or redis
@@ -104,6 +106,8 @@ auth:
     after_sign_in_path: /
     after_sign_out_path: /
     failure_path: /login
+    origin_param: return_to     # optional
+    state_cookie_name: loco_oauth_state # optional
     providers:
       github:
         client_id: <%= get_env(name="GITHUB_CLIENT_ID") %>
@@ -117,15 +121,19 @@ auth:
 | `auth.session.max_age` | `Option<u64>` | optional, default 30 days | Cookie store only: the cookie `Max-Age` and the server-enforced expiry inside the signed value. Server-side stores use `ttl`, and their session cookie has no `Max-Age` |
 | `auth.session.ttl` | `Option<u64>` | optional, default 1 day | Server-side stores only: how long an idle session lives, in seconds, at least 1. It slides on use |
 | `auth.session.secure` | `Option<bool>` | optional | Default: on when `server.host` starts with `https://` |
-| `auth.session.sign_in_path` | `Option<String>` | optional | Where `CurrentUser` redirects signed-out HTML requests (`?return_to=` appended); without it they get `401` |
+| `auth.session.sign_in_path` | `Option<String>` | optional | Where `CurrentUser` redirects signed-out navigational requests (`?return_to=` appended); without it they get `401` |
+| `auth.session.return_to_param` | `Option<String>` | optional, default `return_to` | The query parameter that redirect adds. Also the default of `auth.oauth.origin_param` |
+| `auth.session.navigational_formats` | `Option<Vec<String>>` | optional, default `[html]` | `Accept` types that get the redirect rather than `401`: `html`, `turbo_stream`, `json`, `xml`, `"*/*"` (also matches a missing `Accept`), `any` (every request) or a media type. Devise's setting of the same name |
 | `auth.session.store` | `cookie` \| `database` \| `redis` | optional, default `cookie` | `cookie`: the signed cookie holds the session. `database`: a `loco_sessions` table (Postgres and SQLite, created on first use); `redis`: keys with a TTL. Both server-side stores put only a random id in the cookie. See [Server-side sessions and remember me](/docs/how-to/oauth-sign-in#server-side-sessions-and-remember-me) |
 | `auth.session.remember_for` | `Option<u64>` | optional, default 14 days | Lifetime of a remember-me series, in seconds. Fixed from the sign-in; rotation does not extend it. Unset, it is 14 days, or `ttl` plus one day when `ttl` is 13 days or more. Setting it with `store: cookie`, to no more than `ttl`, or over 400 days is a boot error |
 | `auth.session.remember_cookie_name` | `Option<String>` | optional, default `loco_remember` | Must differ from `cookie_name` |
 | `auth.session.redis_uri` | `Option<String>` | optional | Redis for `store: redis`; default is the `cache` Redis URI |
 | `auth.oauth.base_url` | `Option<String>` | optional | Public origin for callback URLs; default `server.full_url()` |
-| `auth.oauth.after_sign_in_path` | `Option<String>` | optional, default `/` | Used when neither `return_to` nor `SignIn::redirect_to` is set |
+| `auth.oauth.after_sign_in_path` | `Option<String>` | optional, default `/` | Used when neither `return_to` nor `SignIn::redirect_to` is set. Wins over the `Referer` |
 | `auth.oauth.after_sign_out_path` | `Option<String>` | optional, default `/` | |
 | `auth.oauth.failure_path` | `Option<String>` | optional | Default failure handler redirects here with `?error=&provider=`; without it, a minimal `401` page |
+| `auth.oauth.origin_param` | `Option<String>` | optional, default `auth.session.return_to_param` | Query parameter of `/auth/{provider}` naming where to land after sign-in; same-site paths only; not `remember`. Without it, a same-site `Referer` is used when nothing else names a landing page |
+| `auth.oauth.state_cookie_name` | `Option<String>` | optional, default `loco_oauth_state` | Prefix of the encrypted state cookie; `_<provider>` is appended |
 | `auth.oauth.providers.<name>` | `OAuthProviderConfig` | at least one | `strategy` (`github`/`google`/`generic`; inferred from the name for `github`/`google`), `client_id`, `client_secret`, `scopes`, `base_url`, `api_url`, `authorize_url`, `token_url`, `userinfo_url`, `emails_url`, `redirect_uri`, `authorize_params` (map), `pkce` (default `true`), `token_auth` (`post`/`basic`) |
 
 ## `server`

@@ -25,7 +25,7 @@
 //!
 //! | route | does |
 //! |---|---|
-//! | `GET\|POST /auth/{provider}` | sets a state cookie, redirects to the provider. `?return_to=/path` (same-site paths only) is where the user lands afterwards. |
+//! | `GET\|POST /auth/{provider}` | sets an encrypted state cookie, redirects to the provider. `?return_to=/path` (same-site paths only; the name is `auth.oauth.origin_param`) is where the user lands afterwards. |
 //! | `GET /auth/{provider}/callback` | checks state, exchanges the code, calls [`OAuthHandler::on_sign_in`], starts a fresh session. |
 //! | `GET\|POST /auth/sign_out` | clears the session. |
 //!
@@ -44,8 +44,11 @@
 pub mod provider;
 pub mod state;
 
+use std::collections::BTreeMap;
+
 use axum::{
     extract::{OriginalUri, Path, Query, State},
+    http::{header, request::Parts, HeaderMap},
     response::{IntoResponse, Response},
     routing::get,
 };
@@ -54,15 +57,15 @@ use serde::Deserialize;
 pub use self::provider::Identity;
 use self::{
     provider::Provider,
-    state::{FlowState, STATE_TTL_SECONDS},
+    state::{safe_return_to, FlowState, STATE_TTL_SECONDS},
 };
 use super::{
-    cookies::{self, SignedCookies},
-    session::{encode, Session},
+    cookies::{self, EncryptedCookies},
+    session::{self, encode, Session},
 };
 use crate::{
     app::AppContext,
-    config::OAuthConfig,
+    config::{Config, OAuthConfig},
     controller::{format, Routes},
     Error, Result,
 };
@@ -74,8 +77,9 @@ pub struct SignIn {
     /// [`SessionUser::find_by_session_id`](crate::auth::session::SessionUser::find_by_session_id)
     /// receives.
     pub user_id: String,
-    /// Where to go when the flow carried no `return_to` (e.g. `/onboarding`
-    /// for a new account). Defaults to `auth.oauth.after_sign_in_path`, then
+    /// Where to go when the sign-in link carried no `return_to` (e.g.
+    /// `/onboarding` for a new account). Without it: `auth.oauth.after_sign_in_path`,
+    /// then the same-site page the sign-in started from (its `Referer`), then
     /// `/`.
     pub redirect_to: Option<String>,
     /// Remember this sign-in across browser restarts (see
@@ -102,7 +106,8 @@ impl SignIn {
         self
     }
 
-    /// Land on `path` unless the flow carried a `return_to`.
+    /// Land on `path` unless the sign-in link carried a `return_to`. Wins
+    /// over `auth.oauth.after_sign_in_path` and the `Referer`.
     #[must_use]
     pub fn redirect_to(mut self, path: impl Into<String>) -> Self {
         self.redirect_to = Some(path.into());
@@ -188,10 +193,48 @@ pub trait OAuthHandler: Send + Sync + 'static {
     /// Any other error is a `500`.
     async fn on_sign_in(ctx: &AppContext, identity: &Identity) -> Result<SignIn>;
 
-    /// The response for a failed sign-in. Default: redirect to
+    /// The response for a failed sign-in, Devise's
+    /// `OmniauthCallbacksController#failure`. Default: redirect to
     /// `auth.oauth.failure_path?error=<kind>&provider=<name>` when set,
     /// otherwise a minimal page with the message and a retry link.
-    async fn on_failure(ctx: &AppContext, failure: &OAuthFailure) -> Result<Response> {
+    ///
+    /// `parts` is the callback request, for what the handler would otherwise
+    /// extract: headers, the `Accept` format, or a view engine from its
+    /// extensions to render the app's own page:
+    ///
+    /// ```rust,no_run
+    /// use axum::http::request::Parts;
+    /// use loco_rs::{auth::oauth, prelude::*};
+    ///
+    /// struct OAuth;
+    ///
+    /// #[async_trait]
+    /// impl OAuthHandler for OAuth {
+    ///     async fn on_sign_in(_ctx: &AppContext, identity: &Identity) -> Result<SignIn> {
+    ///         Ok(SignIn::new(identity.uid.clone()))
+    ///     }
+    ///
+    ///     async fn on_failure(
+    ///         ctx: &AppContext,
+    ///         parts: &Parts,
+    ///         failure: &OAuthFailure,
+    ///     ) -> Result<Response> {
+    ///         let Some(v) = parts.extensions.get::<ViewEngine<TeraView>>() else {
+    ///             return oauth::default_failure(ctx, failure);
+    ///         };
+    ///         format::render().view(&v.0, "auth/failure.html", data!({
+    ///             "message": failure.kind.message(),
+    ///             "retry": failure.retry_path,
+    ///         }))
+    ///     }
+    /// }
+    /// ```
+    async fn on_failure(
+        ctx: &AppContext,
+        parts: &Parts,
+        failure: &OAuthFailure,
+    ) -> Result<Response> {
+        let _ = parts;
         default_failure(ctx, failure)
     }
 
@@ -252,10 +295,146 @@ fn redirect_uri(ctx: &AppContext, provider: &Provider, callback_path: &str) -> S
 /// Query of `/auth/{provider}`.
 #[derive(Debug, Deserialize)]
 pub struct StartParams {
-    /// Where to land after sign-in. Same-site paths only.
+    /// Where to land after sign-in, when `auth.oauth.origin_param` is the
+    /// default `return_to`. Same-site paths only.
     pub return_to: Option<String>,
     /// `remember=1` (or `true`, `on`) asks for a remember-me sign-in.
     pub remember: Option<String>,
+    /// The rest of the query, where a custom `origin_param` is read from.
+    #[serde(flatten)]
+    pub other: BTreeMap<String, String>,
+}
+
+/// The query parameter `/auth/{provider}` reads the post-sign-in path from
+/// (`OmniAuth`'s `origin_param`): `auth.oauth.origin_param`, then
+/// `auth.session.return_to_param`, then `return_to`.
+#[must_use]
+pub fn origin_param(ctx: &AppContext) -> &str {
+    oauth_config(ctx)
+        .and_then(|c| c.origin_param.as_deref())
+        .unwrap_or_else(|| session::return_to_param(ctx))
+}
+
+/// The state cookie for `provider`: `auth.oauth.state_cookie_name` (default
+/// `loco_oauth_state`) plus `_<provider>`.
+#[must_use]
+pub fn state_cookie_name(ctx: &AppContext, provider: &str) -> String {
+    let prefix = oauth_config(ctx)
+        .and_then(|c| c.state_cookie_name.as_deref())
+        .unwrap_or(state::DEFAULT_STATE_COOKIE);
+    state::prefixed_cookie_name(prefix, provider)
+}
+
+/// The origin param of the sign-in link, when it is a same-site path.
+fn origin(ctx: &AppContext, params: &StartParams) -> Option<String> {
+    let explicit = match origin_param(ctx) {
+        "return_to" => params.return_to.as_deref(),
+        // Rejected at boot; `remember` is the remember-me flag.
+        "remember" => None,
+        other => params.other.get(other).map(String::as_str),
+    };
+    explicit.and_then(safe_return_to)
+}
+
+/// `path` without its query and trailing slash, for comparing pages.
+fn page(path: &str) -> &str {
+    let path = path.split(['?', '#']).next().unwrap_or_default();
+    match path.trim_end_matches('/') {
+        "" => "/",
+        trimmed => trimmed,
+    }
+}
+
+/// The path of the `Referer`, when it is on this site (same host as the
+/// request, or the origin of `auth.oauth.base_url`) and is not a page that
+/// would loop: anything under `/auth/` (where [`routes`] mount), and
+/// `auth.session.sign_in_path` and `auth.oauth.failure_path`, compared
+/// without query or trailing slash.
+fn same_site_referer(ctx: &AppContext, headers: &HeaderMap) -> Option<String> {
+    let referer = headers.get(header::REFERER)?.to_str().ok()?;
+    let url = url::Url::parse(referer).ok()?;
+    if !matches!(url.scheme(), "http" | "https") {
+        return None;
+    }
+    let authority = match (url.host_str(), url.port()) {
+        (Some(host), Some(port)) => format!("{host}:{port}"),
+        (Some(host), None) => host.to_string(),
+        (None, _) => return None,
+    };
+    let same_host = headers
+        .get(header::HOST)
+        .and_then(|h| h.to_str().ok())
+        .is_some_and(|host| host.eq_ignore_ascii_case(&authority));
+    let same_origin =
+        url::Url::parse(&base_url(ctx)).is_ok_and(|base| base.origin() == url.origin());
+    if !same_host && !same_origin {
+        return None;
+    }
+    let loops = [
+        ctx.config
+            .auth
+            .as_ref()
+            .and_then(|a| a.session.as_ref())
+            .and_then(|s| s.sign_in_path.as_deref()),
+        oauth_config(ctx).and_then(|c| c.failure_path.as_deref()),
+    ];
+    let path = url.path();
+    if path.starts_with("/auth/") || loops.iter().flatten().any(|p| page(p) == page(path)) {
+        return None;
+    }
+    let target = url
+        .query()
+        .map_or_else(|| path.to_string(), |q| format!("{path}?{q}"));
+    safe_return_to(&target)
+}
+
+/// Rejects an `auth.oauth` configuration that cannot work. Checked at boot.
+///
+/// # Errors
+///
+/// When the origin param (`auth.oauth.origin_param`, or the
+/// `auth.session.return_to_param` it defaults to) is `remember`, which the
+/// start route reads as the remember-me flag, or is not a plain parameter
+/// name; or when `auth.oauth.state_cookie_name` is not a valid cookie name.
+pub fn validate(config: &Config) -> Result<()> {
+    let Some(oauth) = config.auth.as_ref().and_then(|a| a.oauth.as_ref()) else {
+        return Ok(());
+    };
+    let bad = |msg: String| Err(Error::Message(msg));
+    if let Some(param) = oauth.origin_param.as_deref()
+        && !super::session_store::is_param_name(param)
+    {
+        return bad(format!(
+            "auth.oauth.origin_param `{param}` is not a query parameter name: use letters, \
+             digits, `_`, `-` or `.`"
+        ));
+    }
+    let param = oauth.origin_param.as_deref().or_else(|| {
+        config
+            .auth
+            .as_ref()
+            .and_then(|a| a.session.as_ref())
+            .and_then(|s| s.return_to_param.as_deref())
+    });
+    if param == Some("remember") {
+        return bad(
+            "the OAuth origin param is `remember`, which /auth/{provider} reads as the \
+             remember-me flag. Set auth.oauth.origin_param (or auth.session.return_to_param) \
+             to another name."
+                .to_string(),
+        );
+    }
+    if let Some(name) = oauth.state_cookie_name.as_deref() {
+        // RFC 6265 cookie-name: an RFC 7230 token.
+        let token = |b: u8| b.is_ascii_graphic() && !b"()<>@,;:\\\"/[]?={}".contains(&b);
+        if name.is_empty() || !name.bytes().all(token) {
+            return bad(format!(
+                "auth.oauth.state_cookie_name `{name}` is not a valid cookie name: no spaces, \
+                 control characters or any of ()<>@,;:\\\"/[]?={{}}"
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// Query of `/auth/{provider}/callback`.
@@ -275,11 +454,16 @@ async fn start(
     State(ctx): State<AppContext>,
     Path(name): Path<String>,
     OriginalUri(uri): OriginalUri,
+    headers: HeaderMap,
     Query(params): Query<StartParams>,
-    jar: SignedCookies,
+    jar: EncryptedCookies,
 ) -> Result<Response> {
     let provider = resolve(&ctx, &name)?;
-    let mut flow = FlowState::new(provider.pkce, params.return_to.as_deref());
+    let mut flow = FlowState::new(provider.pkce, None);
+    flow.return_to = origin(&ctx, &params);
+    if flow.return_to.is_none() {
+        flow.referer = same_site_referer(&ctx, &headers);
+    }
     flow.remember = matches!(params.remember.as_deref(), Some("1" | "true" | "on"));
     let callback_path = format!("{}/callback", uri.path().trim_end_matches('/'));
     let location = provider
@@ -294,7 +478,7 @@ async fn start(
         .clone()
         .with_max_age(Some(STATE_TTL_SECONDS))
         .cookie(
-            state::cookie_name(&name),
+            state_cookie_name(&ctx, &name),
             cookies::seal(&flow, STATE_TTL_SECONDS)?,
         );
     Ok((jar.add(cookie), format::redirect(&location)?).into_response())
@@ -305,15 +489,16 @@ async fn callback<H: OAuthHandler>(
     Path(name): Path<String>,
     OriginalUri(uri): OriginalUri,
     Query(params): Query<CallbackParams>,
-    jar: SignedCookies,
+    parts: Parts,
+    jar: EncryptedCookies,
     session: Session,
 ) -> Result<Response> {
-    let cookie_name = state::cookie_name(&name);
+    let cookie_name = state_cookie_name(&ctx, &name);
     let flow = jar
         .get(&cookie_name)
         .and_then(|c| cookies::unseal::<FlowState>(c.value()));
     // The state is single-use: clear it whatever happens next.
-    let session = session.map_jar(|jar| jar.remove(&cookie_name));
+    let jar = jar.remove(&cookie_name);
     let retry_path = uri
         .path()
         .strip_suffix("/callback")
@@ -328,13 +513,17 @@ async fn callback<H: OAuthHandler>(
 
     let outcome = complete::<H>(&ctx, &name, uri.path(), params, flow, &fail).await;
     let response = match outcome {
-        Ok((sign_in, return_to, remember)) => {
-            let target = return_to
+        Ok((sign_in, flow)) => {
+            // An explicit `return_to` beats the app's choice; the `Referer`
+            // is only a guess, so it comes after it.
+            let target = flow
+                .return_to
                 .or(sign_in.redirect_to)
                 .or_else(|| oauth_config(&ctx).and_then(|c| c.after_sign_in_path.clone()))
+                .or(flow.referer)
                 .unwrap_or_else(|| "/".to_string());
             let mut session = session.renew().set_user_id(sign_in.user_id);
-            if remember || sign_in.remember {
+            if flow.remember || sign_in.remember {
                 if super::session_store::is_server_side(&ctx) {
                     session = session.remember()?;
                 } else {
@@ -342,7 +531,7 @@ async fn callback<H: OAuthHandler>(
                     tracing::debug!("remember-me asked for, but auth.session.store is cookie");
                 }
             }
-            return Ok((session, format::redirect(&target)?).into_response());
+            return Ok((jar, session, format::redirect(&target)?).into_response());
         }
         Err(Outcome::Failed(failure)) => {
             tracing::warn!(
@@ -351,11 +540,11 @@ async fn callback<H: OAuthHandler>(
                 detail = failure.detail.as_deref().unwrap_or(""),
                 "oauth sign-in failed"
             );
-            H::on_failure(&ctx, &failure).await?
+            H::on_failure(&ctx, &parts, &failure).await?
         }
         Err(Outcome::Error(err)) => return Err(err),
     };
-    Ok((session, response).into_response())
+    Ok((jar, session, response).into_response())
 }
 
 enum Outcome {
@@ -370,7 +559,7 @@ async fn complete<H: OAuthHandler>(
     params: CallbackParams,
     flow: Option<FlowState>,
     fail: &(impl Fn(FailureKind, Option<String>) -> OAuthFailure + Sync),
-) -> std::result::Result<(SignIn, Option<String>, bool), Outcome> {
+) -> std::result::Result<(SignIn, FlowState), Outcome> {
     let failed = |kind, detail| Outcome::Failed(fail(kind, detail));
     if let Some(error) = params.error {
         let kind = if error == "access_denied" {
@@ -409,7 +598,7 @@ async fn complete<H: OAuthHandler>(
         .await
         .map_err(|e| failed(FailureKind::Profile, Some(e)))?;
     match H::on_sign_in(ctx, &identity).await {
-        Ok(sign_in) => Ok((sign_in, flow.return_to, flow.remember)),
+        Ok(sign_in) => Ok((sign_in, flow)),
         Err(Error::Unauthorized(reason)) => Err(failed(FailureKind::Denied, Some(reason))),
         Err(err) => Err(Outcome::Error(err)),
     }
@@ -476,6 +665,155 @@ mod tests {
         ];
         let ids: Vec<_> = all.iter().map(|k| k.as_str()).collect();
         insta::assert_debug_snapshot!(ids);
+    }
+
+    fn with_oauth(f: impl FnOnce(&mut crate::config::Auth)) -> Config {
+        let mut config = crate::tests_cfg::config::test_config();
+        let mut auth = crate::config::Auth {
+            oauth: Some(OAuthConfig::default()),
+            ..Default::default()
+        };
+        f(&mut auth);
+        config.auth = Some(auth);
+        config
+    }
+
+    fn oauth_mut(auth: &mut crate::config::Auth) -> &mut OAuthConfig {
+        auth.oauth.as_mut().unwrap()
+    }
+
+    #[test]
+    fn validate_rejects_names_that_cannot_work() {
+        validate(&with_oauth(|_| {})).unwrap();
+        validate(&with_oauth(|a| {
+            oauth_mut(a).origin_param = Some("next".to_string());
+            oauth_mut(a).state_cookie_name = Some("__Host-oauth".to_string());
+        }))
+        .unwrap();
+
+        let err = validate(&with_oauth(|a| {
+            oauth_mut(a).origin_param = Some("remember".to_string());
+        }))
+        .unwrap_err()
+        .to_string();
+        assert!(err.contains("remember-me flag"), "{err}");
+
+        // The session's return_to_param is the default origin param.
+        let err = validate(&with_oauth(|a| {
+            a.session = Some(crate::config::SessionConfig {
+                return_to_param: Some("remember".to_string()),
+                ..Default::default()
+            });
+        }))
+        .unwrap_err()
+        .to_string();
+        assert!(err.contains("remember-me flag"), "{err}");
+
+        for param in ["", "a b", "a&b", "a=b"] {
+            let err = validate(&with_oauth(|a| {
+                oauth_mut(a).origin_param = Some(param.to_string());
+            }))
+            .unwrap_err()
+            .to_string();
+            assert!(err.contains("auth.oauth.origin_param"), "{param:?}: {err}");
+        }
+        for name in ["", "a b", "a;b", "a=b", "a\nb"] {
+            let err = validate(&with_oauth(|a| {
+                oauth_mut(a).state_cookie_name = Some(name.to_string());
+            }))
+            .unwrap_err()
+            .to_string();
+            assert!(err.contains("state_cookie_name"), "{name:?}: {err}");
+        }
+    }
+
+    #[test]
+    fn pages_compare_without_query_or_trailing_slash() {
+        assert_eq!(page("/login/"), "/login");
+        assert_eq!(page("/login?x=1"), "/login");
+        assert_eq!(page("/login/?x=1#y"), "/login");
+        assert_eq!(page("/"), "/");
+        assert_eq!(page("/?x=1"), "/");
+    }
+
+    async fn ctx_with(f: impl FnOnce(&mut crate::config::Auth)) -> AppContext {
+        let mut ctx = crate::tests_cfg::app::get_app_context().await;
+        ctx.config = with_oauth(f);
+        ctx
+    }
+
+    fn headers(host: &str, referer: &str) -> HeaderMap {
+        let mut headers = HeaderMap::new();
+        headers.insert(header::HOST, host.parse().unwrap());
+        headers.insert(header::REFERER, referer.parse().unwrap());
+        headers
+    }
+
+    #[tokio::test]
+    async fn without_base_url_the_referer_must_match_the_host_header() {
+        let ctx = ctx_with(|_| {}).await;
+        assert!(!base_url(&ctx).contains("app.local"));
+        assert_eq!(
+            same_site_referer(
+                &ctx,
+                &headers("app.local:3000", "http://app.local:3000/orgs?a=1")
+            )
+            .as_deref(),
+            Some("/orgs?a=1")
+        );
+        assert_eq!(
+            same_site_referer(
+                &ctx,
+                &headers("APP.local:3000", "http://app.local:3000/orgs")
+            )
+            .as_deref(),
+            Some("/orgs"),
+            "host names are case-insensitive"
+        );
+        for (host, referer) in [
+            ("app.local", "http://evil.example/orgs"),
+            ("app.local", "http://app.local:3000/orgs"),
+            ("app.local:3000", "http://app.local/orgs"),
+            ("app.local.evil.example", "http://app.local/orgs"),
+        ] {
+            assert_eq!(
+                same_site_referer(&ctx, &headers(host, referer)),
+                None,
+                "{host} / {referer}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn sign_in_and_failure_pages_are_not_referers() {
+        let ctx = ctx_with(|a| {
+            oauth_mut(a).failure_path = Some("/oops?from=oauth".to_string());
+            a.session = Some(crate::config::SessionConfig {
+                sign_in_path: Some("/login".to_string()),
+                ..Default::default()
+            });
+        })
+        .await;
+        for referer in [
+            "http://app.local/login",
+            "http://app.local/login/",
+            "http://app.local/login?x=1",
+            "http://app.local/login/?x=1",
+            "http://app.local/oops",
+            "http://app.local/oops/?error=cancelled",
+            "http://app.local/auth/github",
+        ] {
+            assert_eq!(
+                same_site_referer(&ctx, &headers("app.local", referer)),
+                None,
+                "{referer}"
+            );
+        }
+        assert_eq!(
+            same_site_referer(&ctx, &headers("app.local", "http://app.local/login-help"))
+                .as_deref(),
+            Some("/login-help")
+        );
     }
 
     #[test]

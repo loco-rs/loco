@@ -25,6 +25,38 @@
   ```
 - **Slack and webhook notifications no longer use `HTTP_PROXY`, `HTTPS_PROXY` or `ALL_PROXY`**, even for public hosts: a proxy looks up the name out of the guard's reach. A deployment that reaches the internet only through a proxy will fail to deliver; a warning is logged when one of those variables is set. Open direct outbound access to Slack and your webhook hosts, or set `notifications.outbound.allow_private: true` to turn the guard off.
 - `config::Notifications` has a new public field, `outbound`. Code that builds it with a struct literal must add `outbound: Default::default()` or end with `..Notifications::default()`.
+- **Configurable signed-out handling.** `auth.session.navigational_formats`
+  (Devise's setting, default `[html]`) picks which requests `CurrentUser`
+  redirects to `sign_in_path` rather than answering `401` (`any` redirects
+  every request), and `auth.session.return_to_param` names the parameter it
+  adds. The return address is the full original path, under a nested router
+  too, with its `/` left unencoded. For anything
+  else, override `SessionUser::on_signed_out` (Devise's failure app);
+  `session::signed_out` is the default.
+- **`/auth/{provider}` origin.** `auth.oauth.origin_param` (OmniAuth's
+  `origin_param`, default `return_to_param`) renames the post-sign-in path
+  parameter. Without it, `SignIn::redirect_to` and `after_sign_in_path` come
+  first, then a same-site `Referer`. Both accept relative paths only. Boot
+  fails when the parameter is `remember` or not a plain name, or when
+  `auth.oauth.state_cookie_name` is not a valid cookie name.
+- **`sign_in` test helper** in `loco_rs::testing::prelude` (Devise's
+  `sign_in user`): signs a test server in as a user id on any session store.
+- `auth.oauth.state_cookie_name` sets the state cookie prefix.
+
+### Changed
+
+- **Breaking:** `OAuthHandler::on_failure` takes the callback request's
+  `&Parts` as its second argument, so a failure page can read headers or the
+  view engine. Add `_parts: &axum::http::request::Parts` to overrides.
+- The OAuth state cookie is encrypted (it carries the PKCE verifier), so
+  `auth_oauth` now enables `auth_session_encrypted`. A sign-in in flight
+  during the upgrade fails once with `invalid_state`; retrying works.
+- **Breaking for struct literals:** `SessionConfig`, `OAuthConfig`,
+  `oauth::StartParams` and `oauth::state::FlowState` have new public fields
+  (`return_to_param`, `navigational_formats`, `origin_param`,
+  `state_cookie_name`, `other`, `referer`). Code that builds them with a
+  struct literal must add them (`..Default::default()` works for the two
+  config structs).
 - Generated apps also get the skill under `.agents/skills/loco/`, alongside `.claude/skills/loco/`, for Zed, Cursor and other Agent Skills clients (#1857, @paoValle).
 
 ## 1.3.1 - 2026-11-05

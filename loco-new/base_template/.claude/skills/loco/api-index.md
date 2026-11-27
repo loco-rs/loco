@@ -17,7 +17,7 @@ since they restate the trait's own API.
 
 `use loco_rs::testing::prelude::*;` brings these into scope. They are already available — importing them again is redundant.
 
-`db`, `redaction`, `request`, `selector`
+`db`, `redaction`, `request`, `selector`, `sign_in`
 
 ## `loco_rs`
 
@@ -166,9 +166,12 @@ since they restate the trait's own API.
 - `struct` **OAuthFailure**` { provider: String, kind: FailureKind, detail: Option<String>, retry_path: String }` — A failed sign-in, handed to [`OAuthHandler::on_failure`]
 - `trait` **OAuthHandler** — The app side of the sign-in flow
 - `struct` **SignIn**` { user_id: String, redirect_to: Option<String>, remember: bool }` — What [`OAuthHandler::on_sign_in`] decided
-- `struct` **StartParams**` { return_to: Option<String>, remember: Option<String> }` — Query of `/auth/{provider}`
+- `struct` **StartParams**` { return_to: Option<String>, remember: Option<String>, other: BTreeMap<String, String> }` — Query of `/auth/{provider}`
 - `fn` **default_failure**`(ctx: &AppContext, failure: &OAuthFailure) -> Result<Response>` — [`OAuthHandler::on_failure`]'s default
+- `fn` **origin_param**`(ctx: &AppContext) -> &str` — The query parameter `/auth/{provider}` reads the post-sign-in path from
 - `fn` **routes**`() -> Routes` — The routes for handler `H`, under `/auth`. Add your own with `.add(..)` or
+- `fn` **state_cookie_name**`(ctx: &AppContext, provider: &str) -> String` — The state cookie for `provider`: `auth.oauth.state_cookie_name` (default
+- `fn` **validate**`(config: &Config) -> Result<()>` — Rejects an `auth.oauth` configuration that cannot work. Checked at boot
 
 ### `FailureKind`
 
@@ -186,13 +189,13 @@ since they restate the trait's own API.
 ### `OAuthHandler`
 
 - `fn` **after_sign_out_path**`(ctx: &AppContext) -> String` — Where `/auth/sign_out` lands. Default
-- `fn` **on_failure**`(ctx: &AppContext, failure: &OAuthFailure) -> Pin<Box<dyn Future + Send>>` — The response for a failed sign-in. Default: redirect to
+- `fn` **on_failure**`(ctx: &AppContext, parts: &Parts, failure: &OAuthFailure) -> Pin<Box<dyn Future + Send>>` — The response for a failed sign-in, Devise's
 - `fn` **on_sign_in**`(ctx: &AppContext, identity: &Identity) -> Pin<Box<dyn Future + Send>>` — Find or create the user for `identity` and return their session id
 
 ### `SignIn`
 
 - `fn` **new**`(user_id: impl Trait) -> Self` — Sign in the user with session id `user_id`
-- `fn` **redirect_to**`(self: Self, path: impl Trait) -> Self` — Land on `path` unless the flow carried a `return_to`
+- `fn` **redirect_to**`(self: Self, path: impl Trait) -> Self` — Land on `path` unless the sign-in link carried a `return_to`. Wins
 - `fn` **remember**`(self: Self) -> Self` — Remember this sign-in, whatever the sign-in link asked for
 ## `auth::oauth::provider`
 
@@ -210,10 +213,12 @@ since they restate the trait's own API.
 - `fn` **resolve**`(name: &str, config: &OAuthProviderConfig) -> Result<Self, String>` — Resolves `config` for the provider called `name`
 ## `auth::oauth::state`
 
-- `struct` **FlowState**` { state: String, verifier: Option<String>, return_to: Option<String>, remember: bool }` — What the start of the flow leaves for the callback
+- `const` **DEFAULT_STATE_COOKIE** — The default state cookie prefix; `auth.oauth.state_cookie_name` replaces
+- `struct` **FlowState**` { state: String, verifier: Option<String>, return_to: Option<String>, referer: Option<String>, remember: bool }` — What the start of the flow leaves for the callback
 - `const` **STATE_TTL_SECONDS** — How long a user has to finish at the provider: 10 minutes
-- `fn` **cookie_name**`(provider: &str) -> String` — The state cookie for `provider`. One per provider, so two tabs signing in
+- `fn` **cookie_name**`(provider: &str) -> String` — The default state cookie for `provider`. One per provider, so two tabs
 - `fn` **pkce_challenge**`(verifier: &str) -> String` — `BASE64URL(SHA256(verifier))` (RFC 7636 S256)
+- `fn` **prefixed_cookie_name**`(prefix: &str, provider: &str) -> String` — The state cookie for `provider` under `prefix`: `<prefix>_<provider>`
 - `fn` **random_token**`() -> String` — 32 random bytes, base64url
 - `fn` **safe_return_to**`(value: &str) -> Option<String>` — `value` if it is a path on this site, else `None`
 
@@ -225,11 +230,16 @@ since they restate the trait's own API.
 ## `auth::session`
 
 - `struct` **CurrentUser** — The signed-in user; rejects signed-out requests
+- `const` **DEFAULT_RETURN_TO_PARAM** — The default query parameter carrying the path back to the page that
 - `struct` **MaybeCurrentUser** — The signed-in user, or `None`. Never rejects for being signed out
 - `struct` **Session** — The session. See the [module docs](self)
 - `trait` **SessionUser** — How [`CurrentUser`] loads the signed-in user from the id in the session
 - `const` **USER_ID_KEY** — The session key holding the signed-in user's id
 - `fn` **encode**`(value: &str) -> String` — Percent-encodes `value` for a query string
+- `fn` **is_navigational**`(parts: &Parts, ctx: &AppContext) -> bool` — Whether a signed-out request is redirected to sign in
+- `fn` **return_to_param**`(ctx: &AppContext) -> &str` — The query parameter [`signed_out`] puts the original path in:
+- `fn` **sign_in_cookies**`(ctx: &AppContext, user_id: impl Trait) -> Result<Vec<Cookie>>` — The cookies of a fresh session signed in as `user_id`
+- `fn` **signed_out**`(parts: &Parts, ctx: &AppContext) -> Response` — The answer to a signed-out request, like Devise's failure app
 
 ### `Session`
 
@@ -252,6 +262,7 @@ since they restate the trait's own API.
 ### `SessionUser`
 
 - `fn` **find_by_session_id**`(ctx: &AppContext, id: &str) -> Pin<Box<dyn Future + Send>>` — Loads the user whose session id is `id`
+- `fn` **on_signed_out**`(ctx: &AppContext, parts: &Parts) -> Pin<Box<dyn Future + Send>>` — The response [`CurrentUser`] rejects a signed-out request with, like
 ## `auth::session_store`
 
 - `const` **DEFAULT_REMEMBER_COOKIE** — Default remember-me cookie name
@@ -593,7 +604,7 @@ since they restate the trait's own API.
 - `struct` **MailerAuth**` { user: String, password: String }` — Authentication details for the mailer
 - `enum` **MailerTls** — TLS mode for the SMTP connection
 - `struct` **Notifications**` { slack: Option<SlackNotifications>, webhook: Option<WebhookNotifications>, email: Option<EmailNotifications>, max_retries: u32, retry_backoff_secs: u64, timeout_secs: u64, stub: bool, outbound: OutboundGuard }` — Notifications configuration: the default destination of each channel and
-- `struct` **OAuthConfig**` { base_url: Option<String>, after_sign_in_path: Option<String>, after_sign_out_path: Option<String>, failure_path: Option<String>, providers: BTreeMap<String, OAuthProviderConfig> }` — `OAuth2` / `OpenID` Connect sign-in, `OmniAuth`-style
+- `struct` **OAuthConfig**` { base_url: Option<String>, after_sign_in_path: Option<String>, after_sign_out_path: Option<String>, failure_path: Option<String>, origin_param: Option<String>, state_cookie_name: Option<String>, providers: BTreeMap<String, OAuthProviderConfig> }` — `OAuth2` / `OpenID` Connect sign-in, `OmniAuth`-style
 - `struct` **OAuthProviderConfig**` { strategy: Option<OAuthStrategy>, client_id: String, client_secret: String, scopes: Option<Vec<String>>, base_url: Option<String>, api_url: Option<String>, authorize_url: Option<String>, token_url: Option<String>, userinfo_url: Option<String>, emails_url: Option<String>, redirect_uri: Option<String>, authorize_params: BTreeMap<String, String>, pkce: Option<bool>, token_auth: Option<OAuthTokenAuth> }` — One OAuth provider. Every URL is overridable, for GitHub Enterprise,
 - `enum` **OAuthStrategy** — Which provider preset a configured provider uses
 - `enum` **OAuthTokenAuth** — How the client authenticates to the token endpoint
@@ -604,7 +615,7 @@ since they restate the trait's own API.
 - `struct` **RedisQueueConfig**` { uri: String, dangerously_flush: bool, queues: Option<Vec<String>>, num_workers: u32, reaper: Option<ReaperConfig> }`
 - `struct` **RetentionConfig**` { completed_days: Option<i64>, cancelled_days: Option<i64>, failed_days: Option<i64>, interval_seconds: u64 }` — Configuration for opt-in retention of finished jobs
 - `struct` **Server**` { binding: String, port: i32, host: String, ident: Option<String>, middlewares: Config }` — Server configuration structure
-- `struct` **SessionConfig**` { secret: Option<String>, cookie_name: Option<String>, max_age: Option<u64>, secure: Option<bool>, sign_in_path: Option<String>, store: SessionStoreKind, ttl: Option<u64>, remember_for: Option<u64>, remember_cookie_name: Option<String>, redis_uri: Option<String> }` — Signed cookies and the cookie session, Rails' `secret_key_base` plus its
+- `struct` **SessionConfig**` { secret: Option<String>, cookie_name: Option<String>, max_age: Option<u64>, secure: Option<bool>, sign_in_path: Option<String>, return_to_param: Option<String>, navigational_formats: Option<Vec<String>>, store: SessionStoreKind, ttl: Option<u64>, remember_for: Option<u64>, remember_cookie_name: Option<String>, redis_uri: Option<String> }` — Signed cookies and the cookie session, Rails' `secret_key_base` plus its
 - `enum` **SessionStoreKind** — Where [`SessionConfig::store`] keeps the session
 - `enum` **SignatureEncoding** — How the digest bytes are written in the header
 - `struct` **SlackNotifications**` { webhook_url: String }` — Default Slack destination
@@ -681,7 +692,9 @@ since they restate the trait's own API.
 
 ### `SessionConfig`
 
+- `field` **navigational_formats** — Which requests are redirected to [`sign_in_path`](Self::sign_in_path)
 - `field` **remember_for** — Lifetime of the remember-me cookie and its server-side token, in
+- `field` **sign_in_path** — Where `CurrentUser` redirects a signed-out browser (a request in one
 - `field` **store** — Where the session data lives. Default [`SessionStoreKind::Cookie`]
 - `field` **ttl** — How long an idle server-side session lives, in seconds; each use
 
@@ -1990,6 +2003,9 @@ since they restate the trait's own API.
 - `fn` **assert_css_not_exists**`(html: &str, selector: &str)` — Asserts that an element matching the given CSS selector does **not** exist
 - `fn` **assert_link**`(html: &str, selector: &str, expected_href: &str)` — Asserts that an `<a>` element matching the given CSS selector has the `href`
 - `fn` **select**`(html: &str, selector: &str) -> Vec<String>` — Parses the given HTML string and selects the elements matching the specified CSS selector
+## `testing::session`
+
+- `fn` **sign_in**`(server: &mut TestServer, ctx: &AppContext, user_id: impl Trait) -> Result<()>` — Signs `server` in as the user whose session id is `user_id`
 ## `validation`
 
 - `struct` **ModelValidationErrors**` { errors: BTreeMap<String, Vec<ValidationError>> }`
