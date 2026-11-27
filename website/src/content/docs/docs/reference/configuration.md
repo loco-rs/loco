@@ -42,7 +42,7 @@ This page is a dictionary of every key Loco's configuration loader understands. 
 | `auth` | `Option<`[`Auth`](#auth)`>` | optional | `mod.rs:78` |
 | `workers` | [`Workers`](#workers) | optional — `#[serde(default)]` | `mod.rs:79-80` |
 | `mailer` | `Option<`[`Mailer`](#mailer)`>` | optional | `mod.rs:81` |
-| `notifications` | `Option<Notifications>` | optional — `#[serde(default)]` | `mod.rs:83-84`, `notifications.rs`; Slack, webhook and email defaults plus `max_retries`, `retry_backoff_secs`, `timeout_secs`, and `stub` (record instead of send, for tests). See [Send notifications](/docs/how-to/send-notifications#4-configure-the-channels) |
+| `notifications` | `Option<Notifications>` | optional — `#[serde(default)]` | `mod.rs:83-84`, `notifications.rs`; Slack, webhook and email defaults plus `max_retries`, `retry_backoff_secs`, `timeout_secs`, `stub` (record instead of send, for tests), and `outbound` (`allow_private`, `allow`: which non-public addresses Slack and webhook deliveries may reach; refused by default). See [Send notifications](/docs/how-to/send-notifications#4-configure-the-channels) and [Private addresses are refused](/docs/how-to/send-notifications#private-addresses-are-refused) |
 | `initializers` | `Option<Initializers>` (= `Option<BTreeMap<String, serde_json::Value>>`) | optional | `mod.rs:85`, type alias at `mod.rs:117` |
 | `settings` | `Option<serde_json::Value>` | optional — `#[serde(default)]` | `mod.rs:99-100`; free-form app settings, surfaced at `ctx.config.settings` |
 | `scheduler` | `Option<scheduler::Config>` | optional | `mod.rs:102`; struct owned by the scheduler area, not detailed here |

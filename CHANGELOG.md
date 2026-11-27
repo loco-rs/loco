@@ -9,9 +9,21 @@
 - `forgery_protection` middleware, Rails' `protect_from_forgery`. It refuses cross-site `POST`/`PUT`/`PATCH`/`DELETE` with `403`, using `Sec-Fetch-Site` and falling back to `Origin` against `Host`, and takes `exempt` path prefixes and `trusted_origins`. `mode: token` (with `auth_session`) checks Rails-style authenticity tokens from the `authenticity_token` field or `X-CSRF-Token` header, with the `csrf_field()`, `csrf_meta_tags()` and `csrf_token()` Tera functions and a `CsrfToken` extractor. Off by default; on in the server-rendered starter.
 - `spa` middleware: serves a frontend build (e.g. `frontend/dist`) under a mount path, next to `static`. Client-side routes get `index.html`, missing files get a real `404`, hashed files under `assets/` are sent with `Cache-Control: public, max-age=31536000, immutable`, HTML and other files with `no-cache`. New clientside apps use it instead of `static`.
 - View helpers with Rails wording: `time_ago_in_words`, `distance_of_time_in_words`, `pluralize`, `to_sentence`, `ordinalize`, `number_with_delimiter` and `number_to_human`. Each is a Tera filter and a Rust function in `loco_rs::controller::views::helpers`. The time helpers take RFC 3339 strings, dates or Unix seconds, and `now=` for tests. `pluralize` replaces Tera's built-in filter but keeps its behaviour when no `word=` is given. `number_with_delimiter` gained `delimiter=` and `separator=`. (#1913)
+- `loco_rs::net::OutboundGuard`: refuse outbound requests to loopback, private, link-local and other non-public addresses, checked on the address actually connected to (resolver, redirects and IP-literal URLs). The equivalent of Ruby's `ssrf_filter`.
 
 ### Changed
 
+- **Slack and webhook notifications refuse non-public addresses by default.** A delivery to `localhost`, `10.0.0.0/8`, `169.254.169.254` and similar is logged and dropped. Allow specific hosts, IPs or CIDRs with `notifications.outbound.allow`, or everything with `notifications.outbound.allow_private: true`.
+
+  **Upgrading:** `cargo loco generate notifier` adds the allow list below only to config files that have no `notifications:` block yet, so an existing app does not get it. If you send to a receiver on your own machine in development, or to a test server with `stub: false` in tests, add it to `config/development.yaml` and `config/test.yaml` yourself:
+
+  ```yaml
+  notifications:
+    outbound:
+      allow: [localhost, 127.0.0.1, "::1"]
+  ```
+- **Slack and webhook notifications no longer use `HTTP_PROXY`, `HTTPS_PROXY` or `ALL_PROXY`**, even for public hosts: a proxy looks up the name out of the guard's reach. A deployment that reaches the internet only through a proxy will fail to deliver; a warning is logged when one of those variables is set. Open direct outbound access to Slack and your webhook hosts, or set `notifications.outbound.allow_private: true` to turn the guard off.
+- `config::Notifications` has a new public field, `outbound`. Code that builds it with a struct literal must add `outbound: Default::default()` or end with `..Notifications::default()`.
 - Generated apps also get the skill under `.agents/skills/loco/`, alongside `.claude/skills/loco/`, for Zed, Cursor and other Agent Skills clients (#1857, @paoValle).
 
 ## 1.3.1 - 2026-11-05

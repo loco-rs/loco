@@ -103,12 +103,20 @@ fn add_config(content: &str, env: &str) -> Option<String> {
     }
     let block = if env == "test" {
         // Tests record deliveries (`notifications::testing::deliveries`)
-        // instead of sending them, like the mailer's `stub: true`.
-        "notifications:\n  stub: true\n  slack:\n    webhook_url: \"https://hooks.slack.com/services/test\"\n"
+        // instead of sending them, like the mailer's `stub: true`. With
+        // `stub: false`, a test server on this machine must be allowed
+        // through the outbound guard.
+        "notifications:\n  stub: true\n  slack:\n    webhook_url: \"https://hooks.slack.com/services/test\"\n  outbound:\n    allow: [localhost, 127.0.0.1, \"::1\"]\n"
             .to_string()
     } else {
-        "notifications:\n  slack:\n    webhook_url: <%= get_env(name=\"SLACK_WEBHOOK_URL\", default=\"\") %>\n"
-            .to_string()
+        let mut block = "notifications:\n  slack:\n    webhook_url: <%= get_env(name=\"SLACK_WEBHOOK_URL\", default=\"\") %>\n"
+            .to_string();
+        if env == "development" {
+            // Non-public addresses are refused by default; let a receiver
+            // running on this machine through.
+            block.push_str("  outbound:\n    allow: [localhost, 127.0.0.1, \"::1\"]\n");
+        }
+        block
     };
     let mut out = content.to_string();
     if !out.is_empty() && !out.ends_with('\n') {
@@ -130,7 +138,13 @@ mod tests {
     fn config_block_is_added_once() {
         let added = add_config("logger:\n  enable: true\n", "development").unwrap();
         assert!(added.contains("notifications:\n  slack:\n    webhook_url: <%= get_env("));
+        assert!(
+            added.contains("  outbound:\n    allow: [localhost"),
+            "{added}"
+        );
         assert_eq!(add_config(&added, "development"), None);
+        let production = add_config("", "production").unwrap();
+        assert!(!production.contains("outbound"), "{production}");
     }
 
     #[test]
@@ -138,5 +152,10 @@ mod tests {
         let added = add_config("", "test").unwrap();
         assert!(added.contains("notifications:\n  stub: true\n"), "{added}");
         assert!(!added.contains("get_env"), "{added}");
+        // A local test server is reachable once `stub` is turned off.
+        assert!(
+            added.contains("  outbound:\n    allow: [localhost, 127.0.0.1"),
+            "{added}"
+        );
     }
 }
