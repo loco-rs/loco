@@ -5,7 +5,7 @@ sidebar:
   order: 5
 ---
 
-Loco ships 13 built-in middlewares, all implementing the `MiddlewareLayer`
+Loco ships 16 built-in middlewares, all implementing the `MiddlewareLayer`
 trait (`src/controller/middleware/mod.rs:46-72`). Each is configured under
 `server.middlewares.<key>` in your environment YAML (`src/config/server.rs:44`)
 and is optional (`Option<T>`) — omit the key entirely to get the framework's
@@ -51,6 +51,18 @@ call at a time (`src/controller/app_routes.rs:305-309`). Axum's
 So an inbound request actually passes through the stack in the **reverse**
 of the table order — `powered_by` first, `limit_payload` last (right before
 the route handler) — and the response flows back out the opposite way.
+
+## Paths under a nested router
+
+A middleware sees the request path as the router it wraps sees it. The
+`server.middlewares` stack wraps the whole app, so it sees the full path. A
+middleware applied to a router that is then mounted with axum's
+`Router::nest("/admin", ..)` (in `Hooks::after_routes`, say) sees the path
+with `/admin` already removed. Every path a middleware matches on, such as
+`respond_to.prefix` and `.json`, and any list of exempt path prefixes, is
+then matched **without** the nest prefix: write `/webhooks/`, not
+`/admin/webhooks/`. The full path is still in the request's `OriginalUri`
+extension.
 
 ## Full middleware set
 
@@ -202,7 +214,35 @@ Table order = coding/config order (`default_middleware_stack`, `mod.rs:80-169`).
 | `preset` | `String` | `"github"` (`secure_headers.rs:94-96`) — other presets: `owasp`, `empty` (`secure_headers.json`) |
 | `overrides` | `Option<BTreeMap<String, String>>` | `None` |
 
-### 11. `logger`
+### 11. `forgery_protection`
+
+- **Config key:** `forgery_protection` · **Struct:** `forgery_protection::ForgeryProtection { enable, mode, exempt, trusted_origins, field, header, cookie }` → `forgery_protection::Middleware` (`forgery_protection.rs`)
+- **Default:** **disabled**. The server-rendered starter turns it on.
+- **Purpose:** refuses cross-site `POST`/`PUT`/`PATCH`/`DELETE` with `403`. Rails' `protect_from_forgery`. `GET`, `HEAD`, `OPTIONS` and `TRACE` are never checked.
+- **Modes:**
+  - `header` (default): a request is cross-site when `Sec-Fetch-Site` is anything but `same-origin` or `none`; without that header, when `Origin` does not match `Host` (host case and default ports ignored; a proxy must pass `Host` through). A request with neither header (curl, a script, a server) passes. Error body: `cross_site_request`.
+  - `token`: runs the `header` check, then every unsafe request must send the authenticity token in the `X-CSRF-Token` header or the `authenticity_token` form field (urlencoded or multipart). The raw token lives in a signed cookie keyed off the session secret, named `__Host-loco_csrf` when cookies are `Secure`; each render of it is masked, so it differs on every page. The form field is read from a body up to the app-wide `limit_payload` (over it: `413`); larger uploads send the header or are exempt. Error body: `invalid_authenticity_token`. Needs the `auth_session` feature.
+- **Knobs:**
+
+| Name | Type | Default |
+|---|---|---|
+| `enable` | `bool` | `false` |
+| `mode` | `header` \| `token` | `header` |
+| `exempt` | `Vec<String>` | `[]` — path prefixes never checked (webhooks, a bearer-token API) |
+| `trusted_origins` | `Vec<String>` | `[]` — extra origins allowed to post, e.g. `https://admin.example.com` (both modes) |
+| `field` | `String` | `"authenticity_token"` (token mode) |
+| `header` | `String` | `"x-csrf-token"` (token mode) |
+| `cookie` | `String` | `"loco_csrf"` (token mode; `__Host-` prefixed when `Secure`) |
+
+In token mode, templates get the token from three Tera functions:
+`{{ csrf_field() }}` (a hidden input), `{{ csrf_meta_tags() }}` (the
+`csrf-param` / `csrf-token` meta tags, for `fetch` and htmx) and
+`{{ csrf_token() }}` (the bare value). Handlers take the `CsrfToken`
+extractor (in the prelude) and call `.masked()`. The cookie is only set on a
+response that rendered the token. See
+[Protect forms from forgery](/docs/how-to/forgery-protection/).
+
+### 12. `logger`
 
 - **Config key:** `logger` · **Struct:** `logger::Config { enable }` → `logger::Middleware` via `logger::new(config, &env)` (`logger.rs:21-25, 36-42`)
 - **Default:** **enabled**.
@@ -213,7 +253,7 @@ Table order = coding/config order (`default_middleware_stack`, `mod.rs:80-169`).
 |---|---|---|
 | `enable` | `bool` | `true` (framework default when key absent) |
 
-### 12. `request_id`
+### 13. `request_id`
 
 - **Config key:** `request_id` · **Struct:** `request_id::RequestId { enable }` (`request_id.rs:28-32`)
 - **Default:** **enabled**.
@@ -224,7 +264,7 @@ Table order = coding/config order (`default_middleware_stack`, `mod.rs:80-169`).
 |---|---|---|
 | `enable` | `bool` | `true` (framework default when key absent) |
 
-### 13. `fallback`
+### 14. `fallback`
 
 - **Config key:** `fallback` · **Struct:** `fallback::Fallback { enable, code, file, not_found }` (`fallback.rs:17-37`); `StatusCodeWrapper(pub StatusCode)` (`fallback.rs:15`)
 - **Default:** enabled **only when `environment != Production`** (`mod.rs:158-167`).
@@ -240,7 +280,24 @@ Table order = coding/config order (`default_middleware_stack`, `mod.rs:80-169`).
 
 If neither `file` nor `not_found` is set, the bundled `fallback.html` is served.
 
-### 14. `powered_by`
+### 15. `respond_to`
+
+- **Config key:** `respond_to` · **Struct:** `respond_to::Config { enable, prefix, extension, sign_in_path }` (`respond_to.rs`)
+- **Default:** **disabled**.
+- **Purpose:** answers any route as JSON when the path ends in `.json` or starts with `prefix`. It strips that part, routes the request to the same handler with `Accept: application/json` (so `Format`/`RespondTo` read `Json`), and turns browser responses into JSON: redirects become `{"ok":true,"redirect":to}`, a redirect to `sign_in_path` becomes `401`, an HTML-only success becomes `406`. See [Respond in multiple formats](/docs/how-to/respond-formats).
+- **Ordering:** it wraps the finished router, so it must stay after `fallback` and `static` in the stack.
+- **Security note:** middleware layered after it sees the path as sent (`/admin.json`, `/api/v1/admin`), not the route that runs. Do not guard routes by path in such a middleware; use `Routes::layer` or the handler.
+- **Prefix:** pick one no route uses. With `prefix: /api`, the starter's `/api/...` routes are no longer reachable.
+- **Knobs:**
+
+| Name | Type | Default |
+|---|---|---|
+| `enable` | `bool` | `false` |
+| `extension` | `bool` | `false` — set `true` and `/posts/1.json` answers as JSON. Off by default because a path parameter could then no longer end in `.json` |
+| `prefix` | `Option<String>` | `None` — e.g. `/api/v1` serves every route as JSON under it; a missing leading `/` is added |
+| `sign_in_path` | `Option<String>` | `None` — same-host redirects to this path (or below it, e.g. `/session/new?next=..`) answer `401 {"error":"signed_out"}` |
+
+### 16. `powered_by`
 
 - **Config key:** none — **not** part of `middleware::Config`; controlled by `server.ident: Option<String>` (`src/config/server.rs:40`). Struct: `powered_by::Middleware` via `powered_by::new(ctx.config.server.ident.as_deref())` (`powered_by.rs:27-58`)
 - **Default:** **enabled**, sets `Server`-identifying header `X-Powered-By: loco.rs`.

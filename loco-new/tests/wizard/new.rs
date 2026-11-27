@@ -181,14 +181,8 @@ fn test_combination(
     // freshly generated one refuses to start by design. That leaves the
     // clientside boot path uncovered here.
     if asset != AssetsOption::Clientside {
-        let db_url = format!(
-            "sqlite://{}?mode=rwc",
-            test_dir_root.join("production.sqlite").display()
-        );
-        let queue_url = format!(
-            "sqlite://{}?mode=rwc",
-            test_dir_root.join("production_queue.sqlite").display()
-        );
+        let db_url = sqlite_url(&test_dir_root.join("production.sqlite"));
+        let queue_url = sqlite_url(&test_dir_root.join("production_queue.sqlite"));
 
         tester.run_boot("development", &[], &[]);
 
@@ -776,4 +770,15 @@ impl Tester {
             panic!("Run Test after generate migration `{}`", command.join(" "))
         });
     }
+}
+
+/// A `sqlite://` URL for a file path. sea-orm checks connection strings with
+/// the `url` crate, which rejects Windows backslashes (`C:\Users` reads as a
+/// bad port), so the path uses forward slashes, which `SQLite` accepts on every
+/// platform.
+fn sqlite_url(path: &std::path::Path) -> String {
+    format!(
+        "sqlite://{}?mode=rwc",
+        path.display().to_string().replace('\\', "/")
+    )
 }

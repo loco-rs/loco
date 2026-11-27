@@ -36,6 +36,9 @@ server:
         uri: "/static"
         path: "assets/static"
       fallback: "assets/static/404.html"
+    # Refuses cross-site form posts (Rails' protect_from_forgery).
+    forgery_protection:
+      enable: true
   {%- elif settings.asset.kind == "client" %}
     fallback:
       enable: false

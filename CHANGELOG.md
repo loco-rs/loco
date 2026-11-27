@@ -4,6 +4,9 @@
 
 ### Added
 
+- `format::respond_to` and `format::respond_with`: one action answers HTML or JSON, like Rails' `respond_to`. The opt-in `respond_to` middleware serves any route as JSON under a prefix such as `/api/v1`, or at `<path>.json` with `extension: true` (off by default), turning redirects into `{"ok":true,"redirect":to}`, sign-in redirects into `401`, and HTML-only answers into `406`.
+- **Upgrading:** `middleware::Config` has a new `respond_to` field. Code that builds it as a struct literal without `..Default::default()` must add `respond_to: None`.
+- `forgery_protection` middleware, Rails' `protect_from_forgery`. It refuses cross-site `POST`/`PUT`/`PATCH`/`DELETE` with `403`, using `Sec-Fetch-Site` and falling back to `Origin` against `Host`, and takes `exempt` path prefixes and `trusted_origins`. `mode: token` (with `auth_session`) checks Rails-style authenticity tokens from the `authenticity_token` field or `X-CSRF-Token` header, with the `csrf_field()`, `csrf_meta_tags()` and `csrf_token()` Tera functions and a `CsrfToken` extractor. Off by default; on in the server-rendered starter.
 - `spa` middleware: serves a frontend build (e.g. `frontend/dist`) under a mount path, next to `static`. Client-side routes get `index.html`, missing files get a real `404`, hashed files under `assets/` are sent with `Cache-Control: public, max-age=31536000, immutable`, HTML and other files with `no-cache`. New clientside apps use it instead of `static`.
 
 ### Changed
