@@ -452,8 +452,8 @@ pub fn number_to_human(number: f64) -> String {
 /// significant digits.
 ///
 /// `precision: 0` rounds to a whole number either way,
-/// as in Rails, and precisions above 17 (all an `f64` holds) are treated as
-/// 17.
+/// as in Rails, and precisions above 15 (all an `f64` carries through
+/// decimal and back) are treated as 15.
 ///
 /// ```rust
 /// use loco_rs::controller::views::helpers::number_to_human_with;
