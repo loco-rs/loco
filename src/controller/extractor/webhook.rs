@@ -109,7 +109,11 @@ pub enum WebhookError {
 impl From<WebhookError> for crate::Error {
     fn from(err: WebhookError) -> Self {
         match err {
-            // `Error::into_response` logs these at error level.
+            // A missing or empty secret is the receiving app's fault, not the
+            // sender's, so it is a 500 on purpose: a 401 would tell the
+            // sender (and whoever reads its delivery log) that the signature
+            // was wrong, and the outage would not show up with the app's other
+            // server errors. `Error::into_response` logs it at error level.
             WebhookError::NotConfigured(_) | WebhookError::EmptySecret => {
                 Self::Message(err.to_string())
             }
@@ -187,7 +191,9 @@ impl<S: WebhookSource> FromRequest<AppContext> for SignedWebhook<S> {
 
     async fn from_request(req: Request, ctx: &AppContext) -> Result<Self, Self::Rejection> {
         let Some(config) = ctx.config.webhooks.get(S::NAME) else {
-            return Err(WebhookError::NotConfigured(S::NAME.to_string()).into_response());
+            return Err(
+                refusal(S::NAME, WebhookError::NotConfigured(S::NAME.to_string())).into_response(),
+            );
         };
         let headers = req.headers().clone();
         let body = Bytes::from_request(req, ctx)
@@ -197,13 +203,25 @@ impl<S: WebhookSource> FromRequest<AppContext> for SignedWebhook<S> {
             // `Error::into_response` logs the refusal; this only adds which
             // source it was, for debugging.
             tracing::debug!(source = S::NAME, error = %err, "webhook refused");
-            return Err(err.into_response());
+            return Err(refusal(S::NAME, err).into_response());
         }
         Ok(Self {
             body,
             headers,
             source: PhantomData,
         })
+    }
+}
+
+/// The error a refused request answers with. A configuration fault names
+/// the key to set, so the error log (written by `Error::into_response` on
+/// the first request and every one after) says how to fix it.
+fn refusal(source: &str, err: WebhookError) -> crate::Error {
+    match err {
+        WebhookError::NotConfigured(_) | WebhookError::EmptySecret => crate::Error::Message(
+            format!("{err}: set `webhooks.{source}.secret` in the app config"),
+        ),
+        err => err.into(),
     }
 }
 
@@ -479,6 +497,25 @@ mod tests {
         assert!(matches!(
             verify(&cfg, &h, BODY, NOW),
             Err(WebhookError::Malformed(_))
+        ));
+    }
+
+    #[test]
+    fn configuration_faults_name_the_config_key() {
+        for err in [
+            WebhookError::EmptySecret,
+            WebhookError::NotConfigured("github".to_string()),
+        ] {
+            let refused = refusal("github", err);
+            assert!(matches!(refused, crate::Error::Message(_)), "{refused:?}");
+            assert!(
+                refused.to_string().contains("`webhooks.github.secret`"),
+                "{refused}"
+            );
+        }
+        assert!(matches!(
+            refusal("github", WebhookError::Mismatch),
+            crate::Error::Unauthorized(_)
         ));
     }
 

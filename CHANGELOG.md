@@ -4,7 +4,7 @@
 
 ### Added
 
-- `SignedWebhook<S>` extractor: verifies HMAC-SHA256 signatures on incoming webhooks (GitHub-style, Stripe-style timestamped, and Loco's own notification webhooks) against secrets under `webhooks:` in config, with constant-time comparison and a replay window.
+- `SignedWebhook<S>` extractor: verifies HMAC-SHA256 signatures on incoming webhooks (GitHub-style, Stripe-style timestamped, and Loco's own notification webhooks) against secrets under `webhooks:` in config, with constant-time comparison and a replay window. A source with no entry or an empty secret answers `500` and logs an error naming the `webhooks.<name>.secret` key to set.
 
 ### Changed
 
