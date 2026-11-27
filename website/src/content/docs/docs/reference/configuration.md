@@ -42,7 +42,8 @@ This page is a dictionary of every key Loco's configuration loader understands. 
 | `auth` | `Option<`[`Auth`](#auth)`>` | optional | `mod.rs:78` |
 | `workers` | [`Workers`](#workers) | optional — `#[serde(default)]` | `mod.rs:79-80` |
 | `mailer` | `Option<`[`Mailer`](#mailer)`>` | optional | `mod.rs:81` |
-| `notifications` | `Option<Notifications>` | optional — `#[serde(default)]` | `mod.rs:83-84`, `notifications.rs`; Slack, webhook and email defaults plus `max_retries`, `retry_backoff_secs`, `timeout_secs`, and `stub` (record instead of send, for tests). See [Send notifications](/docs/how-to/send-notifications#4-configure-the-channels) |
+| `notifications` | `Option<Notifications>` | optional — `#[serde(default)]` | `mod.rs:83-84`, `notifications.rs`; Slack, webhook and email defaults plus `max_retries`, `retry_backoff_secs`, `timeout_secs`, `stub` (record instead of send, for tests), and `outbound` (`allow_private`, `allow`: which non-public addresses Slack and webhook deliveries may reach; refused by default). See [Send notifications](/docs/how-to/send-notifications#4-configure-the-channels) and [Private addresses are refused](/docs/how-to/send-notifications#private-addresses-are-refused) |
+| `webhooks` | `BTreeMap<String, `[`Webhook`](#webhooks)`>` | optional — `#[serde(default)]`, empty | `webhooks.rs`; signing secrets for incoming webhooks, keyed by source name |
 | `initializers` | `Option<Initializers>` (= `Option<BTreeMap<String, serde_json::Value>>`) | optional | `mod.rs:85`, type alias at `mod.rs:117` |
 | `settings` | `Option<serde_json::Value>` | optional — `#[serde(default)]` | `mod.rs:99-100`; free-form app settings, surfaced at `ctx.config.settings` |
 | `scheduler` | `Option<scheduler::Config>` | optional | `mod.rs:102`; struct owned by the scheduler area, not detailed here |
@@ -155,6 +156,21 @@ server:
 | `server.host` | `String` | required | `server.rs:38` |
 | `server.ident` | `Option<String>` | optional | `server.rs:40`. When set, replaces the `Server` header value |
 | `server.middlewares` | `middleware::Config` | optional — `#[serde(default)]` | `server.rs:44`. Struct is owned by the middleware area; see the middleware catalog reference for every middleware's keys |
+| `server.middlewares.respond_to` | `Option<respond_to::Config>` | optional, disabled by default | `enable`, `extension` (default `false`), `prefix`, `sign_in_path`. Serves routes as JSON at `<path>.json` and under `prefix`; see [Respond in multiple formats](/docs/how-to/respond-formats) |
+
+Forgery protection is one of those middlewares, off by default:
+
+```yaml
+server:
+  middlewares:
+    forgery_protection:
+      enable: true       # optional, default false
+      mode: header       # header (default) | token (needs `auth_session`)
+      exempt: []         # path prefixes never checked
+      trusted_origins: [] # extra origins allowed to post
+```
+
+See the middleware catalog (`forgery_protection`) for the token-mode keys.
 
 `Server::full_url() -> String` returns `"{host}:{port}"` (`server.rs:52-55`).
 
@@ -482,6 +498,28 @@ storage:
 If the corresponding feature (`storage_aws_s3` / `storage_gcp` / `storage_azure`) is not compiled in, that `kind` value will fail to deserialize.
 
 `Hooks::after_context` still runs after this config builds the default store (`boot::create_context`, `src/boot.rs`), and can freely replace `ctx.storage` — see [Configure file storage](/docs/how-to/configure-storage) for the multi-store/strategy case, which has no dedicated YAML key.
+
+## `webhooks`
+
+`struct Webhook` — `src/config/webhooks.rs`. One entry per incoming webhook source, keyed by the `NAME` of the `WebhookSource` type the `SignedWebhook<S>` extractor is given. See [Verify signed webhooks](/docs/how-to/verify-webhooks).
+
+| Key | Type | Default | Notes |
+|---|---|---|---|
+| `secret` | `String` | required | Shared signing secret. Empty refuses every request (500) |
+| `scheme` | `hmac` \| `timestamped` \| `loco` | `hmac` | `hmac`: `HMAC-SHA256(secret, body)` in one header (GitHub). `timestamped`: `t=<secs>,v1=<sig>` over `"{t}.{body}"` (Stripe). `loco`: what Loco's own notification webhooks send |
+| `header` | `Option<String>` | per scheme | `X-Hub-Signature-256`, `Stripe-Signature`, `X-Loco-Signature` |
+| `prefix` | `Option<String>` | `sha256=` | Text before the digest for `hmac` and `loco`; `""` for none |
+| `encoding` | `hex` \| `base64` | `hex` | How the digest is written |
+| `tolerance_secs` | `u64` | `300` | Replay window for `timestamped` and `loco` |
+
+```yaml
+webhooks:
+  github:
+    secret: <%= get_env(name="GITHUB_WEBHOOK_SECRET", default="") %>
+  stripe:
+    secret: <%= get_env(name="STRIPE_WEBHOOK_SECRET", default="") %>
+    scheme: timestamped
+```
 
 ## `initializers`, `settings`, `scheduler`
 

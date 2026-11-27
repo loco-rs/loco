@@ -641,6 +641,11 @@ impl DeploymentKind {
                 paths.push(PathBuf::from(&static_assets.fallback));
             }
         }
+        if let Some(spa) = &config.server.middlewares.spa
+            && !paths.iter().any(|p| spa.path.starts_with(p))
+        {
+            paths.push(spa.path.clone());
+        }
         paths
     }
 }

@@ -64,6 +64,14 @@ fallback: assets/static/404.html
         &["server", "middlewares", "static"],
         &expected,
     );
+
+    // Server-rendered forms are refused when posted from another site.
+    let forgery: serde_yaml::Value = serde_yaml::from_str("enable: true").unwrap();
+    assertion::yaml::assert_path_value_eq(
+        &content,
+        &["server", "middlewares", "forgery_protection"],
+        &forgery,
+    );
 }
 
 #[rstest]
@@ -79,14 +87,11 @@ fn test_config_file_middleware_asset_client(
         r"
 fallback:
     enable: false
-static:
+spa:
     enable: true
     must_exist: true
-    precompressed: false
-    folder:
-        uri: /
-        path: frontend/dist
-    fallback: frontend/dist/index.html
+    uri: /
+    path: frontend/dist
 ",
     )
     .unwrap();

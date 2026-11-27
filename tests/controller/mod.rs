@@ -1,4 +1,5 @@
 mod extractor;
+mod forgery_protection;
 mod from_ref;
 mod into_response;
 mod middlewares;
@@ -6,3 +7,4 @@ mod middlewares;
 mod oauth;
 #[cfg(all(feature = "auth_session", feature = "with-db"))]
 mod session;
+mod view_helpers;

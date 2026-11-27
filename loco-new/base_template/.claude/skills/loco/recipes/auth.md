@@ -148,6 +148,44 @@ loco_rs::auth::session_store::sign_out_everywhere(&ctx, &pid).await?;
 - `OAuthHandler::on_failure(ctx, parts, failure)` gets the callback request's `Parts` (headers, view engine). The state cookie is encrypted (`auth_oauth` enables `auth_session_encrypted`).
 - In tests, `sign_in(&mut request, &ctx, pid)` from `loco_rs::testing::prelude` signs in on any store; see `recipes/testing.md`.
 
+## Incoming webhooks (GitHub, Stripe, another Loco app)
+
+Do not hand-roll `Hmac<Sha256>` in a handler, and do not read the secret with
+`std::env::var`. Put it under `webhooks:` in config and take `SignedWebhook<S>`:
+
+```yaml
+webhooks:
+  github:
+    secret: <%= get_env(name="GITHUB_WEBHOOK_SECRET", default="") %>
+  stripe:
+    secret: <%= get_env(name="STRIPE_WEBHOOK_SECRET", default="") %>
+    scheme: timestamped        # hmac (default) | timestamped | loco
+```
+
+```rust
+use loco_rs::prelude::*;
+
+pub struct GitHub;
+impl WebhookSource for GitHub {
+    const NAME: &'static str = "github"; // the key under `webhooks:`
+}
+
+async fn github(hook: SignedWebhook<GitHub>) -> Result<Response> {
+    let event: serde_json::Value = hook.json()?;    // not `Json<T>`: the body is already consumed
+    let kind = hook.header("X-GitHub-Event");
+    // ... enqueue a worker; answer fast
+    format::empty()
+}
+```
+
+- It consumes the body: last extractor, no `Json<T>` alongside it.
+- Missing/wrong signature or a stale timestamp is 401; an unparseable header
+  is 400; a missing config entry or empty secret is 500.
+- Request tests: `loco_rs::controller::extractor::webhook::sign(&config, body, now)`
+  returns the headers to send.
+- If the app uses CSRF (forgery protection) middleware, exempt the webhook
+  routes from it: senders cannot send a CSRF token.
+
 ## Scaffold the whole thing
 
 A new app created with the SaaS/auth starter already ships registration, login,
