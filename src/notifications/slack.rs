@@ -9,7 +9,7 @@ use std::fmt::Write as _;
 
 use serde_json::{json, Value};
 
-use super::{check_status, is_permanent, transport_error, Message};
+use super::{check_status, is_permanent, transport_error, Message, Outcome};
 use crate::Result;
 
 /// Escapes the three characters Slack's `mrkdwn` treats as control
@@ -45,7 +45,7 @@ pub fn payload(message: &Message) -> Value {
     json!({ "text": text })
 }
 
-pub(super) async fn send(http: &reqwest::Client, url: &str, payload: &Value) -> Result<()> {
+pub(super) async fn send(http: &reqwest::Client, url: &str, payload: &Value) -> Result<Outcome> {
     let response = match http.post(url).json(payload).send().await {
         Ok(response) => response,
         Err(err) => return transport_error("slack", err),
@@ -56,7 +56,8 @@ pub(super) async fn send(http: &reqwest::Client, url: &str, payload: &Value) -> 
     } else {
         response.text().await.unwrap_or_default()
     };
-    check_status("slack webhook", status, || body.chars().take(200).collect())
+    check_status("slack webhook", status, || body.chars().take(200).collect())?;
+    Ok(Outcome::Delivered)
 }
 
 #[cfg(test)]

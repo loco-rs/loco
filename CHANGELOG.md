@@ -9,7 +9,7 @@
 
 ### Changed
 
-- **Slack and webhook notifications refuse non-public addresses by default.** A delivery to `localhost`, `10.0.0.0/8`, `169.254.169.254` and similar is logged and dropped. Allow specific hosts, IPs or CIDRs with `notifications.outbound.allow`, or everything with `notifications.outbound.allow_private: true`.
+- **Slack and webhook notifications refuse non-public addresses by default.** A delivery to `localhost`, `10.0.0.0/8`, `169.254.169.254` and similar is logged as a warning, dropped without retrying, and counted as `failed` when it runs inline. Allow specific hosts, IPs or CIDRs with `notifications.outbound.allow`, or everything with `notifications.outbound.allow_private: true`.
 
   **Upgrading:** `cargo loco generate notifier` adds the allow list below only to config files that have no `notifications:` block yet, so an existing app does not get it. If you send to a receiver on your own machine in development, or to a test server with `stub: false` in tests, add it to `config/development.yaml` and `config/test.yaml` yourself:
 

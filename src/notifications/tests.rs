@@ -126,8 +126,9 @@ async fn loopback_destinations_are_refused_by_default() {
     .deliver_later(&ctx)
     .await;
 
-    // Refusals are permanent: dropped with an error log, not retried.
-    assert_eq!(report.failed, 0);
+    // Refusals are permanent: logged, counted as failed, not retried.
+    assert_eq!(report.failed, 3);
+    assert_eq!(report.accepted, 0);
     assert!(requests(&log).is_empty(), "{:?}", requests(&log));
 }
 
@@ -144,7 +145,7 @@ async fn loopback_is_refused_without_a_notifications_block() {
     .deliver_later(&ctx)
     .await;
 
-    assert_eq!(report.failed, 0);
+    assert_eq!(report.failed, 2);
     assert!(requests(&log).is_empty(), "{:?}", requests(&log));
 }
 
@@ -157,8 +158,24 @@ async fn invalid_urls_are_dropped_not_retried() {
     ])
     .deliver_later(&ctx)
     .await;
-    assert_eq!(report.failed, 0);
-    assert_eq!(report.accepted, 2);
+    assert_eq!(report.failed, 2);
+    assert_eq!(report.accepted, 0);
+}
+
+#[tokio::test]
+async fn deliver_now_reports_a_refused_destination_as_an_error() {
+    let (base, log) = mock_server(StatusCode::OK).await;
+    let ctx = guarded_context().await;
+    let err = QueuePaused::to(vec![Channel::webhook_url(format!("{base}/w"))])
+        .deliver_now(&ctx)
+        .await
+        .expect_err("a refused destination is a failure");
+    assert!(
+        err.to_string()
+            .contains("refused by notifications.outbound"),
+        "{err}"
+    );
+    assert!(requests(&log).is_empty(), "{:?}", requests(&log));
 }
 
 #[tokio::test]
@@ -942,7 +959,10 @@ async fn keyed_destinations_looked_up_at_run_time_are_still_guarded() {
     // Per-record URLs come from app data, so they are the ones most likely
     // to point somewhere they should not.
     book.set("ip", Destination::new(format!("{base}/ip")));
-    book.set("name", Destination::new(format!("http://localhost:{port}/name")));
+    book.set(
+        "name",
+        Destination::new(format!("http://localhost:{port}/name")),
+    );
     set_destinations(&ctx, book.clone());
 
     for channel in [
@@ -950,7 +970,16 @@ async fn keyed_destinations_looked_up_at_run_time_are_still_guarded() {
         Channel::webhook_for("ip"),
         Channel::webhook_for("name"),
     ] {
-        NotificationWorker::build(&ctx)
+        let worker = NotificationWorker::build(&ctx);
+        // Recorded as a refusal, not as a delivery.
+        assert_eq!(
+            worker
+                .send(keyed_delivery(&ctx, channel.clone()))
+                .await
+                .unwrap(),
+            Outcome::Refused
+        );
+        worker
             .perform(keyed_delivery(&ctx, channel))
             .await
             .expect("a refusal is dropped, not retried");

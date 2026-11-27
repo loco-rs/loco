@@ -124,7 +124,9 @@ pub struct Report {
     /// logs and drops it.
     pub skipped: usize,
     /// Could not be rendered or enqueued (or, in `ForegroundBlocking` mode,
-    /// failed to send). Logged; never returned as an error.
+    /// failed to send). Logged; never returned as an error. Also a Slack or
+    /// webhook delivery refused by `notifications.outbound` when it runs
+    /// inline; a queued one is logged and dropped by the worker, not retried.
     pub failed: usize,
 }
 
@@ -320,6 +322,10 @@ pub trait Notifier: Serialize + Send + Sync + Sized {
         for delivery in deliveries {
             let channel = delivery.target.name();
             match inline.deliver(ctx, delivery).await {
+                Ok(Outcome::Refused) => {
+                    report.count(Outcome::Refused);
+                    errors.push(format!("{channel}: refused by notifications.outbound"));
+                }
                 Ok(outcome) => report.count(outcome),
                 Err(err) => {
                     report.failed += 1;
@@ -343,6 +349,7 @@ impl Report {
         match outcome {
             Outcome::Delivered => self.accepted += 1,
             Outcome::Gone => self.skipped += 1,
+            Outcome::Refused => self.failed += 1,
         }
     }
 }
@@ -350,11 +357,13 @@ impl Report {
 /// What became of one delivery that was sent (or recorded) without an error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Outcome {
-    /// Sent, recorded, permanently rejected by the receiver, or refused by
-    /// `notifications.outbound` (both logged).
+    /// Sent, recorded, or permanently rejected by the receiver (logged).
     Delivered,
     /// The keyed destination no longer exists; logged and dropped.
     Gone,
+    /// The URL is invalid or its address is refused by
+    /// `notifications.outbound`; logged and dropped, never retried.
+    Refused,
 }
 
 /// Delivers in this task instead of through the queue.
@@ -516,7 +525,7 @@ impl Target {
 ///
 /// Registered automatically at boot when the `notifications` feature is on;
 /// a failed send returns an error so the queue retries it
-/// (`notifications.max_retries`, Postgres and `SQLite`). Permanent rejections (4xx other than 408 and 429) and destinations refused by `notifications.outbound` are logged and dropped.
+/// (`notifications.max_retries`, Postgres and `SQLite`). Permanent rejections (4xx other than 408 and 429) and destinations refused by `notifications.outbound` are logged at warn and dropped, not retried.
 pub struct NotificationWorker {
     ctx: AppContext,
     http: reqwest::Client,
@@ -551,9 +560,9 @@ impl NotificationWorker {
             // (`_for`) destinations read at run time are guarded too.
             Resolved::Slack { url, payload } => {
                 if refused("slack", config, &url) {
-                    return Ok(Outcome::Delivered);
+                    return Ok(Outcome::Refused);
                 }
-                slack::send(&self.http, &url, &payload).await?;
+                slack::send(&self.http, &url, &payload).await
             }
             Resolved::Webhook {
                 url,
@@ -562,7 +571,7 @@ impl NotificationWorker {
                 payload,
             } => {
                 if refused("webhook", config, &url) {
-                    return Ok(Outcome::Delivered);
+                    return Ok(Outcome::Refused);
                 }
                 webhook::send(
                     &self.http,
@@ -575,18 +584,18 @@ impl NotificationWorker {
                         payload: &payload,
                     },
                 )
-                .await?;
+                .await
             }
             #[cfg(feature = "mailer")]
             Resolved::Email { to, from, content } => {
                 email::send(&self.ctx, to, from, content).await?;
+                Ok(Outcome::Delivered)
             }
             Resolved::Gone { key } => {
                 warn_gone(&delivery.event, channel, &key);
-                return Ok(Outcome::Gone);
+                Ok(Outcome::Gone)
             }
         }
-        Ok(Outcome::Delivered)
     }
 }
 
@@ -822,29 +831,30 @@ pub(crate) async fn register_worker(ctx: &AppContext, queue: &Queue) -> Result<(
 
 /// Whether `url` is refused by `notifications.outbound` before sending
 /// (IP-literal hosts; names are checked as they resolve). A refusal cannot
-/// succeed on retry, so it is logged and the delivery dropped.
+/// succeed on retry, so it is logged at warn and the delivery dropped.
 fn refused(channel: &str, config: Option<&Notifications>, url: &str) -> bool {
     let default = crate::net::OutboundGuard::default();
     let guard = config.map_or(&default, |c| &c.outbound);
     match guard.check_url(url) {
         Ok(()) => false,
         Err(crate::net::RefusedUrl::Invalid) => {
-            tracing::error!(channel, "invalid notification URL; not retrying");
+            tracing::warn!(channel, "invalid notification URL; not retrying");
             true
         }
         Err(err) => {
-            tracing::error!(channel, error = %err, "notification refused; not retrying");
+            tracing::warn!(channel, error = %err, "notification refused; not retrying");
             true
         }
     }
 }
 
 /// Turns a transport error into the worker's result: an address refused by
-/// `notifications.outbound` is logged and dropped, anything else retries.
-pub(crate) fn transport_error(channel: &str, err: reqwest::Error) -> Result<()> {
+/// `notifications.outbound` (a name that resolved to it, or a redirect) is
+/// logged at warn and dropped as [`Outcome::Refused`], anything else retries.
+pub(crate) fn transport_error(channel: &str, err: reqwest::Error) -> Result<Outcome> {
     if crate::net::is_blocked(&err) {
-        tracing::error!(channel, error = %err.without_url(), "notification refused; not retrying");
-        Ok(())
+        tracing::warn!(channel, error = %err.without_url(), "notification refused; not retrying");
+        Ok(Outcome::Refused)
     } else {
         Err(http_error(channel, err))
     }

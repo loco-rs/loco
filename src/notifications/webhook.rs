@@ -21,7 +21,7 @@ use hmac::{Hmac, Mac};
 use serde_json::Value;
 use sha2::Sha256;
 
-use super::{check_status, transport_error};
+use super::{check_status, transport_error, Outcome};
 use crate::Result;
 
 /// Header carrying the event name.
@@ -82,7 +82,7 @@ pub(super) struct Request<'a> {
     pub payload: &'a Value,
 }
 
-pub(super) async fn send(http: &reqwest::Client, req: Request<'_>) -> Result<()> {
+pub(super) async fn send(http: &reqwest::Client, req: Request<'_>) -> Result<Outcome> {
     let body = serde_json::to_vec(req.payload)?;
     let timestamp = chrono::Utc::now().timestamp().to_string();
 
@@ -108,7 +108,8 @@ pub(super) async fn send(http: &reqwest::Client, req: Request<'_>) -> Result<()>
         Ok(response) => response,
         Err(err) => return transport_error("webhook", err),
     };
-    check_status("webhook", response.status(), String::new)
+    check_status("webhook", response.status(), String::new)?;
+    Ok(Outcome::Delivered)
 }
 
 /// Headers the signature and receivers rely on; user headers cannot replace

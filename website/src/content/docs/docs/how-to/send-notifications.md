@@ -210,7 +210,7 @@ The check is on the address the connection actually uses. A URL whose host is an
 
 Slack and webhook deliveries connect directly and ignore `HTTP_PROXY`, `HTTPS_PROXY` and `ALL_PROXY`, even for public hosts, because a proxy would look up the name out of the guard's reach. If your servers can only reach the internet through a proxy, deliveries will fail to connect; a warning is logged at startup when one of those variables is set. Either open direct outbound access for Slack and your webhook hosts, or set `allow_private: true`, which turns the guard off and uses the proxy again.
 
-A refused delivery cannot succeed on retry, so it is logged as an error and dropped, like a `4xx`. In development, when the receiver runs on your machine, allow it (`cargo loco generate notifier` adds this to `config/development.yaml` and `config/test.yaml`):
+A refused delivery cannot succeed on retry, so it is logged as a warning and dropped, never retried. When the delivery runs inline (`deliver_now`, `workers.mode: ForegroundBlocking`, or tests), it counts as `failed` in the `Report`, and `deliver_now` returns an error naming the channel. In development, when the receiver runs on your machine, allow it (`cargo loco generate notifier` adds this to `config/development.yaml` and `config/test.yaml`):
 
 ```yaml
 # config/development.yaml
