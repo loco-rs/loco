@@ -35,6 +35,7 @@
 //! ```
 
 mod channel;
+pub mod destination;
 #[cfg(feature = "mailer")]
 pub mod email;
 pub mod slack;
@@ -45,6 +46,7 @@ use std::{collections::BTreeMap, fmt, sync::Mutex, time::Duration};
 
 use async_trait::async_trait;
 pub use channel::Channel;
+pub use destination::{set_destinations, Destination, Destinations};
 #[cfg(feature = "mailer")]
 pub use email::EmailContent;
 use serde::{Deserialize, Serialize};
@@ -53,7 +55,7 @@ use serde_json::{json, Value};
 use crate::{
     app::AppContext,
     bgworker::{BackgroundWorker, Queue, RetryPolicy},
-    config::Notifications,
+    config::{Notifications, WorkerMode},
     Error, Result,
 };
 
@@ -115,9 +117,16 @@ pub struct Report {
     /// Handed to the queue (or, in `ForegroundBlocking` mode, sent).
     pub accepted: usize,
     /// Not configured: a default channel with no config, or an empty URL.
+    /// Also a [`Channel::slack_for`] or [`Channel::webhook_for`] key that the
+    /// app's [`Destinations`] does not know, when the delivery runs inline
+    /// (`deliver_now`, `ForegroundBlocking` mode, or while recording). A
+    /// queued delivery only finds that out when the job runs; the worker then
+    /// logs and drops it.
     pub skipped: usize,
     /// Could not be rendered or enqueued (or, in `ForegroundBlocking` mode,
-    /// failed to send). Logged; never returned as an error.
+    /// failed to send). Logged; never returned as an error. Also a Slack or
+    /// webhook delivery refused by `notifications.outbound` when it runs
+    /// inline; a queued one is logged and dropped by the worker, not retried.
     pub failed: usize,
 }
 
@@ -175,13 +184,12 @@ pub trait Notifier: Serialize + Send + Sync + Sized {
     /// # Errors
     /// When the notifier cannot be serialized or a channel fails to render.
     fn deliveries(&self, ctx: &AppContext) -> Result<(Vec<Delivery>, usize)> {
-        let config = ctx.config.notifications.as_ref();
         let message = self.message();
         let event = Self::event();
         let mut deliveries = Vec::new();
         let mut skipped = 0;
         for channel in self.channels(ctx) {
-            if !channel.is_deliverable(config) {
+            if !channel.is_deliverable(ctx) {
                 tracing::warn!(
                     event,
                     channel = channel.name(),
@@ -196,6 +204,10 @@ pub trait Notifier: Serialize + Send + Sync + Sized {
                     webhook_url,
                     payload: self.slack_payload(&message),
                 },
+                Channel::SlackFor { key } => Target::SlackFor {
+                    key,
+                    payload: self.slack_payload(&message),
+                },
                 Channel::Webhook {
                     url,
                     secret,
@@ -204,16 +216,12 @@ pub trait Notifier: Serialize + Send + Sync + Sized {
                     url,
                     secret,
                     headers,
-                    payload: self.webhook_payload(json!({
-                        "id": id,
-                        "event": event,
-                        "created_at": chrono::Utc::now().to_rfc3339(),
-                        "title": message.title,
-                        "body": message.body,
-                        "url": message.url,
-                        "fields": message.fields,
-                        "data": serde_json::to_value(self)?,
-                    })),
+                    payload: self.webhook_payload(webhook_envelope(self, &id, &event, &message)?),
+                },
+                Channel::WebhookFor { key, headers } => Target::WebhookFor {
+                    key,
+                    headers,
+                    payload: self.webhook_payload(webhook_envelope(self, &id, &event, &message)?),
                 },
                 #[cfg(feature = "mailer")]
                 Channel::Email { to, from } => Target::Email {
@@ -254,12 +262,24 @@ pub trait Notifier: Serialize + Send + Sync + Sized {
             skipped,
             ..Report::default()
         };
-        if let Some(recorder) = testing::recorder(ctx) {
+        // In `ForegroundBlocking` mode, send here as `perform_later` would,
+        // but keep the outcome, so a destination that is gone is not counted
+        // as sent.
+        let inline = (testing::is_recording(ctx)
+            || matches!(ctx.config.workers.mode, WorkerMode::ForegroundBlocking))
+        .then(|| Inline::new(ctx));
+        if let Some(inline) = inline {
             for delivery in deliveries {
-                match recorder.record(ctx, delivery) {
-                    Ok(()) => report.accepted += 1,
+                let channel = delivery.target.name();
+                match inline.deliver(ctx, delivery).await {
+                    Ok(outcome) => report.count(outcome),
                     Err(err) => {
-                        tracing::error!(event, err = err.to_string(), "notification failed");
+                        tracing::error!(
+                            event,
+                            channel,
+                            err = err.to_string(),
+                            "notification delivery failed"
+                        );
                         report.failed += 1;
                     }
                 }
@@ -293,21 +313,20 @@ pub trait Notifier: Serialize + Send + Sync + Sized {
     /// After trying every channel, when any of them failed.
     async fn deliver_now(&self, ctx: &AppContext) -> Result<Report> {
         let (deliveries, skipped) = self.deliveries(ctx)?;
-        let worker = NotificationWorker::build(ctx);
+        let inline = Inline::new(ctx);
         let mut report = Report {
             skipped,
             ..Report::default()
         };
         let mut errors = Vec::new();
-        let recorder = testing::recorder(ctx);
         for delivery in deliveries {
             let channel = delivery.target.name();
-            let sent = match &recorder {
-                Some(recorder) => recorder.record(ctx, delivery),
-                None => worker.perform(delivery).await,
-            };
-            match sent {
-                Ok(()) => report.accepted += 1,
+            match inline.deliver(ctx, delivery).await {
+                Ok(Outcome::Refused) => {
+                    report.count(Outcome::Refused);
+                    errors.push(format!("{channel}: refused by notifications.outbound"));
+                }
+                Ok(outcome) => report.count(outcome),
                 Err(err) => {
                     report.failed += 1;
                     errors.push(format!("{channel}: {err}"));
@@ -325,9 +344,77 @@ pub trait Notifier: Serialize + Send + Sync + Sized {
     }
 }
 
+impl Report {
+    const fn count(&mut self, outcome: Outcome) {
+        match outcome {
+            Outcome::Delivered => self.accepted += 1,
+            Outcome::Gone => self.skipped += 1,
+            Outcome::Refused => self.failed += 1,
+        }
+    }
+}
+
+/// What became of one delivery that was sent (or recorded) without an error.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Outcome {
+    /// Sent, recorded, or permanently rejected by the receiver (logged).
+    Delivered,
+    /// The keyed destination no longer exists; logged and dropped.
+    Gone,
+    /// The URL is invalid or its address is refused by
+    /// `notifications.outbound`; logged and dropped, never retried.
+    Refused,
+}
+
+/// Delivers in this task instead of through the queue.
+enum Inline {
+    Record(testing::Recorder),
+    Send(Box<NotificationWorker>),
+}
+
+impl Inline {
+    /// Records when recording is on, else sends.
+    fn new(ctx: &AppContext) -> Self {
+        testing::recorder(ctx).map_or_else(
+            || Self::Send(Box::new(NotificationWorker::build(ctx))),
+            Self::Record,
+        )
+    }
+
+    async fn deliver(&self, ctx: &AppContext, delivery: Delivery) -> Result<Outcome> {
+        match self {
+            Self::Record(recorder) => recorder.record(ctx, delivery).await,
+            Self::Send(worker) => worker.send(delivery).await,
+        }
+    }
+}
+
+/// The default webhook body: `id`, `event`, `created_at`, the message, and
+/// the notifier as `data`.
+fn webhook_envelope<N: Notifier>(
+    notifier: &N,
+    id: &str,
+    event: &str,
+    message: &Message,
+) -> Result<Value> {
+    Ok(json!({
+        "id": id,
+        "event": event,
+        "created_at": chrono::Utc::now().to_rfc3339(),
+        "title": message.title,
+        "body": message.body,
+        "url": message.url,
+        "fields": message.fields,
+        "data": serde_json::to_value(notifier)?,
+    }))
+}
+
 /// A rendered notification for one channel: the job payload of
-/// [`NotificationWorker`]. Secrets from config are not in it; they are read
-/// when the job runs.
+/// [`NotificationWorker`].
+///
+/// Destinations and secrets from config, and those of
+/// keyed channels ([`Channel::slack_for`], [`Channel::webhook_for`]), are not
+/// in it; they are read when the job runs.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Delivery {
     /// Stable across retries; sent to webhooks as `X-Loco-Delivery`.
@@ -337,7 +424,8 @@ pub struct Delivery {
 }
 
 /// A rendered destination. `None` destinations are resolved from the
-/// `notifications:` config when the job runs.
+/// `notifications:` config, and `*_for` keys through the app's
+/// [`Destinations`], when the job runs.
 #[derive(Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "channel", rename_all = "snake_case")]
 #[non_exhaustive]
@@ -349,6 +437,16 @@ pub enum Target {
     Webhook {
         url: Option<String>,
         secret: Option<String>,
+        #[serde(default)]
+        headers: BTreeMap<String, String>,
+        payload: Value,
+    },
+    /// A Slack message to the URL [`Destinations`] gives for `key`.
+    SlackFor { key: String, payload: Value },
+    /// A webhook to the URL, secret and headers [`Destinations`] gives for
+    /// `key`; `headers` are the channel's own and win.
+    WebhookFor {
+        key: String,
         #[serde(default)]
         headers: BTreeMap<String, String>,
         payload: Value,
@@ -385,6 +483,21 @@ impl fmt::Debug for Target {
                 .field("headers", &headers.keys().collect::<Vec<_>>())
                 .field("payload", payload)
                 .finish(),
+            Self::SlackFor { key, payload } => f
+                .debug_struct("SlackFor")
+                .field("key", key)
+                .field("payload", payload)
+                .finish(),
+            Self::WebhookFor {
+                key,
+                headers,
+                payload,
+            } => f
+                .debug_struct("WebhookFor")
+                .field("key", key)
+                .field("headers", &headers.keys().collect::<Vec<_>>())
+                .field("payload", payload)
+                .finish(),
             #[cfg(feature = "mailer")]
             Self::Email { to, from, content } => f
                 .debug_struct("Email")
@@ -400,8 +513,8 @@ impl Target {
     #[must_use]
     pub const fn name(&self) -> &'static str {
         match self {
-            Self::Slack { .. } => "slack",
-            Self::Webhook { .. } => "webhook",
+            Self::Slack { .. } | Self::SlackFor { .. } => "slack",
+            Self::Webhook { .. } | Self::WebhookFor { .. } => "webhook",
             #[cfg(feature = "mailer")]
             Self::Email { .. } => "email",
         }
@@ -412,7 +525,7 @@ impl Target {
 ///
 /// Registered automatically at boot when the `notifications` feature is on;
 /// a failed send returns an error so the queue retries it
-/// (`notifications.max_retries`, Postgres and `SQLite`). Permanent rejections (4xx other than 408 and 429) are logged and dropped.
+/// (`notifications.max_retries`, Postgres and `SQLite`). Permanent rejections (4xx other than 408 and 429) and destinations refused by `notifications.outbound` are logged at warn and dropped, not retried.
 pub struct NotificationWorker {
     ctx: AppContext,
     http: reqwest::Client,
@@ -432,22 +545,34 @@ impl BackgroundWorker<Delivery> for NotificationWorker {
     }
 
     async fn perform(&self, delivery: Delivery) -> Result<()> {
+        // A destination that is gone completes the job: retrying cannot help.
+        self.send(delivery).await.map(|_| ())
+    }
+}
+
+impl NotificationWorker {
+    /// Resolves and sends one delivery, saying whether it went anywhere.
+    async fn send(&self, delivery: Delivery) -> Result<Outcome> {
+        let channel = delivery.target.name();
         let config = self.ctx.config.notifications.as_ref();
-        match delivery.target {
-            Target::Slack {
-                webhook_url,
-                payload,
-            } => {
-                let url = slack_url(config, webhook_url)?;
+        match resolve(&self.ctx, delivery.target).await? {
+            // A refused address is checked on the resolved URL, so keyed
+            // (`_for`) destinations read at run time are guarded too.
+            Resolved::Slack { url, payload } => {
+                if refused("slack", config, &url) {
+                    return Ok(Outcome::Refused);
+                }
                 slack::send(&self.http, &url, &payload).await
             }
-            Target::Webhook {
+            Resolved::Webhook {
                 url,
                 secret,
                 headers,
                 payload,
             } => {
-                let (url, secret, headers) = webhook_destination(config, url, secret, headers)?;
+                if refused("webhook", config, &url) {
+                    return Ok(Outcome::Refused);
+                }
                 webhook::send(
                     &self.http,
                     webhook::Request {
@@ -462,7 +587,116 @@ impl BackgroundWorker<Delivery> for NotificationWorker {
                 .await
             }
             #[cfg(feature = "mailer")]
-            Target::Email { to, from, content } => email::send(&self.ctx, to, from, content).await,
+            Resolved::Email { to, from, content } => {
+                email::send(&self.ctx, to, from, content).await?;
+                Ok(Outcome::Delivered)
+            }
+            Resolved::Gone { key } => {
+                warn_gone(&delivery.event, channel, &key);
+                Ok(Outcome::Gone)
+            }
+        }
+    }
+}
+
+/// Logs a keyed delivery whose destination [`Destinations`] no longer knows.
+pub(crate) fn warn_gone(event: &str, channel: &str, key: &str) {
+    tracing::warn!(
+        event,
+        channel,
+        key,
+        "notification destination no longer exists; dropping delivery"
+    );
+}
+
+/// A [`Target`] with its destination looked up: what is actually sent.
+pub(crate) enum Resolved {
+    Slack {
+        url: String,
+        payload: Value,
+    },
+    Webhook {
+        url: String,
+        secret: Option<String>,
+        headers: BTreeMap<String, String>,
+        payload: Value,
+    },
+    #[cfg(feature = "mailer")]
+    Email {
+        to: Vec<String>,
+        from: Option<String>,
+        content: EmailContent,
+    },
+    /// A keyed destination that [`Destinations`] no longer knows.
+    Gone {
+        key: String,
+    },
+}
+
+/// Reads a target's destination from config or the app's [`Destinations`],
+/// now, as the job runs.
+pub(crate) async fn resolve(ctx: &AppContext, target: Target) -> Result<Resolved> {
+    let config = ctx.config.notifications.as_ref();
+    Ok(match target {
+        Target::Slack {
+            webhook_url,
+            payload,
+        } => Resolved::Slack {
+            url: slack_url(config, webhook_url)?,
+            payload,
+        },
+        Target::Webhook {
+            url,
+            secret,
+            headers,
+            payload,
+        } => {
+            let (url, secret, headers) = webhook_destination(config, url, secret, headers)?;
+            Resolved::Webhook {
+                url,
+                secret,
+                headers,
+                payload,
+            }
+        }
+        Target::SlackFor { key, payload } => {
+            match destination::resolve(ctx, "slack", &key).await? {
+                Some(found) => Resolved::Slack {
+                    url: found.url,
+                    payload,
+                },
+                None => Resolved::Gone { key },
+            }
+        }
+        Target::WebhookFor {
+            key,
+            mut headers,
+            payload,
+        } => match destination::resolve(ctx, "webhook", &key).await? {
+            Some(found) => {
+                merge_headers(&mut headers, found.headers);
+                Resolved::Webhook {
+                    url: found.url,
+                    secret: found.secret.filter(|s| !s.is_empty()),
+                    headers,
+                    payload,
+                }
+            }
+            None => Resolved::Gone { key },
+        },
+        #[cfg(feature = "mailer")]
+        Target::Email { to, from, content } => Resolved::Email { to, from, content },
+    })
+}
+
+/// Adds each of `defaults` to `headers` unless `headers` already has that
+/// name in any letter case: HTTP header names are case-insensitive, so
+/// `authorization` on the channel must replace `Authorization` from the
+/// destination or config, not be sent alongside it.
+fn merge_headers(headers: &mut BTreeMap<String, String>, defaults: BTreeMap<String, String>) {
+    for (name, value) in defaults {
+        if !headers.keys().any(|own| own.eq_ignore_ascii_case(&name)) {
+            headers.insert(name, value);
         }
     }
 }
@@ -490,15 +724,20 @@ fn http_client(ctx: &AppContext) -> reqwest::Client {
         .notifications
         .as_ref()
         .map_or(10, |n| n.timeout_secs);
-    let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(timeout))
+    let guard = ctx
+        .config
+        .notifications
+        .as_ref()
+        .map(|n| n.outbound.clone())
+        .unwrap_or_default();
+    // Never fall back to a plain client: it would skip the outbound guard.
+    // Building only fails when the TLS backend cannot start, which no
+    // client could work around.
+    let client = guard
+        .apply(reqwest::Client::builder().timeout(Duration::from_secs(timeout)))
         .build()
         .unwrap_or_else(|err| {
-            tracing::error!(
-                error = %err,
-                "notifications: could not build the HTTP client with a {timeout}s timeout; using one without it"
-            );
-            reqwest::Client::default()
+            panic!("notifications: could not build the guarded HTTP client: {err}")
         });
     ctx.shared_store.insert(HttpClient(client.clone()));
     client
@@ -563,9 +802,7 @@ fn webhook_destination(
         let defaults = config.and_then(|c| c.webhook.as_ref()).ok_or_else(|| {
             Error::string("webhook notification: notifications.webhook is not set")
         })?;
-        for (name, value) in &defaults.headers {
-            headers.entry(name.clone()).or_insert_with(|| value.clone());
-        }
+        merge_headers(&mut headers, defaults.headers.clone());
         (
             defaults.url.clone(),
             secret.or_else(|| defaults.secret.clone()),
@@ -590,6 +827,37 @@ pub(crate) async fn register_worker(ctx: &AppContext, queue: &Queue) -> Result<(
             },
         )
         .await
+}
+
+/// Whether `url` is refused by `notifications.outbound` before sending
+/// (IP-literal hosts; names are checked as they resolve). A refusal cannot
+/// succeed on retry, so it is logged at warn and the delivery dropped.
+fn refused(channel: &str, config: Option<&Notifications>, url: &str) -> bool {
+    let default = crate::net::OutboundGuard::default();
+    let guard = config.map_or(&default, |c| &c.outbound);
+    match guard.check_url(url) {
+        Ok(()) => false,
+        Err(crate::net::RefusedUrl::Invalid) => {
+            tracing::warn!(channel, "invalid notification URL; not retrying");
+            true
+        }
+        Err(err) => {
+            tracing::warn!(channel, error = %err, "notification refused; not retrying");
+            true
+        }
+    }
+}
+
+/// Turns a transport error into the worker's result: an address refused by
+/// `notifications.outbound` (a name that resolved to it, or a redirect) is
+/// logged at warn and dropped as [`Outcome::Refused`], anything else retries.
+pub(crate) fn transport_error(channel: &str, err: reqwest::Error) -> Result<Outcome> {
+    if crate::net::is_blocked(&err) {
+        tracing::warn!(channel, error = %err.without_url(), "notification refused; not retrying");
+        Ok(Outcome::Refused)
+    } else {
+        Err(http_error(channel, err))
+    }
 }
 
 /// A transport error without its URL: Slack webhook URLs are secrets, and

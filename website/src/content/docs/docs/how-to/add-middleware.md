@@ -5,7 +5,7 @@ sidebar:
   order: 15
 ---
 
-**Goal:** turn on one of Loco's 13 built-in middlewares, or write your own when none of them fit, and confirm it's actually running.
+**Goal:** turn on one of Loco's 16 built-in middlewares, or write your own when none of them fit, and confirm it's actually running.
 
 This assumes a working app. For the full config-key/knob table for every built-in middleware, see the [Middleware catalog reference](/docs/reference/middleware).
 

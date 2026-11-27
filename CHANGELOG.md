@@ -4,6 +4,14 @@
 
 ### Added
 
+- `format::respond_to` and `format::respond_with`: one action answers HTML or JSON, like Rails' `respond_to`. The opt-in `respond_to` middleware serves any route as JSON under a prefix such as `/api/v1`, or at `<path>.json` with `extension: true` (off by default), turning redirects into `{"ok":true,"redirect":to}`, sign-in redirects into `401`, and HTML-only answers into `406`.
+- **Upgrading:** `middleware::Config` has a new `respond_to` field. Code that builds it as a struct literal without `..Default::default()` must add `respond_to: None`.
+- `forgery_protection` middleware, Rails' `protect_from_forgery`. It refuses cross-site `POST`/`PUT`/`PATCH`/`DELETE` with `403`, using `Sec-Fetch-Site` and falling back to `Origin` against `Host`, and takes `exempt` path prefixes and `trusted_origins`. `mode: token` (with `auth_session`) checks Rails-style authenticity tokens from the `authenticity_token` field or `X-CSRF-Token` header, with the `csrf_field()`, `csrf_meta_tags()` and `csrf_token()` Tera functions and a `CsrfToken` extractor. Off by default; on in the server-rendered starter.
+- `spa` middleware: serves a frontend build (e.g. `frontend/dist`) under a mount path, next to `static`. Client-side routes get `index.html`, missing files get a real `404`, hashed files under `assets/` are sent with `Cache-Control: public, max-age=31536000, immutable`, HTML and other files with `no-cache`. New clientside apps use it instead of `static`.
+- View helpers with Rails wording: `time_ago_in_words`, `distance_of_time_in_words`, `pluralize`, `to_sentence`, `ordinalize`, `number_with_delimiter` and `number_to_human`. Each is a Tera filter and a Rust function in `loco_rs::controller::views::helpers`. The time helpers take RFC 3339 strings, dates or Unix seconds, and `now=` for tests. `pluralize` replaces Tera's built-in filter but keeps its behaviour when no `word=` is given. `number_with_delimiter` gained `delimiter=` and `separator=`. (#1913)
+- Notifications: `Channel::slack_for(key)` and `Channel::webhook_for(key)` queue only a key. The URL, signing secret and headers are looked up through the app's `Destinations` (registered with `notifications::set_destinations`) when the job runs, so per-record secrets never reach the queue table and a rotated secret applies to jobs already queued. Existing channels and queued jobs are unchanged. Jobs from `_for` channels use new job payload variants that older workers cannot read, so in a rolling deploy upgrade the workers before, or together with, the web nodes that start using `_for` channels. A `_for` key that is gone when the delivery runs inline (`deliver_now`, `ForegroundBlocking`, recording) is counted as `skipped` in the `Report`.
+- `loco_rs::net::OutboundGuard`: refuse outbound requests to loopback, private, link-local and other non-public addresses, checked on the address actually connected to (resolver, redirects and IP-literal URLs). The equivalent of Ruby's `ssrf_filter`.
+- `SignedWebhook<S>` extractor: verifies HMAC-SHA256 signatures on incoming webhooks (GitHub-style, Stripe-style timestamped, and Loco's own notification webhooks) against secrets under `webhooks:` in config, with constant-time comparison and a replay window. A source with no entry or an empty secret answers `500` and logs an error naming the `webhooks.<name>.secret` key to set.
 - Live page updates in the style of Turbo Streams (`loco_rs::controller::turbo`):
   - `TurboStream` / `TurboStreams` responses (`append`, `prepend`, `replace`, `update`, `remove` and more), which can render a Tera partial.
   - A `TurboStreamRequest` extractor that detects Turbo requests from the `Accept` header.
@@ -12,6 +20,49 @@
 
 ### Changed
 
+- **Slack and webhook notifications refuse non-public addresses by default.** A delivery to `localhost`, `10.0.0.0/8`, `169.254.169.254` and similar is logged as a warning, dropped without retrying, and counted as `failed` when it runs inline. Allow specific hosts, IPs or CIDRs with `notifications.outbound.allow`, or everything with `notifications.outbound.allow_private: true`.
+
+  **Upgrading:** `cargo loco generate notifier` adds the allow list below only to config files that have no `notifications:` block yet, so an existing app does not get it. If you send to a receiver on your own machine in development, or to a test server with `stub: false` in tests, add it to `config/development.yaml` and `config/test.yaml` yourself:
+
+  ```yaml
+  notifications:
+    outbound:
+      allow: [localhost, 127.0.0.1, "::1"]
+  ```
+- **Slack and webhook notifications no longer use `HTTP_PROXY`, `HTTPS_PROXY` or `ALL_PROXY`**, even for public hosts: a proxy looks up the name out of the guard's reach. A deployment that reaches the internet only through a proxy will fail to deliver; a warning is logged when one of those variables is set. Open direct outbound access to Slack and your webhook hosts, or set `notifications.outbound.allow_private: true` to turn the guard off.
+- `config::Notifications` has a new public field, `outbound`. Code that builds it with a struct literal must add `outbound: Default::default()` or end with `..Notifications::default()`.
+- **Configurable signed-out handling.** `auth.session.navigational_formats`
+  (Devise's setting, default `[html]`) picks which requests `CurrentUser`
+  redirects to `sign_in_path` rather than answering `401` (`any` redirects
+  every request), and `auth.session.return_to_param` names the parameter it
+  adds. The return address is the full original path, under a nested router
+  too, with its `/` left unencoded. For anything
+  else, override `SessionUser::on_signed_out` (Devise's failure app);
+  `session::signed_out` is the default.
+- **`/auth/{provider}` origin.** `auth.oauth.origin_param` (OmniAuth's
+  `origin_param`, default `return_to_param`) renames the post-sign-in path
+  parameter. Without it, `SignIn::redirect_to` and `after_sign_in_path` come
+  first, then a same-site `Referer`. Both accept relative paths only. Boot
+  fails when the parameter is `remember` or not a plain name, or when
+  `auth.oauth.state_cookie_name` is not a valid cookie name.
+- **`sign_in` test helper** in `loco_rs::testing::prelude` (Devise's
+  `sign_in user`): signs a test server in as a user id on any session store.
+- `auth.oauth.state_cookie_name` sets the state cookie prefix.
+
+### Changed
+
+- **Breaking:** `OAuthHandler::on_failure` takes the callback request's
+  `&Parts` as its second argument, so a failure page can read headers or the
+  view engine. Add `_parts: &axum::http::request::Parts` to overrides.
+- The OAuth state cookie is encrypted (it carries the PKCE verifier), so
+  `auth_oauth` now enables `auth_session_encrypted`. A sign-in in flight
+  during the upgrade fails once with `invalid_state`; retrying works.
+- **Breaking for struct literals:** `SessionConfig`, `OAuthConfig`,
+  `oauth::StartParams` and `oauth::state::FlowState` have new public fields
+  (`return_to_param`, `navigational_formats`, `origin_param`,
+  `state_cookie_name`, `other`, `referer`). Code that builds them with a
+  struct literal must add them (`..Default::default()` works for the two
+  config structs).
 - Generated apps also get the skill under `.agents/skills/loco/`, alongside `.claude/skills/loco/`, for Zed, Cursor and other Agent Skills clients (#1857, @paoValle).
 
 ## 1.3.1 - 2026-11-05

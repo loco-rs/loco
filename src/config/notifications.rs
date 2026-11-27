@@ -2,6 +2,8 @@ use std::{collections::BTreeMap, fmt};
 
 use serde::{Deserialize, Serialize};
 
+use crate::net::OutboundGuard;
+
 /// Notifications configuration: the default destination of each channel and
 /// how deliveries are retried.
 ///
@@ -27,6 +29,9 @@ use serde::{Deserialize, Serialize};
 ///   retry_backoff_secs: 10
 ///   timeout_secs: 10
 ///   stub: false # true in config/test.yaml: record instead of sending
+///   outbound:
+///     allow_private: false # true to reach localhost/private addresses
+///     allow: [] # or list hosts, IPs and CIDRs, e.g. [localhost, "10.0.0.0/8"]
 /// ```
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Notifications {
@@ -53,6 +58,12 @@ pub struct Notifications {
     /// with `loco_rs::notifications::testing::deliveries(&ctx)`.
     #[serde(default)]
     pub stub: bool,
+    /// Which addresses Slack and webhook deliveries may reach. By default
+    /// loopback, private and link-local addresses are refused, so a URL a
+    /// user saved cannot reach your internal network. See
+    /// [`crate::net::OutboundGuard`].
+    #[serde(default)]
+    pub outbound: OutboundGuard,
 }
 
 impl Default for Notifications {
@@ -65,6 +76,7 @@ impl Default for Notifications {
             retry_backoff_secs: default_retry_backoff_secs(),
             timeout_secs: default_timeout_secs(),
             stub: false,
+            outbound: OutboundGuard::default(),
         }
     }
 }

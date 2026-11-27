@@ -128,11 +128,77 @@ pub async fn get_one(
 
 See [Handle errors](/docs/how-to/handle-errors) for what "the framework's default error rendering" produces for each `Error` variant.
 
+## 5. One action, HTML or JSON: `format::respond_to`
+
+`format::respond_to` is the Rails `respond_to do |format|` block. Give it a branch per format; only the chosen branch runs. A request with no `Accept`/`Content-Type` (or an unrecognised one) gets the first branch, and a request for a format with no branch gets `406 {"error":"not_acceptable"}`:
+
+```rust
+use loco_rs::prelude::*;
+
+pub async fn show(
+    Format(respond_to): Format,
+    ViewEngine(v): ViewEngine<TeraView>,
+    Path(id): Path<i32>,
+    State(ctx): State<AppContext>,
+) -> Result<Response> {
+    let post = Model::find_by_id(&ctx.db, id).await?;
+    format::respond_to(&respond_to)
+        .html(|| format::render().view(&v, "posts/show.html", data!({"post": &post})))
+        .json(|| format::json(PostResponse::from(&post)))
+        .render()
+}
+```
+
+`.xml(..)` and `.any(..)` are also available; `.any` answers every format no earlier branch took.
+
+When the HTML view and the JSON body show the same data, `format::respond_with` is the one-liner — the view gets `data` under `key`, JSON gets `data` itself:
+
+```rust
+format::respond_with(&v, &respond_to, "posts/show.html", PostResponse::from(&post))
+```
+
+## 6. Serve every route as JSON: the `respond_to` middleware
+
+Rails apps answer `/posts/1.json` without extra routes. Turn on the `respond_to` middleware for the same thing, plus an optional prefix that mounts every route again as JSON:
+
+```yaml
+server:
+  middlewares:
+    respond_to:
+      enable: true
+      extension: true          # /posts/1.json (default false)
+      prefix: /api/v1          # /api/v1/posts/1 (optional)
+      sign_in_path: /session/new  # redirects here become 401 (optional)
+```
+
+`.json` handling is off unless you set `extension: true`. With it on, every route also answers at `<path>.json`, so a path parameter can no longer end in `.json`: `/files/{name}` gets `report` for `/files/report.json`. Leave it off if your routes take file names.
+
+The middleware strips `.json` or the prefix, routes the request to the same handler with `Accept: application/json`, and the `Format`/`RespondTo` extractor reports `Json`. Responses built for a browser are turned into JSON:
+
+| The handler answers | The client gets |
+|---|---|
+| a redirect | `200 {"ok":true,"redirect":"/posts"}` |
+| a redirect to `sign_in_path` | `401 {"error":"signed_out","redirect":"/session/new"}` |
+| an HTML page (no JSON branch) | `406 {"error":"not_acceptable","description":"This action has no JSON response"}` |
+| an HTML error page | `{"error":"not_found"}` (or `forbidden`, `unauthorized`, `bad_request`, `error`) with the same status |
+| JSON | unchanged |
+
+Cookies and other headers are kept, and `304 Not Modified` passes through with its `ETag`. A real static file ending in `.json` is still served: when no route answers the stripped path, a `GET` tries the original path, and that answer is used only if it found something. A JSON `404` from your own handler is returned as it is. Plain `Accept: application/json` requests to the normal path are left alone — only `.json` and the prefix opt into the conversion.
+
+Pick a `prefix` none of your routes use. Requests under it are routed with the prefix removed, so with `prefix: /api` the starter app's own `/api/auth/...` routes would no longer be found. `/api/v1` does not clash with them.
+
+:::caution
+The middleware wraps the whole app. A middleware layered after it in `Hooks::middlewares` sees the path the client sent (`/admin.json`, `/api/v1/admin`), not the route that runs, so a guard there that matches on the path can be stepped around. Guard routes with `Routes::layer` or in the handler instead.
+:::
+
 ## Verify
 
 ```sh
 curl -s localhost:5150/notes/1 -H 'accept: application/json'
 curl -s localhost:5150/notes/1 -H 'accept: text/html'
+# with the respond_to middleware enabled
+curl -s localhost:5150/notes/1.json
+curl -s localhost:5150/api/v1/notes/1
 ```
 
 ## Next
