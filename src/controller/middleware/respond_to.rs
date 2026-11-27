@@ -3,7 +3,8 @@
 //! With this middleware on, the same actions answer as JSON when the path
 //! asks for it:
 //!
-//! - a path ending in `.json` (`/posts/1.json` runs `/posts/1`), and
+//! - a path ending in `.json` (`/posts/1.json` runs `/posts/1`), when
+//!   `extension: true` is set (off by default), and
 //! - a path under a configured prefix (`/api/v1/posts/1` runs `/posts/1`).
 //!
 //! The extension or prefix is removed before routing and the request is
@@ -71,18 +72,17 @@ pub struct Config {
     #[serde(default)]
     pub prefix: Option<String>,
     /// Answer as JSON when the path ends in `.json`, which is removed
-    /// before routing. On by default.
-    #[serde(default = "default_extension")]
+    /// before routing. Off by default: with it on, every route also answers
+    /// at `<path>.json`, so a path parameter can no longer end in `.json`
+    /// (`/files/{name}` would see `report` for `/files/report.json`). Set
+    /// `extension: true` to turn it on.
+    #[serde(default)]
     pub extension: bool,
     /// A redirect to this path (your sign-in page), or to a path below it,
     /// answers `401` instead of `200 {"ok": true, ...}`. Only redirects on
     /// the same host count.
     #[serde(default)]
     pub sign_in_path: Option<String>,
-}
-
-const fn default_extension() -> bool {
-    true
 }
 
 impl Default for Config {
@@ -414,6 +414,23 @@ mod tests {
     }
 
     #[test]
+    fn extension_is_off_unless_configured() {
+        let c: Config = serde_yaml::from_str("enable: true\nprefix: /api").unwrap();
+        assert!(!c.extension);
+        assert_eq!(json_path(&c, "/posts/1.json"), None);
+        assert_eq!(
+            json_path(&c, "/api/posts/1"),
+            Some(("/posts/1".to_string(), Via::Prefix))
+        );
+
+        let c: Config = serde_yaml::from_str("enable: true\nextension: true").unwrap();
+        assert_eq!(
+            json_path(&c, "/posts/1.json"),
+            Some(("/posts/1".to_string(), Via::Extension))
+        );
+    }
+
+    #[test]
     fn takes_path_from_same_site_location() {
         let host = Some("example.com");
         assert_eq!(same_site_path("/login?x=1", host), Some("/login?x=1"));
@@ -462,7 +479,7 @@ mod tests {
     fn defaults() {
         let c = Config::default();
         assert!(!c.enable);
-        assert!(c.extension);
+        assert!(!c.extension, "`.json` handling is opt-in");
         assert!(c.prefix.is_none());
     }
 

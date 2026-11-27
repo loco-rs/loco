@@ -166,10 +166,12 @@ server:
   middlewares:
     respond_to:
       enable: true
-      extension: true          # /posts/1.json (default true)
+      extension: true          # /posts/1.json (default false)
       prefix: /api/v1          # /api/v1/posts/1 (optional)
       sign_in_path: /session/new  # redirects here become 401 (optional)
 ```
+
+`.json` handling is off unless you set `extension: true`. With it on, every route also answers at `<path>.json`, so a path parameter can no longer end in `.json`: `/files/{name}` gets `report` for `/files/report.json`. Leave it off if your routes take file names.
 
 The middleware strips `.json` or the prefix, routes the request to the same handler with `Accept: application/json`, and the `Format`/`RespondTo` extractor reports `Json`. Responses built for a browser are turned into JSON:
 

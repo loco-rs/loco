@@ -5,7 +5,7 @@ sidebar:
   order: 5
 ---
 
-Loco ships 13 built-in middlewares, all implementing the `MiddlewareLayer`
+Loco ships 14 built-in middlewares, all implementing the `MiddlewareLayer`
 trait (`src/controller/middleware/mod.rs:46-72`). Each is configured under
 `server.middlewares.<key>` in your environment YAML (`src/config/server.rs:44`)
 and is optional (`Option<T>`) — omit the key entirely to get the framework's
@@ -51,6 +51,18 @@ call at a time (`src/controller/app_routes.rs:305-309`). Axum's
 So an inbound request actually passes through the stack in the **reverse**
 of the table order — `powered_by` first, `limit_payload` last (right before
 the route handler) — and the response flows back out the opposite way.
+
+## Paths under a nested router
+
+A middleware sees the request path as the router it wraps sees it. The
+`server.middlewares` stack wraps the whole app, so it sees the full path. A
+middleware applied to a router that is then mounted with axum's
+`Router::nest("/admin", ..)` (in `Hooks::after_routes`, say) sees the path
+with `/admin` already removed. Every path a middleware matches on, such as
+`respond_to.prefix` and `.json`, and any list of exempt path prefixes, is
+then matched **without** the nest prefix: write `/webhooks/`, not
+`/admin/webhooks/`. The full path is still in the request's `OriginalUri`
+extension.
 
 ## Full middleware set
 
@@ -231,7 +243,7 @@ If neither `file` nor `not_found` is set, the bundled `fallback.html` is served.
 | Name | Type | Default |
 |---|---|---|
 | `enable` | `bool` | `false` |
-| `extension` | `bool` | `true` — `/posts/1.json` answers as JSON |
+| `extension` | `bool` | `false` — set `true` and `/posts/1.json` answers as JSON. Off by default because a path parameter could then no longer end in `.json` |
 | `prefix` | `Option<String>` | `None` — e.g. `/api/v1` serves every route as JSON under it; a missing leading `/` is added |
 | `sign_in_path` | `Option<String>` | `None` — same-host redirects to this path (or below it, e.g. `/session/new?next=..`) answer `401 {"error":"signed_out"}` |
 

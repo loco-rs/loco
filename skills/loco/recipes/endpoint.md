@@ -221,6 +221,7 @@ server:
     respond_to:
       enable: true
       prefix: /api/v1
+      extension: true   # /posts/1.json; off by default
       sign_in_path: /session/new
 ```
 
