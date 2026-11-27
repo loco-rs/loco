@@ -784,12 +784,15 @@ since they restate the trait's own API.
 ## `controller::format`
 
 - `struct` **RenderBuilder**
+- `struct` **Responder** — Built by [`respond_to`]; see there
 - `fn` **empty**`() -> Result<Response>` — Returns an empty response
 - `fn` **empty_json**`() -> Result<Response>` — Respond with empty json (`{}`)
 - `fn` **html**`(content: &str) -> Result<Response>` — Returns an HTML response
 - `fn` **json**`(t: T) -> Result<Response>` — Returns a JSON response containing the provided data
 - `fn` **redirect**`(to: &str) -> Result<Response>` — Returns an redirect response
 - `fn` **render**`() -> RenderBuilder`
+- `fn` **respond_to**`(format: &RespondTo) -> Responder` — Answers one action in the format the request asked for, like Rails'
+- `fn` **respond_with**`(v: &V, format: &RespondTo, key: &str, data: S) -> Result<Response> where V: ViewRenderer, S: Serialize` — Renders `key` with `data` for a browser, or `data` itself as JSON for a
 - `fn` **template**`(template: &str, data: S) -> Result<Response> where S: Serialize` — Render template from string
 - `fn` **text**`(t: &str) -> Result<Response>` — Returns a response containing the provided text
 - `fn` **view**`(v: &V, key: &str, data: S) -> Result<Response> where V: ViewRenderer, S: Serialize` — Render template located by `key`
@@ -811,9 +814,17 @@ since they restate the trait's own API.
 - `fn` **template**`(self: Self, template: &str, data: S) -> Result<Response> where S: Serialize` — Render template located by `key`
 - `fn` **text**`(self: Self, content: &str) -> Result<Response>` — Finalize and return a text response
 - `fn` **view**`(self: Self, v: &V, key: &str, data: S) -> Result<Response> where V: ViewRenderer, S: Serialize` — Render template located by `key`
+
+### `Responder`
+
+- `fn` **any**`(self: Self, f: F) -> Self where F: FnOnce` — The answer for any format no earlier branch took, like Rails'
+- `fn` **html**`(self: Self, f: F) -> Self where F: FnOnce` — The answer for a browser (`text/html`)
+- `fn` **json**`(self: Self, f: F) -> Self where F: FnOnce` — The answer for `application/json`, `.json` paths and the JSON
+- `fn` **render**`(self: Self) -> Result<Response>` — The chosen branch's response
+- `fn` **xml**`(self: Self, f: F) -> Self where F: FnOnce` — The answer for `application/xml` or `text/xml`
 ## `controller::middleware`
 
-- `struct` **Config**` { compression: Option<Compression>, etag: Option<Etag>, limit_payload: Option<LimitPayload>, logger: Option<Config>, catch_panic: Option<CatchPanic>, timeout_request: Option<TimeOut>, cors: Option<Cors>, static_assets: Option<StaticAssets>, secure_headers: Option<SecureHeader>, remote_ip: Option<RemoteIpMiddleware>, fallback: Option<Fallback>, request_id: Option<RequestId> }` — Server middleware configuration structure
+- `struct` **Config**` { compression: Option<Compression>, etag: Option<Etag>, limit_payload: Option<LimitPayload>, logger: Option<Config>, catch_panic: Option<CatchPanic>, timeout_request: Option<TimeOut>, cors: Option<Cors>, static_assets: Option<StaticAssets>, secure_headers: Option<SecureHeader>, remote_ip: Option<RemoteIpMiddleware>, fallback: Option<Fallback>, request_id: Option<RequestId>, respond_to: Option<Config> }` — Server middleware configuration structure
 - `trait` **MiddlewareLayer** — Trait representing the behavior of middleware components in the application
 - `trait` **MiddlewareStackExt** — Ergonomic, Rails-style edits to a middleware stack
 - `fn` **default_middleware_stack**`(ctx: &AppContext) -> Vec<Box<dyn MiddlewareLayer>>`
@@ -861,7 +872,7 @@ since they restate the trait's own API.
 ## `controller::middleware::format`
 
 - `struct` **Format**
-- `enum` **RespondTo**
+- `enum` **RespondTo** — The format a request asked for
 - `fn` **get_respond_to**`(headers: &HeaderMap) -> RespondTo`
 
 ### `RespondTo`
@@ -908,6 +919,11 @@ since they restate the trait's own API.
 ### `LocoRequestId`
 
 - `fn` **get**`(self: &Self) -> &str` — Retrieves the request ID as a string slice
+## `controller::middleware::respond_to`
+
+- `struct` **Config**` { enable: bool, prefix: Option<String>, extension: bool, sign_in_path: Option<String> }` — `server.middlewares.respond_to` configuration
+- `struct` **Middleware** — The `respond_to` middleware. Build it with [`new`]
+- `fn` **new**`(config: &Config, ctx: &AppContext) -> Middleware` — Creates the middleware. It needs the [`AppContext`] because it routes
 ## `controller::middleware::secure_headers`
 
 - `struct` **SecureHeader**` { enable: bool, preset: String, overrides: Option<BTreeMap<String, String>> }` — Sets a predefined or custom set of secure headers

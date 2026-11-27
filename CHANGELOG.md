@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Added
+
+- `format::respond_to` and `format::respond_with`: one action answers HTML or JSON, like Rails' `respond_to`. The opt-in `respond_to` middleware serves any route as JSON under a prefix such as `/api/v1`, or at `<path>.json` with `extension: true` (off by default), turning redirects into `{"ok":true,"redirect":to}`, sign-in redirects into `401`, and HTML-only answers into `406`.
+- **Upgrading:** `middleware::Config` has a new `respond_to` field. Code that builds it as a struct literal without `..Default::default()` must add `respond_to: None`.
+
 ### Changed
 
 - Generated apps also get the skill under `.agents/skills/loco/`, alongside `.claude/skills/loco/`, for Zed, Cursor and other Agent Skills clients (#1857, @paoValle).

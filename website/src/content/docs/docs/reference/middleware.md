@@ -5,7 +5,7 @@ sidebar:
   order: 5
 ---
 
-Loco ships 13 built-in middlewares, all implementing the `MiddlewareLayer`
+Loco ships 14 built-in middlewares, all implementing the `MiddlewareLayer`
 trait (`src/controller/middleware/mod.rs:46-72`). Each is configured under
 `server.middlewares.<key>` in your environment YAML (`src/config/server.rs:44`)
 and is optional (`Option<T>`) — omit the key entirely to get the framework's
@@ -51,6 +51,18 @@ call at a time (`src/controller/app_routes.rs:305-309`). Axum's
 So an inbound request actually passes through the stack in the **reverse**
 of the table order — `powered_by` first, `limit_payload` last (right before
 the route handler) — and the response flows back out the opposite way.
+
+## Paths under a nested router
+
+A middleware sees the request path as the router it wraps sees it. The
+`server.middlewares` stack wraps the whole app, so it sees the full path. A
+middleware applied to a router that is then mounted with axum's
+`Router::nest("/admin", ..)` (in `Hooks::after_routes`, say) sees the path
+with `/admin` already removed. Every path a middleware matches on, such as
+`respond_to.prefix` and `.json`, and any list of exempt path prefixes, is
+then matched **without** the nest prefix: write `/webhooks/`, not
+`/admin/webhooks/`. The full path is still in the request's `OriginalUri`
+extension.
 
 ## Full middleware set
 
@@ -218,7 +230,24 @@ Table order = coding/config order (`default_middleware_stack`, `mod.rs:80-169`).
 
 If neither `file` nor `not_found` is set, the bundled `fallback.html` is served.
 
-### 13. `powered_by`
+### 13. `respond_to`
+
+- **Config key:** `respond_to` · **Struct:** `respond_to::Config { enable, prefix, extension, sign_in_path }` (`respond_to.rs`)
+- **Default:** **disabled**.
+- **Purpose:** answers any route as JSON when the path ends in `.json` or starts with `prefix`. It strips that part, routes the request to the same handler with `Accept: application/json` (so `Format`/`RespondTo` read `Json`), and turns browser responses into JSON: redirects become `{"ok":true,"redirect":to}`, a redirect to `sign_in_path` becomes `401`, an HTML-only success becomes `406`. See [Respond in multiple formats](/docs/how-to/respond-formats).
+- **Ordering:** it wraps the finished router, so it must stay after `fallback` and `static` in the stack.
+- **Security note:** middleware layered after it sees the path as sent (`/admin.json`, `/api/v1/admin`), not the route that runs. Do not guard routes by path in such a middleware; use `Routes::layer` or the handler.
+- **Prefix:** pick one no route uses. With `prefix: /api`, the starter's `/api/...` routes are no longer reachable.
+- **Knobs:**
+
+| Name | Type | Default |
+|---|---|---|
+| `enable` | `bool` | `false` |
+| `extension` | `bool` | `false` — set `true` and `/posts/1.json` answers as JSON. Off by default because a path parameter could then no longer end in `.json` |
+| `prefix` | `Option<String>` | `None` — e.g. `/api/v1` serves every route as JSON under it; a missing leading `/` is added |
+| `sign_in_path` | `Option<String>` | `None` — same-host redirects to this path (or below it, e.g. `/session/new?next=..`) answer `401 {"error":"signed_out"}` |
+
+### 14. `powered_by`
 
 - **Config key:** none — **not** part of `middleware::Config`; controlled by `server.ident: Option<String>` (`src/config/server.rs:40`). Struct: `powered_by::Middleware` via `powered_by::new(ctx.config.server.ident.as_deref())` (`powered_by.rs:27-58`)
 - **Default:** **enabled**, sets `Server`-identifying header `X-Powered-By: loco.rs`.
