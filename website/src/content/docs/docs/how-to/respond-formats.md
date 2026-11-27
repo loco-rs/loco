@@ -204,5 +204,6 @@ curl -s localhost:5150/api/v1/notes/1
 ## Next
 
 - [Render server-side views](/docs/how-to/render-views)
+- [Live page updates](/docs/how-to/live-updates): answer Turbo form posts with `<turbo-stream>` fragments
 - [Handle errors](/docs/how-to/handle-errors)
 - [Validate requests](/docs/how-to/validate-requests)

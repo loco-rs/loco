@@ -198,6 +198,46 @@ then a terminal `.json()`, `.text()`, `.html()`, `.empty()`, `.view()`,
 Reach for `render()` only when you need one of those; a plain `format::json(..)`
 is the normal case.
 
+### Live updates (Turbo Streams)
+
+Rails' `turbo_stream.*` responses and `broadcast_*_to` live in
+`loco_rs::controller::turbo`. Do not hand-write `<turbo-stream>` markup, and do
+not add a websocket crate just to push HTML.
+
+```rust
+use loco_rs::controller::turbo::{Broadcaster, TurboStream, TurboStreamRequest};
+
+#[debug_handler]
+async fn create(
+    State(ctx): State<AppContext>,
+    ViewEngine(v): ViewEngine<TeraView>,
+    turbo: TurboStreamRequest,
+    Form(params): Form<PostParams>,
+) -> Result<Response> {
+    let post = posts::Model::create_from(&ctx.db, &params).await?;
+    let stream = TurboStream::prepend("posts", "")
+        .render(&v, "posts/_post.html", data!({ "post": post }))?;
+    Broadcaster::from_store(&ctx.shared_store)?.broadcast("posts", stream.clone());
+    if turbo.0 {
+        return Ok(stream.into_response());
+    }
+    format::redirect("/posts")
+}
+```
+
+- `TurboStream::{append, prepend, replace, update, before, after, remove, refresh}`;
+  return several at once with `TurboStreams::new().push(..)`.
+- `TurboStreamRequest` (extractor) is `true` when `Accept` includes
+  `text/vnd.turbo-stream.html`. Turbo sends that on form submissions.
+- Push: insert `Broadcaster::default()` into `ctx.shared_store` in
+  `Hooks::after_context`. Serve `Broadcaster::from_store(&ctx.shared_store)?.sse("posts")`
+  on a route, and put `<turbo-stream-source src="/streams/posts">` in the page.
+  Authorise that route like any other handler.
+- Broadcasts stay in one process. Workers only reach browsers when they run in
+  the server process, and nothing fans out across several app processes.
+- Turbo's JS comes from a CDN `<script type="module">` in the layout. It is not
+  vendored.
+
 ## One action, HTML or JSON (`respond_to`)
 
 Rails' `respond_to do |format|` is `format::respond_to`. Do not write a second

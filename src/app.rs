@@ -477,6 +477,12 @@ pub trait Hooks: Send {
     /// Start serving the Axum web application on the specified address and
     /// port.
     ///
+    /// On a shutdown signal this runs [`Hooks::on_shutdown`], then ends the
+    /// open streams of the shared store's
+    /// [`Broadcaster`](crate::controller::turbo::Broadcaster), if any, so
+    /// connected browsers do not keep the server from stopping. An override
+    /// should do the same.
+    ///
     /// # Returns
     /// A Result indicating success () or an error if the server fails to start.
     async fn serve(app: AxumRouter, ctx: &AppContext, serve_params: &ServeParams) -> Result<()> {
@@ -484,7 +490,10 @@ pub trait Hooks: Send {
         serve_router(
             app,
             serve_params,
-            Box::pin(async move { Self::on_shutdown(&ctx).await }),
+            Box::pin(async move {
+                Self::on_shutdown(&ctx).await;
+                crate::controller::turbo::Broadcaster::shutdown_in(&ctx.shared_store);
+            }),
         )
         .await
     }

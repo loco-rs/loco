@@ -12,6 +12,11 @@
 - Notifications: `Channel::slack_for(key)` and `Channel::webhook_for(key)` queue only a key. The URL, signing secret and headers are looked up through the app's `Destinations` (registered with `notifications::set_destinations`) when the job runs, so per-record secrets never reach the queue table and a rotated secret applies to jobs already queued. Existing channels and queued jobs are unchanged. Jobs from `_for` channels use new job payload variants that older workers cannot read, so in a rolling deploy upgrade the workers before, or together with, the web nodes that start using `_for` channels. A `_for` key that is gone when the delivery runs inline (`deliver_now`, `ForegroundBlocking`, recording) is counted as `skipped` in the `Report`.
 - `loco_rs::net::OutboundGuard`: refuse outbound requests to loopback, private, link-local and other non-public addresses, checked on the address actually connected to (resolver, redirects and IP-literal URLs). The equivalent of Ruby's `ssrf_filter`.
 - `SignedWebhook<S>` extractor: verifies HMAC-SHA256 signatures on incoming webhooks (GitHub-style, Stripe-style timestamped, and Loco's own notification webhooks) against secrets under `webhooks:` in config, with constant-time comparison and a replay window. A source with no entry or an empty secret answers `500` and logs an error naming the `webhooks.<name>.secret` key to set.
+- Live page updates in the style of Turbo Streams (`loco_rs::controller::turbo`):
+  - `TurboStream` / `TurboStreams` responses (`append`, `prepend`, `replace`, `update`, `remove` and more), which can render a Tera partial.
+  - A `TurboStreamRequest` extractor that detects Turbo requests from the `Accept` header.
+  - An in-process `Broadcaster`, kept in the shared store, that pushes streams to `<turbo-stream-source>` over server-sent events.
+  - Broadcasts do not reach other processes yet. See the new "Live page updates" how-to.
 
 ### Changed
 

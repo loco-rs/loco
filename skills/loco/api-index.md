@@ -1038,6 +1038,59 @@ since they restate the trait's own API.
 - `fn` **ping**`() -> Result<Response>` — Check application ping endpoint
 - `fn` **readiness**`(__arg0: State<AppContext>) -> (StatusCode, Response)` — Check the readiness of the application by sending a ping request to
 - `fn` **routes**`() -> Routes` — Defines and returns the readiness-related routes
+## `controller::turbo`
+
+- `enum` **Action** — What a `<turbo-stream>` element does to its target
+- `struct` **Broadcaster** — In-process hub that delivers Turbo Stream messages to subscribers of a
+- `const` **CONTENT_TYPE** — The media type of a Turbo Stream response
+- `struct` **TurboStream** — One `<turbo-stream>` element
+- `struct` **TurboStreamRequest** — Extractor: `true` when the request accepts a Turbo Stream answer
+- `struct` **TurboStreams** — Several `<turbo-stream>` elements sent together
+- `fn` **accepts_turbo_stream**`(headers: &HeaderMap) -> bool` — Whether the request's `Accept` header asks for a Turbo Stream answer
+
+### `Action`
+
+- `variant` **After** — Insert the template after the target
+- `variant` **Append** — Append the template to the target's children
+- `variant` **Before** — Insert the template before the target
+- `variant` **Prepend** — Prepend the template to the target's children
+- `variant` **Refresh** — Ask the page to refresh itself
+- `variant` **Remove** — Remove the target element
+- `variant` **Replace** — Replace the target element itself
+- `variant` **Update** — Replace the target's children
+- `fn` **as_str**`(self: Self) -> &str` — The value of the `action` attribute
+
+### `Broadcaster`
+
+- `fn` **broadcast**`(self: &Self, stream: &str, message: impl Trait) -> usize` — Send `message` to everyone subscribed to `stream` and return how many
+- `fn` **from_store**`(store: &SharedStore) -> Result<Self>` — Fetch the broadcaster from the shared store
+- `fn` **new**`(capacity: usize) -> Self` — A hub whose subscribers buffer up to `capacity` messages each
+- `fn` **shutdown**`(self: &Self)` — End every open [`Broadcaster::sse`] stream, now and from now on, so a
+- `fn` **sse**`(self: &Self, stream: &str) -> Sse<impl Trait>` — Subscribe to `stream` and answer with a Server-Sent Events response, for
+- `fn` **subscribe**`(self: &Self, stream: &str) -> Receiver<String>` — Subscribe to `stream`. The receiver yields each message as HTML
+- `fn` **subscriber_count**`(self: &Self, stream: &str) -> usize` — Number of subscribers currently connected to `stream`
+
+### `TurboStream`
+
+- `fn` **after**`(target: impl Trait, html: impl Trait) -> Self` — `turbo_stream.after(target, html)`
+- `fn` **append**`(target: impl Trait, html: impl Trait) -> Self` — `turbo_stream.append(target, html)`
+- `fn` **before**`(target: impl Trait, html: impl Trait) -> Self` — `turbo_stream.before(target, html)`
+- `fn` **new**`(action: Action, target: impl Trait) -> Self` — A stream element acting on the element whose id is `target`
+- `fn` **new_all**`(action: Action, selector: impl Trait) -> Self` — A stream element acting on every element matching the CSS `selector`
+- `fn` **prepend**`(target: impl Trait, html: impl Trait) -> Self` — `turbo_stream.prepend(target, html)`
+- `fn` **refresh**`() -> Self` — `turbo_stream.refresh`: the page reloads itself (Turbo 8 morphing)
+- `fn` **remove**`(target: impl Trait) -> Self` — `turbo_stream.remove(target)`
+- `fn` **render**`(self: Self, v: &V, key: &str, data: S) -> Result<Self>` — Render the view at `key` and use it as the template
+- `fn` **replace**`(target: impl Trait, html: impl Trait) -> Self` — `turbo_stream.replace(target, html)`
+- `fn` **template**`(self: Self, html: impl Trait) -> Self` — Set the HTML placed inside `<template>`. It is inserted as is, so it
+- `fn` **to_html**`(self: &Self) -> String` — The element as HTML
+- `fn` **update**`(target: impl Trait, html: impl Trait) -> Self` — `turbo_stream.update(target, html)`
+
+### `TurboStreams`
+
+- `fn` **new**`() -> Self` — An empty list
+- `fn` **push**`(self: Self, stream: TurboStream) -> Self` — Add an element
+- `fn` **to_html**`(self: &Self) -> String` — All elements as HTML, one after another
 ## `controller::views`
 
 - `struct` **ViewEngine**
