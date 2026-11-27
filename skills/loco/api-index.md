@@ -1461,7 +1461,9 @@ since they restate the trait's own API.
 
 - `variant` **Email** — Email through the app's mailer. Empty `to` uses
 - `variant` **Slack** — A Slack incoming webhook. `None` uses `notifications.slack.webhook_url`
+- `variant` **SlackFor** — A Slack incoming webhook looked up by `key` through the app's
 - `variant` **Webhook** — A JSON `POST`. `None` uses `notifications.webhook.url` together with
+- `variant` **WebhookFor** — A JSON `POST` whose URL, secret and headers are looked up by `key`
 - `fn` **and_to**`(self: Self, recipient: impl Trait) -> Self` — Add another email recipient. No effect on other channels
 - `fn` **email**`() -> Self` — Email the default recipients from `notifications.email.to`
 - `fn` **email_to**`(to: impl Trait) -> Self` — Email a specific recipient. Chain [`Channel::and_to`] for more
@@ -1470,8 +1472,10 @@ since they restate the trait's own API.
 - `fn` **name**`(self: &Self) -> &str` — The channel's name in logs and job payloads
 - `fn` **signed**`(self: Self, with: impl Trait) -> Self` — Sign webhook requests with HMAC-SHA256 under `secret` (see
 - `fn` **slack**`() -> Self` — The default Slack webhook from `notifications.slack.webhook_url`
+- `fn` **slack_for**`(key: impl Trait) -> Self` — A Slack incoming webhook named by `key` (e.g. a project ID), looked up
 - `fn` **slack_url**`(url: impl Trait) -> Self` — A specific Slack incoming-webhook URL, e.g. one stored per team or
 - `fn` **webhook**`() -> Self` — The default webhook from `notifications.webhook`
+- `fn` **webhook_for**`(key: impl Trait) -> Self` — A webhook named by `key`, whose URL, secret and headers are looked up
 - `fn` **webhook_url**`(url: impl Trait) -> Self` — A specific webhook URL, unsigned unless [`Channel::signed`] is added
 
 ### `Message`
@@ -1498,8 +1502,27 @@ since they restate the trait's own API.
 
 - `variant` **Email**
 - `variant` **Slack**
+- `variant` **SlackFor** — A Slack message to the URL [`Destinations`] gives for `key`
 - `variant` **Webhook**
+- `variant` **WebhookFor** — A webhook to the URL, secret and headers [`Destinations`] gives for
 - `fn` **name**`(self: &Self) -> &str`
+## `notifications::destination`
+
+- `struct` **Destination**` { url: String, secret: Option<String>, headers: BTreeMap<String, String> }` — Where one delivery goes, as returned by [`Destinations::resolve`]
+- `trait` **Destinations** — Resolves the keys of [`Channel::slack_for`](super::Channel::slack_for)
+- `fn` **has_destinations**`(ctx: &AppContext) -> bool` — Whether `ctx` has [`Destinations`] registered
+- `fn` **set_destinations**`(ctx: &AppContext, destinations: impl Trait)` — Registers the app's [`Destinations`]. Call it once, from
+
+### `Destination`
+
+- `fn` **header**`(self: Self, name: impl Trait, value: impl Trait) -> Self` — Add a webhook request header
+- `fn` **new**`(url: impl Trait) -> Self` — A destination at `url`, unsigned and with no extra headers
+- `fn` **signed**`(self: Self, secret: impl Trait) -> Self` — Sign webhook requests under `secret`
+- `fn` **signed_opt**`(self: Self, secret: Option<String>) -> Self` — Sign webhook requests under `secret` when there is one
+
+### `Destinations`
+
+- `fn` **resolve**`(self: &Self, ctx: &AppContext, channel: &str, key: &str) -> Pin<Box<dyn Future + Send>>` — The destination for `key` on `channel` (`"slack"` or `"webhook"`),
 ## `notifications::email`
 
 - `struct` **EmailContent**` { subject: String, text: String, html: String }` — The rendered parts of a notification email

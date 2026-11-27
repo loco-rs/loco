@@ -43,8 +43,6 @@ pub struct DeployPaused {
     pub project: String,
     pub by: String,
     pub reason: String,
-    #[serde(skip)]
-    pub slack_url: Option<String>,
 }
 
 impl Notifier for DeployPaused {
@@ -56,27 +54,23 @@ impl Notifier for DeployPaused {
     }
 
     fn channels(&self, _ctx: &AppContext) -> Vec<Channel> {
-        let mut channels = vec![Channel::webhook(), Channel::email()];
-        // A per-project Slack URL from your database, or the default one.
-        channels.push(match &self.slack_url {
-            Some(url) => Channel::slack_url(url),
-            None => Channel::slack(),
-        });
-        channels
+        vec![Channel::slack(), Channel::webhook(), Channel::email()]
     }
 }
 ```
 
 `Notifier` is in the prelude; `Channel` and `Message` come from `loco_rs::notifications`. The struct must be `Serialize`: its fields are sent as `data` in webhook payloads (fields marked `#[serde(skip)]` are not).
 
-`channels` runs for every notification, so it can depend on the data, as above, or on `ctx` (no Slack outside production, say).
+`channels` runs for every notification, so it can depend on the data (each project's own Slack channel, see [per-record destinations](#per-record-destinations)) or on `ctx` (no Slack outside production, say).
 
 | constructor | destination |
 |---|---|
 | `Channel::slack()` | `notifications.slack.webhook_url` |
 | `Channel::slack_url(url)` | that incoming-webhook URL |
+| `Channel::slack_for(key)` | the URL your [destinations](#per-record-destinations) return for `key` when the job runs |
 | `Channel::webhook()` | `notifications.webhook` (URL, secret, headers) |
 | `Channel::webhook_url(url)` | that URL, unsigned; add `.signed(secret)` and `.header(name, value)` |
+| `Channel::webhook_for(key)` | the URL, secret and headers your destinations return for `key` when the job runs |
 | `Channel::email()` | `notifications.email.to` |
 | `Channel::email_to(addr)` | that address; add `.and_to(addr)` and `.from(sender)` |
 
@@ -92,7 +86,6 @@ async fn pause(
         project: params.project,
         by: current_user.name,
         reason: params.reason,
-        slack_url: None,
     }
     .deliver_later(&ctx)
     .await;
@@ -128,7 +121,86 @@ notifications:
 
 Every block is optional. A channel without a destination is **skipped with a warning**, not treated as an error: a default channel whose block is missing or whose URL is empty, or an explicit URL that is empty. So leaving `SLACK_WEBHOOK_URL` unset in development turns Slack off.
 
-Destinations and secrets that come from config are read when the job runs, so the Slack URL and the webhook secret never get written to the queue table. URLs and secrets you pass explicitly (`slack_url`, `.signed(..)`) do go into the job payload. An explicit `webhook_url` never receives the configured secret.
+Destinations and secrets that come from config are read when the job runs, so the Slack URL and the webhook secret never get written to the queue table. URLs and secrets you pass explicitly (`slack_url`, `.signed(..)`) do go into the job payload. An explicit `webhook_url` never receives the configured secret. For URLs and secrets stored per record, use `slack_for` and `webhook_for`, below.
+
+## Per-record destinations
+
+A Slack URL or a webhook secret stored on a project row is a credential. Passing it to `slack_url` or `.signed(..)` copies it into the job payload, where it sits in the queue table and goes stale if someone rotates it before the job runs.
+
+`Channel::slack_for(key)` and `Channel::webhook_for(key)` put only `key` in the job. When the job runs, the worker asks your `Destinations` for the URL, secret and headers, so a rotated secret takes effect for jobs already queued. It works the way an ActiveJob argument is a GlobalID that is loaded again when the job performs.
+
+To send `DeployPaused` to each project's own Slack channel instead of the shared one, give it the project's `pid` and use `slack_for` in place of `slack()`:
+
+```rust
+#[derive(Debug, Clone, Serialize)]
+pub struct DeployPaused {
+    pub project: String,
+    pub project_pid: String,
+    pub by: String,
+    pub reason: String,
+}
+
+impl Notifier for DeployPaused {
+    // message() as before
+
+    fn channels(&self, _ctx: &AppContext) -> Vec<Channel> {
+        vec![
+            Channel::slack_for(&self.project_pid),
+            Channel::webhook(),
+            Channel::email(),
+        ]
+    }
+}
+```
+
+Then tell Loco how to turn a key into a destination:
+
+```rust
+// src/app.rs
+use loco_rs::model::ModelError;
+use loco_rs::notifications::{self, Destination, Destinations};
+
+struct ProjectHooks;
+
+#[async_trait]
+impl Destinations for ProjectHooks {
+    async fn resolve(
+        &self,
+        ctx: &AppContext,
+        channel: &str, // "slack" or "webhook"
+        key: &str,
+    ) -> Result<Option<Destination>> {
+        let project = match projects::Model::find_by_pid(&ctx.db, key).await {
+            Ok(project) => project,
+            // The project was deleted after the job was queued.
+            Err(ModelError::EntityNotFound) => return Ok(None),
+            Err(err) => return Err(err.into()),
+        };
+        Ok(match channel {
+            "slack" => project.slack_url.map(Destination::new),
+            _ => project
+                .hook_url
+                .map(|url| Destination::new(url).signed_opt(project.hook_secret)),
+        })
+    }
+}
+
+impl Hooks for App {
+    // ..
+    async fn after_context(ctx: AppContext) -> Result<AppContext> {
+        notifications::set_destinations(&ctx, ProjectHooks);
+        Ok(ctx)
+    }
+}
+```
+
+- `Ok(None)`, or an empty URL, means the destination is gone (the project was deleted, the hook removed). The delivery is logged and dropped, not retried. Map "not found" to `Ok(None)` as above: `find_by_pid` returns `Err(ModelError::EntityNotFound)` for a missing row, and passing that on with `?` would retry a delivery that can never succeed.
+- When the delivery runs inline (`deliver_now`, `workers.mode: ForegroundBlocking`, or while recording in tests), a destination that is gone counts as `skipped` in the `Report`, not `accepted`. A queued delivery only finds out when the job runs.
+- An error (the database is down) fails the job, and the queue retries it.
+- `Destination::header(name, value)` adds webhook headers. A header set on the channel (`Channel::webhook_for(key).header(..)`) wins over one from the destination.
+- A `_for` channel is skipped with a warning when no destinations are registered or `key` is empty.
+
+The key is in the job payload, so use an identifier you don't mind being stored there, such as a `pid`. Header names are compared without regard to case, so a channel's `authorization` header replaces the destination's `Authorization` instead of being sent next to it.
 
 ### Private addresses are refused
 
@@ -138,7 +210,7 @@ The check is on the address the connection actually uses. A URL whose host is an
 
 Slack and webhook deliveries connect directly and ignore `HTTP_PROXY`, `HTTPS_PROXY` and `ALL_PROXY`, even for public hosts, because a proxy would look up the name out of the guard's reach. If your servers can only reach the internet through a proxy, deliveries will fail to connect; a warning is logged at startup when one of those variables is set. Either open direct outbound access for Slack and your webhook hosts, or set `allow_private: true`, which turns the guard off and uses the proxy again.
 
-A refused delivery cannot succeed on retry, so it is logged as an error and dropped, like a `4xx`. In development, when the receiver runs on your machine, allow it (`cargo loco generate notifier` adds this to `config/development.yaml` and `config/test.yaml`):
+A refused delivery cannot succeed on retry, so it is logged as a warning and dropped, never retried. When the delivery runs inline (`deliver_now`, `workers.mode: ForegroundBlocking`, or tests), it counts as `failed` in the `Report`, and `deliver_now` returns an error naming the channel. In development, when the receiver runs on your machine, allow it (`cargo loco generate notifier` adds this to `config/development.yaml` and `config/test.yaml`):
 
 ```yaml
 # config/development.yaml
@@ -268,7 +340,7 @@ notifications:
     webhook_url: "https://hooks.slack.com/services/test" # never called
 ```
 
-While recording is on, `deliver_later` and `deliver_now` render every channel, resolve its destination exactly as the worker would (config defaults, the webhook secret and headers, email recipients), and append the result to a recording on the `AppContext`. Nothing is enqueued and nothing goes over the network. Recording happens before the call returns in every worker mode, so the assertions can come straight after it:
+While recording is on, `deliver_later` and `deliver_now` render every channel, resolve its destination exactly as the worker would (config defaults, the webhook secret and headers, email recipients, your `Destinations` for `_for` channels), and append the result to a recording on the `AppContext`. Nothing is enqueued and nothing goes over the network. Recording happens before the call returns in every worker mode, so the assertions can come straight after it:
 
 ```rust
 use loco_rs::notifications::testing;
@@ -282,7 +354,6 @@ async fn pausing_notifies_slack() {
         project: "web".into(),
         by: "ana".into(),
         reason: "release freeze".into(),
-        slack_url: None,
     }
     .deliver_later(ctx)
     .await;
@@ -314,7 +385,7 @@ The API, in `loco_rs::notifications::testing`:
 - `record(&ctx)`: turn recording on for a context whose config does not set `stub`.
 - `is_recording(&ctx)`: whether recording is on.
 
-The recording belongs to the context, so tests that boot their own app do not see each other's deliveries. Channels are skipped while recording just as they are when sending, so a test with an unconfigured `Channel::webhook()` records nothing for it. A delivery whose destination cannot be resolved is counted as failed.
+The recording belongs to the context, so tests that boot their own app do not see each other's deliveries. Channels are skipped while recording just as they are when sending, so a test with an unconfigured `Channel::webhook()` records nothing for it. A delivery whose destination cannot be resolved is counted as failed; a `_for` key your `Destinations` reports gone is counted as skipped and not recorded.
 
 To exercise real sending instead, leave `stub` off and point the channels at a server your test controls. A test server listens on `127.0.0.1`, which the [outbound guard](#private-addresses-are-refused) refuses, so allow it in `config/test.yaml` (`cargo loco generate notifier` adds this for you):
 

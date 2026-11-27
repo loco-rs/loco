@@ -33,7 +33,7 @@ use std::{
 use serde::Serialize;
 use serde_json::Value;
 
-use super::{slack_url, webhook_destination, Delivery, Target};
+use super::{resolve, warn_gone, Delivery, Outcome, Resolved};
 use crate::{app::AppContext, Result};
 
 /// One delivery as it would have been sent.
@@ -90,31 +90,20 @@ impl Recorder {
             .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
-    /// Resolves `delivery` as the worker would and records it.
-    pub(super) fn record(&self, ctx: &AppContext, delivery: Delivery) -> Result<()> {
-        let config = ctx.config.notifications.as_ref();
+    /// Resolves `delivery` as the worker would and records it. A keyed
+    /// destination that no longer exists is dropped, as the worker does.
+    pub(super) async fn record(&self, ctx: &AppContext, delivery: Delivery) -> Result<Outcome> {
         let channel = delivery.target.name().to_string();
-        let (to, payload, headers, signed) = match delivery.target {
-            Target::Slack {
-                webhook_url,
-                payload,
-            } => (
-                vec![slack_url(config, webhook_url)?],
-                payload,
-                BTreeMap::new(),
-                false,
-            ),
-            Target::Webhook {
+        let (to, payload, headers, signed) = match resolve(ctx, delivery.target).await? {
+            Resolved::Slack { url, payload } => (vec![url], payload, BTreeMap::new(), false),
+            Resolved::Webhook {
                 url,
                 secret,
                 headers,
                 payload,
-            } => {
-                let (url, secret, headers) = webhook_destination(config, url, secret, headers)?;
-                (vec![url], payload, headers, secret.is_some())
-            }
+            } => (vec![url], payload, headers, secret.is_some()),
             #[cfg(feature = "mailer")]
-            Target::Email { to, from, content } => {
+            Resolved::Email { to, from, content } => {
                 let (to, from) = super::email::resolve(ctx, to, from)?;
                 let payload = serde_json::json!({
                     "from": from,
@@ -123,6 +112,10 @@ impl Recorder {
                     "html": content.html,
                 });
                 (to, payload, BTreeMap::new(), false)
+            }
+            Resolved::Gone { key } => {
+                warn_gone(&delivery.event, &channel, &key);
+                return Ok(Outcome::Gone);
             }
         };
         self.lock().push(Recorded {
@@ -134,7 +127,7 @@ impl Recorder {
             headers,
             signed,
         });
-        Ok(())
+        Ok(Outcome::Delivered)
     }
 }
 
