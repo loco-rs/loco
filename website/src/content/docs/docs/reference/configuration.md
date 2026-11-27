@@ -149,6 +149,20 @@ server:
 | `server.middlewares` | `middleware::Config` | optional — `#[serde(default)]` | `server.rs:44`. Struct is owned by the middleware area; see the middleware catalog reference for every middleware's keys |
 | `server.middlewares.respond_to` | `Option<respond_to::Config>` | optional, disabled by default | `enable`, `extension` (default `false`), `prefix`, `sign_in_path`. Serves routes as JSON at `<path>.json` and under `prefix`; see [Respond in multiple formats](/docs/how-to/respond-formats) |
 
+Forgery protection is one of those middlewares, off by default:
+
+```yaml
+server:
+  middlewares:
+    forgery_protection:
+      enable: true       # optional, default false
+      mode: header       # header (default) | token (needs `auth_session`)
+      exempt: []         # path prefixes never checked
+      trusted_origins: [] # extra origins allowed to post
+```
+
+See the middleware catalog (`forgery_protection`) for the token-mode keys.
+
 `Server::full_url() -> String` returns `"{host}:{port}"` (`server.rs:52-55`).
 
 ## `workers`

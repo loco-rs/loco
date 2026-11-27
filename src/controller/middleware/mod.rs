@@ -13,6 +13,7 @@ pub mod compression;
 pub mod cors;
 pub mod etag;
 pub mod fallback;
+pub mod forgery_protection;
 pub mod format;
 pub mod limit_payload;
 pub mod logger;
@@ -152,6 +153,11 @@ pub fn default_middleware_stack(ctx: &AppContext) -> Vec<Box<dyn MiddlewareLayer
                     ..Default::default()
                 }
             })),
+            // Forgery protection (CSRF), off unless configured
+            Box::new(forgery_protection::Middleware::new(
+                middlewares.forgery_protection.clone().unwrap_or_default(),
+                ctx,
+            )),
             // Logger middleware with default logger configuration
             Box::new(logger::new(
                 &middlewares
@@ -314,6 +320,10 @@ pub struct Config {
 
     /// Answer `.json` paths and a JSON prefix from the same actions.
     pub respond_to: Option<respond_to::Config>,
+
+    /// Refuses cross-site state-changing requests (CSRF), by `Sec-Fetch-Site`
+    /// / `Origin` or by authenticity token.
+    pub forgery_protection: Option<forgery_protection::ForgeryProtection>,
 }
 
 #[cfg(test)]

@@ -11,7 +11,7 @@ since they restate the trait's own API.
 
 `use loco_rs::prelude::*;` brings these into scope. They are already available — importing them again is redundant.
 
-`ActiveModelBehavior`, `ActiveModelTrait`, `ActiveValue`, `AppContext`, `Authenticable`, `BackgroundWorker`, `ColumnTrait`, `Condition`, `ConnectionTrait`, `CurrentUser`, `DatabaseConnection`, `Date`, `DateTime`, `DateTimeUtc`, `DateTimeWithTimeZone`, `DbErr`, `Decimal`, `Dir`, `EncryptedCookies`, `EntityTrait`, `Error`, `Expr`, `Form`, `Format`, `Identity`, `Initializer`, `IntoActiveModel`, `IntoResponse`, `Json`, `JsonValidate`, `JsonValidateWithMessage`, `Mailer`, `MaybeCurrentUser`, `MiddlewareStackExt`, `ModelError`, `ModelResult`, `ModelTrait`, `Multipart`, `Notifier`, `OAuthFailure`, `OAuthHandler`, `OrErr`, `Order`, `Pager`, `PagerMeta`, `PaginatorTrait`, `Path`, `Query`, `QueryFilter`, `QueryOrder`, `QuerySelect`, `Queue`, `RemoteIP`, `RespondTo`, `Response`, `Result`, `Routes`, `Session`, `SessionUser`, `Set`, `SharedStore`, `SignIn`, `SignedCookies`, `State`, `Task`, `TaskInfo`, `TenantActiveModelExt`, `TenantEntity`, `TenantQueryExt`, `TeraView`, `TransactionTrait`, `Uuid`, `Validatable`, `Validate`, `ValidatorTrait`, `ViewEngine`, `ViewRenderer`, `async_trait`, `auth`, `bad_request`, `cookie`, `data`, `debug_handler`, `delete`, `format`, `get`, `head`, `include_dir`, `mailer`, `not_found`, `notifications`, `options`, `patch`, `post`, `prelude`, `put`, `query`, `task`, `trace`, `unauthorized`, `validation`
+`ActiveModelBehavior`, `ActiveModelTrait`, `ActiveValue`, `AppContext`, `Authenticable`, `BackgroundWorker`, `ColumnTrait`, `Condition`, `ConnectionTrait`, `CsrfToken`, `CurrentUser`, `DatabaseConnection`, `Date`, `DateTime`, `DateTimeUtc`, `DateTimeWithTimeZone`, `DbErr`, `Decimal`, `Dir`, `EncryptedCookies`, `EntityTrait`, `Error`, `Expr`, `Form`, `Format`, `Identity`, `Initializer`, `IntoActiveModel`, `IntoResponse`, `Json`, `JsonValidate`, `JsonValidateWithMessage`, `Mailer`, `MaybeCurrentUser`, `MiddlewareStackExt`, `ModelError`, `ModelResult`, `ModelTrait`, `Multipart`, `Notifier`, `OAuthFailure`, `OAuthHandler`, `OrErr`, `Order`, `Pager`, `PagerMeta`, `PaginatorTrait`, `Path`, `Query`, `QueryFilter`, `QueryOrder`, `QuerySelect`, `Queue`, `RemoteIP`, `RespondTo`, `Response`, `Result`, `Routes`, `Session`, `SessionUser`, `Set`, `SharedStore`, `SignIn`, `SignedCookies`, `State`, `Task`, `TaskInfo`, `TenantActiveModelExt`, `TenantEntity`, `TenantQueryExt`, `TeraView`, `TransactionTrait`, `Uuid`, `Validatable`, `Validate`, `ValidatorTrait`, `ViewEngine`, `ViewRenderer`, `async_trait`, `auth`, `bad_request`, `cookie`, `data`, `debug_handler`, `delete`, `format`, `get`, `head`, `include_dir`, `mailer`, `not_found`, `notifications`, `options`, `patch`, `post`, `prelude`, `put`, `query`, `task`, `trace`, `unauthorized`, `validation`
 
 ## `loco_rs::testing::prelude`
 
@@ -824,7 +824,7 @@ since they restate the trait's own API.
 - `fn` **xml**`(self: Self, f: F) -> Self where F: FnOnce` — The answer for `application/xml` or `text/xml`
 ## `controller::middleware`
 
-- `struct` **Config**` { compression: Option<Compression>, etag: Option<Etag>, limit_payload: Option<LimitPayload>, logger: Option<Config>, catch_panic: Option<CatchPanic>, timeout_request: Option<TimeOut>, cors: Option<Cors>, static_assets: Option<StaticAssets>, secure_headers: Option<SecureHeader>, remote_ip: Option<RemoteIpMiddleware>, fallback: Option<Fallback>, request_id: Option<RequestId>, respond_to: Option<Config> }` — Server middleware configuration structure
+- `struct` **Config**` { compression: Option<Compression>, etag: Option<Etag>, limit_payload: Option<LimitPayload>, logger: Option<Config>, catch_panic: Option<CatchPanic>, timeout_request: Option<TimeOut>, cors: Option<Cors>, static_assets: Option<StaticAssets>, secure_headers: Option<SecureHeader>, remote_ip: Option<RemoteIpMiddleware>, fallback: Option<Fallback>, request_id: Option<RequestId>, respond_to: Option<Config>, forgery_protection: Option<ForgeryProtection> }` — Server middleware configuration structure
 - `trait` **MiddlewareLayer** — Trait representing the behavior of middleware components in the application
 - `trait` **MiddlewareStackExt** — Ergonomic, Rails-style edits to a middleware stack
 - `fn` **default_middleware_stack**`(ctx: &AppContext) -> Vec<Box<dyn MiddlewareLayer>>`
@@ -869,6 +869,34 @@ since they restate the trait's own API.
 
 - `struct` **Fallback**` { enable: bool, code: StatusCode, file: Option<String>, not_found: Option<String> }`
 - `struct` **StatusCodeWrapper**
+## `controller::middleware::forgery_protection`
+
+- `struct` **CsrfToken** — The request's authenticity token (`mode: token`)
+- `const` **DEFAULT_COOKIE** — Default name of the cookie that holds the token
+- `const` **DEFAULT_FIELD** — Default name of the form field that carries the token
+- `const` **DEFAULT_HEADER** — Default name of the request header that carries the token
+- `struct` **ForgeryProtection**` { enable: bool, mode: Mode, exempt: Vec<String>, trusted_origins: Vec<String>, field: String, header: String, cookie: String }` — `server.middlewares.forgery_protection` configuration
+- `struct` **Middleware** — The configured middleware, ready to apply. Built by
+- `enum` **Mode** — How requests are checked
+- `fn` **current_token**`() -> Option<CsrfToken>` — The token of the request being handled, if `forgery_protection` runs
+- `fn` **is_cross_site**`(headers: &HeaderMap, trusted: &[String]) -> bool` — Whether `headers` say a browser sent the request from another site
+- `fn` **is_unsafe**`(method: &Method) -> bool` — Whether `method` can change state. `GET`, `HEAD`, `OPTIONS` and `TRACE`
+
+### `CsrfToken`
+
+- `fn` **field**`(self: &Self) -> &str` — The form field name the middleware reads
+- `fn` **header**`(self: &Self) -> &str` — The request header the middleware reads
+- `fn` **masked**`(self: &Self) -> String` — A masked copy of the token, safe to embed in a page
+- `fn` **verify**`(self: &Self, candidate: &str) -> bool` — Whether `candidate` (a value from [`masked`](Self::masked)) matches
+
+### `Middleware`
+
+- `fn` **new**`(config: ForgeryProtection, ctx: &AppContext) -> Self` — The middleware for `config` in `ctx`
+
+### `Mode`
+
+- `variant` **Header** — Refuse requests whose `Sec-Fetch-Site` / `Origin` say they came from
+- `variant` **Token** — Require the authenticity token on every unsafe request
 ## `controller::middleware::format`
 
 - `struct` **Format**
