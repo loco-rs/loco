@@ -26,8 +26,5 @@ pub struct Model {
     pub magic_link_expiration: Option<DateTimeWithTimeZone>,
 }
 
-// sea-orm needs a `Relation` type even when a table has no relations.
-// `unknown_lints` keeps toolchains older than the `empty_enums` lint quiet.
-#[allow(unknown_lints, clippy::empty_enums)]
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
