@@ -38,9 +38,10 @@ use crate::storage::{
 
 /// How many secondary-store failures a [`ReplicatedStrategy`] tolerates before
 /// the overall operation is considered failed.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default, serde::Deserialize, serde::Serialize)]
 pub enum FailurePolicy {
     /// Fail if any secondary store errors.
+    #[default]
     FailIfAny,
     /// Never fail because of secondary-store errors.
     AllowAll,
