@@ -15,7 +15,7 @@ use axum::{
         header::{
             CACHE_CONTROL, CONTENT_LOCATION, DATE, ETAG, EXPIRES, IF_NONE_MATCH, SET_COOKIE, VARY,
         },
-        StatusCode,
+        HeaderValue, Method, StatusCode,
     },
     response::Response,
     Router as AXRouter,
@@ -53,6 +53,24 @@ impl MiddlewareLayer for Etag {
     }
 }
 
+/// Whether `If-None-Match` names the response's `etag` (RFC 9110 §13.1.2): `*`,
+/// or a list of entity tags compared weakly (`W/"x"` matches `"x"`). A header
+/// equal to the tag as a whole still matches, so unquoted tags keep working.
+fn none_match(if_none_match: &HeaderValue, etag: &HeaderValue) -> bool {
+    if if_none_match == etag {
+        return true;
+    }
+    let (Ok(list), Ok(etag)) = (if_none_match.to_str(), etag.to_str()) else {
+        return false;
+    };
+    let opaque = |tag: &str| {
+        let tag = tag.trim();
+        tag.strip_prefix("W/").unwrap_or(tag).to_string()
+    };
+    let etag = opaque(etag);
+    list.trim() == "*" || list.split(',').any(|tag| opaque(tag) == etag)
+}
+
 /// [`EtagLayer`] struct for adding `ETag` functionality as a Tower service
 /// layer.
 #[derive(Default, Clone)]
@@ -86,7 +104,12 @@ where
     }
 
     fn call(&mut self, request: Request) -> Self::Future {
-        let ifnm = request.headers().get(IF_NONE_MATCH).cloned();
+        // RFC 9110 §13.1.2: a matching `If-None-Match` answers 304 only for GET and
+        // HEAD. For any other method the handler has already run, so its response
+        // must not be replaced (412 would claim the request was not performed).
+        let ifnm = matches!(*request.method(), Method::GET | Method::HEAD)
+            .then(|| request.headers().get(IF_NONE_MATCH).cloned())
+            .flatten();
 
         let future = self.inner.call(request);
 
@@ -95,7 +118,8 @@ where
             let etag_from_response = response.headers().get(ETAG).cloned();
             if let Some(etag_in_request) = ifnm
                 && let Some(etag_from_response) = etag_from_response
-                && etag_in_request == etag_from_response
+                && response.status().is_success()
+                && none_match(&etag_in_request, &etag_from_response)
             {
                 // RFC 7232 §4.1: a 304 response must carry the header fields that a
                 // 200 would have sent for cache validation. Re-emit the validator and
@@ -136,5 +160,29 @@ where
             Ok(response)
         };
         Box::pin(res_fut)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn matches(if_none_match: &'static str, etag: &'static str) -> bool {
+        none_match(
+            &HeaderValue::from_static(if_none_match),
+            &HeaderValue::from_static(etag),
+        )
+    }
+
+    #[test]
+    fn if_none_match_follows_rfc_9110() {
+        assert!(matches("\"a\"", "\"a\""));
+        assert!(matches("loco-etag", "loco-etag"));
+        assert!(matches("\"x\", \"a\"", "\"a\""));
+        assert!(matches("*", "\"a\""));
+        assert!(matches("W/\"a\"", "\"a\""));
+        assert!(matches("\"a\"", "W/\"a\""));
+        assert!(!matches("\"b\"", "\"a\""));
+        assert!(!matches("\"x\", \"y\"", "\"a\""));
     }
 }
