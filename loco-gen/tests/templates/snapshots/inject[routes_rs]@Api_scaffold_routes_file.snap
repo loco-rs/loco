@@ -1,0 +1,18 @@
+---
+source: loco-gen/tests/templates/scaffold.rs
+expression: "fs::read_to_string(tree_fs.root.join(\"src/routes.rs\")).expect(\"routes.rs injection failed\")"
+---
+use loco_rs::{controller::AppRoutes, prelude::*};
+
+pub fn all() -> AppRoutes {
+    AppRoutes::with_default_routes()
+        .add_route(
+            Routes::new()
+                .prefix("/api/posts")
+                .add("/", get(crate::controllers::posts::list))
+                .add("/", post(crate::controllers::posts::create))
+                .add("/{id}", get(crate::controllers::posts::get_one))
+                .add("/{id}", put(crate::controllers::posts::update))
+                .add("/{id}", delete(crate::controllers::posts::remove))
+        )
+}

@@ -5,9 +5,24 @@ injections:
 - into: src/controllers/mod.rs
   append: true
   content: "pub mod {{ snake_plural }};"
+{% if has_routes_file -%}
+- into: src/routes.rs
+  after: "AppRoutes::"
+  content: |2-
+            .add_route(
+                Routes::new()
+                    .prefix("/api/{{ snake_plural }}")
+                    .add("/", get(crate::controllers::{{ snake_plural }}::list))
+                    .add("/", post(crate::controllers::{{ snake_plural }}::create))
+                    .add("/{id}", get(crate::controllers::{{ snake_plural }}::get_one))
+                    .add("/{id}", put(crate::controllers::{{ snake_plural }}::update))
+                    .add("/{id}", delete(crate::controllers::{{ snake_plural }}::remove))
+            )
+{% else -%}
 - into: src/app.rs
   after: "AppRoutes::"
   content: "            .add_route(controllers::{{ snake_plural }}::routes())"
+{% endif -%}
 ---
 #![allow(clippy::unused_async)]
 use axum::http::StatusCode;
@@ -32,7 +47,7 @@ fn not_found(message: &str) -> Response {
 }
 
 #[debug_handler]
-async fn list(
+{% if has_routes_file %}pub {% endif %}async fn list(
 {% if auth %}    _auth: auth::JWT,
 {% endif %}    State(ctx): State<AppContext>,
     Query(pagination): Query<query::PaginationQuery>,
@@ -49,7 +64,7 @@ async fn list(
 }
 
 #[debug_handler]
-async fn get_one(
+{% if has_routes_file %}pub {% endif %}async fn get_one(
 {% if auth %}    _auth: auth::JWT,
 {% endif %}    State(ctx): State<AppContext>,
     Path(id): Path<i64>,
@@ -61,7 +76,7 @@ async fn get_one(
 }
 
 #[debug_handler]
-async fn create(
+{% if has_routes_file %}pub {% endif %}async fn create(
 {% if auth %}    _auth: auth::JWT,
 {% endif %}    State(ctx): State<AppContext>,
     Json(params): Json<Create{{ pascal_singular }}>,
@@ -78,7 +93,7 @@ async fn create(
 }
 
 #[debug_handler]
-async fn update(
+{% if has_routes_file %}pub {% endif %}async fn update(
 {% if auth %}    _auth: auth::JWT,
 {% endif %}    State(ctx): State<AppContext>,
     Path(id): Path<i64>,
@@ -98,7 +113,7 @@ async fn update(
 }
 
 #[debug_handler]
-async fn remove(
+{% if has_routes_file %}pub {% endif %}async fn remove(
 {% if auth %}    _auth: auth::JWT,
 {% endif %}    State(ctx): State<AppContext>,
     Path(id): Path<i64>,
@@ -112,6 +127,7 @@ async fn remove(
     Ok(StatusCode::NO_CONTENT.into_response())
 }
 
+{% if not has_routes_file -%}
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api/{{ snake_plural }}")
@@ -121,3 +137,4 @@ pub fn routes() -> Routes {
         .add("/{id}", put(update))
         .add("/{id}", delete(remove))
 }
+{% endif -%}

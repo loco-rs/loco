@@ -91,6 +91,12 @@ React pages when the app has a `frontend/` and only the backend otherwise;
 a silent no-op — leave it off. Scaffolded handlers require a JWT unless you
 pass `--no-auth`; generated controllers are public unless you pass `--auth`.
 
+If the app has a `src/routes.rs` (a Rails-style single route table), `controller`
+and `scaffold` inject the route block there, after the line matching `AppRoutes::`,
+and generate the handlers `pub` with no `routes()` in the controller. `src/app.rs`
+is left alone. The file is the opt-in; there is no flag. Do not add the file to an
+app that does not have one unless the user asks for that layout.
+
 ### The column DSL
 
 `name:spec`, repeated. The spec grammar:
@@ -144,7 +150,7 @@ The generator gives you a correct, empty-bodied skeleton. Your work goes
 | After | The file to edit | What goes in it |
 |---|---|---|
 | `generate model posts` | `src/models/posts.rs` | finders on `impl Model`, state transitions on `impl ActiveModel`, `Validatable`, `before_save` |
-| `generate controller` | `src/controllers/<name>.rs` | handler bodies; add routes to the existing `routes()` |
+| `generate controller` | `src/controllers/<name>.rs` | handler bodies; add routes to the existing `routes()` (or to the block in `src/routes.rs` when the app has one) |
 | `generate worker` | `src/workers/<name>.rs` | fill `WorkerArgs`, write `perform` |
 | `generate task` | `src/tasks/<name>.rs` | write `run`; read args from the `Vars` it hands you |
 | `generate mailer` | `src/mailers/<name>.rs` + its `templates/` | the send method and the html/text/subject templates |

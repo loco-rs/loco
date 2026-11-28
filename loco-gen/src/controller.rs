@@ -22,8 +22,7 @@ pub fn generate(
         .iter()
         .map(|action| json!({"name": action, "verb": verb_for(action)}))
         .collect::<Vec<_>>();
-    let vars =
-        json!({"name": name, "actions": actions, "auth": auth, "pkg_name": appinfo.app_name});
+    let vars = json!({"name": name, "actions": actions, "auth": auth, "pkg_name": appinfo.app_name, "has_routes_file": appinfo.has_routes_file()});
     r#gen::render_template(rrgen, Path::new("controller/api"), &vars)
 }
 
