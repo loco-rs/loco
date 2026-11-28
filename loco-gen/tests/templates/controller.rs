@@ -160,7 +160,6 @@ fn actions_are_wired_to_the_verb_their_name_implies() {
         .expect("controller file missing");
 
     for (action, verb) in [
-        ("index", "get"),
         ("show", "get"),
         ("create", "post"),
         ("update", "put"),
@@ -186,5 +185,73 @@ fn actions_are_wired_to_the_verb_their_name_implies() {
     assert!(
         test.contains("request.delete(\"/api/movies/delete\")"),
         "the generated test should DELETE a DELETE route:\n{test}"
+    );
+}
+
+/// `index` is always generated, wired to `/`. Asking for it as well (the
+/// first action a Rails user types) used to write a second `fn index`, and the
+/// app stopped compiling with "the name `index` is defined multiple times".
+/// A repeated action broke the build the same way.
+#[test]
+fn index_and_repeated_actions_get_one_handler_each() {
+    let component = Component::Controller {
+        name: "post".to_string(),
+        actions: ["index", "show", "show"]
+            .iter()
+            .map(ToString::to_string)
+            .collect(),
+        auth: false,
+    };
+
+    let tree_fs = tree_fs::TreeBuilder::default()
+        .drop(true)
+        .add_empty("src/controllers/mod.rs")
+        .add_empty("tests/requests/mod.rs")
+        .add("src/app.rs", APP_ROUTS)
+        .create()
+        .unwrap();
+
+    let rrgen = RRgen::with_working_dir(&tree_fs.root);
+    generate(
+        &rrgen,
+        component,
+        &AppInfo {
+            app_name: "tester".to_string(),
+            working_dir: tree_fs.root.clone(),
+        },
+    )
+    .expect("Generation failed");
+
+    let controller = fs::read_to_string(tree_fs.root.join("src/controllers/post.rs"))
+        .expect("controller file missing");
+    assert_eq!(
+        controller.matches("pub async fn index(").count(),
+        1,
+        "`index` must be defined once:\n{controller}"
+    );
+    assert_eq!(
+        controller.matches("pub async fn show(").count(),
+        1,
+        "a repeated action must be defined once:\n{controller}"
+    );
+    assert!(
+        controller.contains(".add(\"/\", get(index))"),
+        "`index` stays on the root route:\n{controller}"
+    );
+    assert!(
+        !controller.contains(".add(\"index\""),
+        "`index` must not get a second route at `/index`:\n{controller}"
+    );
+
+    let test =
+        fs::read_to_string(tree_fs.root.join("tests/requests/post.rs")).expect("test file missing");
+    assert_eq!(
+        test.matches("async fn can_call_show(").count(),
+        1,
+        "the generated tests must not repeat either:\n{test}"
+    );
+    assert!(
+        !test.contains("async fn can_call_index("),
+        "`index` is covered by `can_get_posts`:\n{test}"
     );
 }

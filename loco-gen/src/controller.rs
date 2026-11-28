@@ -18,13 +18,32 @@ pub fn generate(
     auth: bool,
     appinfo: &AppInfo,
 ) -> Result<GenerateResults> {
-    let actions = actions
-        .iter()
+    let actions = handler_actions(actions)
+        .into_iter()
         .map(|action| json!({"name": action, "verb": verb_for(action)}))
         .collect::<Vec<_>>();
     let vars =
         json!({"name": name, "actions": actions, "auth": auth, "pkg_name": appinfo.app_name});
     r#gen::render_template(rrgen, Path::new("controller/api"), &vars)
+}
+
+/// The actions that get a handler of their own, in the order given.
+///
+/// The template always writes `index` (wired to the controller's root, `/`),
+/// so `index` among the actions would be a second `fn index` and the app would
+/// stop compiling ("the name `index` is defined multiple times"). `index` is
+/// the first action a Rails user types (`rails g controller posts index show`),
+/// so it is dropped here rather than rejected. A repeated action would be a
+/// duplicate function the same way, so repeats are dropped too.
+fn handler_actions(actions: &[String]) -> Vec<&str> {
+    let mut seen = Vec::new();
+    for action in actions {
+        let action = action.as_str();
+        if action != "index" && !seen.contains(&action) {
+            seen.push(action);
+        }
+    }
+    seen
 }
 
 /// The HTTP method a reader expects an action to answer on.

@@ -65,6 +65,10 @@
   config structs).
 - Generated apps also get the skill under `.agents/skills/loco/`, alongside `.claude/skills/loco/`, for Zed, Cursor and other Agent Skills clients (#1857, @paoValle).
 
+### Fixed
+
+- `cargo loco generate controller` no longer writes a second `fn index` when `index` is among the actions (`generate controller posts index show`), or a duplicate handler for an action given twice. Both stopped the app from compiling. (#1924)
+
 ## 1.3.1 - 2026-11-05
 
 ### Fixed
