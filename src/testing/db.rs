@@ -157,7 +157,11 @@ impl TestSupport for PostgresTest {
                 let pool = Pool::<Postgres>::connect(&connection_string)
                     .await
                     .expect("db connection should success");
-                let query = format!("drop database if exists {table_name};");
+                // `with (force)` (PostgreSQL 13+) ends the connections the app's pool
+                // still holds when the test drops the boot result; without it the drop
+                // fails with "is being accessed by other users" and the expect panics
+                // inside `Drop`. `tests_cfg::postgres` drops its databases the same way.
+                let query = format!("drop database if exists {table_name} with (force);");
                 sqlx::query(AssertSqlSafe(query))
                     .execute(&pool)
                     .await
