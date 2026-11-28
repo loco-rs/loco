@@ -11,6 +11,7 @@ pub use engine as engines;
 
 use axum::{extract::FromRequestParts, http::request::Parts, Extension};
 use serde::Serialize;
+pub mod helpers;
 pub mod tera_builtins;
 use crate::Result;
 

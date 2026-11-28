@@ -7,6 +7,8 @@ sidebar:
 
 Goal: add realtime, bidirectional communication (chat, live updates, notifications) to a Loco app.
 
+If the server only needs to push HTML changes to open pages (new comments, status changes), you may not need a websocket at all. See [Live page updates](/docs/how-to/live-updates), which uses Turbo Streams over server-sent events.
+
 Loco doesn't ship a built-in websocket abstraction. Because a Loco app compiles down to a real `axum::Router<AppContext>` (see [Coming from Axum](/docs/explanation/coming-from-axum)), any Axum-compatible websocket layer mounts onto it the same way it would onto a hand-rolled Axum app — there's no Loco-specific API to learn for this, and no Loco-specific limitation either.
 
 ## Chat room example

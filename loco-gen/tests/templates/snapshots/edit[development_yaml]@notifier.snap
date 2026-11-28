@@ -10,3 +10,5 @@ server:
 notifications:
   slack:
     webhook_url: <%= get_env(name="SLACK_WEBHOOK_URL", default="") %>
+  outbound:
+    allow: [localhost, 127.0.0.1, "::1"]

@@ -83,6 +83,26 @@ request_with_config::<App, _, _>(config, |request, _ctx| async move {
 
 > **Gotcha:** `RequestConfig::default_scheme` is *not* forwarded to axum-test's underlying `TestServerConfig` — only `default_content_type` and `save_cookies` are. Setting `.default_scheme(...)` has no observable effect today; don't rely on it to force `https`.
 
+### Sign in without the sign-in flow
+
+With the `auth_session` feature, `sign_in` (Devise's `sign_in user`) gives the test server a session for a user id, so handlers behind `CurrentUser` can be tested without posting a login form or faking an OAuth provider. It writes the session to whichever `auth.session.store` the app uses, and needs no `save_cookies`:
+
+```rust
+use loco_rs::testing::prelude::*;
+
+request::<App, _, _>(|mut request, ctx| async move {
+    let user = users::Model::find_by_email(&ctx.db, "user1@example.com").await.unwrap();
+    sign_in(&mut request, &ctx, user.pid.to_string()).await.unwrap();
+    request.get("/dashboard").await.assert_status_ok();
+
+    request.clear_cookies(); // signed out
+    request.get("/dashboard").await.assert_status_unauthorized();
+})
+.await;
+```
+
+The id is what `SessionUser::find_by_session_id` receives.
+
 ## 5. Reach for `boot_test` directly when you don't need HTTP
 
 `request` is a thin wrapper: it calls `boot_test::<App>()` to boot the app, then wraps the router in a `TestServer`. If you don't need to go through HTTP at all — e.g. you're testing a model or service function directly — call `boot_test` yourself and skip the server:

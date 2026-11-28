@@ -42,7 +42,8 @@ This page is a dictionary of every key Loco's configuration loader understands. 
 | `auth` | `Option<`[`Auth`](#auth)`>` | optional | `mod.rs:78` |
 | `workers` | [`Workers`](#workers) | optional — `#[serde(default)]` | `mod.rs:79-80` |
 | `mailer` | `Option<`[`Mailer`](#mailer)`>` | optional | `mod.rs:81` |
-| `notifications` | `Option<Notifications>` | optional — `#[serde(default)]` | `mod.rs:83-84`, `notifications.rs`; Slack, webhook and email defaults plus `max_retries`, `retry_backoff_secs`, `timeout_secs`, and `stub` (record instead of send, for tests). See [Send notifications](/docs/how-to/send-notifications#4-configure-the-channels) |
+| `notifications` | `Option<Notifications>` | optional — `#[serde(default)]` | `mod.rs:83-84`, `notifications.rs`; Slack, webhook and email defaults plus `max_retries`, `retry_backoff_secs`, `timeout_secs`, `stub` (record instead of send, for tests), and `outbound` (`allow_private`, `allow`: which non-public addresses Slack and webhook deliveries may reach; refused by default). See [Send notifications](/docs/how-to/send-notifications#4-configure-the-channels) and [Private addresses are refused](/docs/how-to/send-notifications#private-addresses-are-refused) |
+| `webhooks` | `BTreeMap<String, `[`Webhook`](#webhooks)`>` | optional — `#[serde(default)]`, empty | `webhooks.rs`; signing secrets for incoming webhooks, keyed by source name |
 | `initializers` | `Option<Initializers>` (= `Option<BTreeMap<String, serde_json::Value>>`) | optional | `mod.rs:85`, type alias at `mod.rs:117` |
 | `settings` | `Option<serde_json::Value>` | optional — `#[serde(default)]` | `mod.rs:99-100`; free-form app settings, surfaced at `ctx.config.settings` |
 | `scheduler` | `Option<scheduler::Config>` | optional | `mod.rs:102`; struct owned by the scheduler area, not detailed here |
@@ -95,6 +96,8 @@ auth:
     max_age: 2592000            # optional, seconds (cookie store only)
     secure: true                # optional, default: server.host is https://
     sign_in_path: /login        # optional
+    return_to_param: return_to  # optional
+    navigational_formats: [html] # optional
     store: cookie               # cookie | database | redis
     ttl: 86400                  # optional, seconds; database or redis
     remember_for: 1209600       # optional, seconds; needs database or redis
@@ -103,6 +106,8 @@ auth:
     after_sign_in_path: /
     after_sign_out_path: /
     failure_path: /login
+    origin_param: return_to     # optional
+    state_cookie_name: loco_oauth_state # optional
     providers:
       github:
         client_id: <%= get_env(name="GITHUB_CLIENT_ID") %>
@@ -116,15 +121,19 @@ auth:
 | `auth.session.max_age` | `Option<u64>` | optional, default 30 days | Cookie store only: the cookie `Max-Age` and the server-enforced expiry inside the signed value. Server-side stores use `ttl`, and their session cookie has no `Max-Age` |
 | `auth.session.ttl` | `Option<u64>` | optional, default 1 day | Server-side stores only: how long an idle session lives, in seconds, at least 1. It slides on use |
 | `auth.session.secure` | `Option<bool>` | optional | Default: on when `server.host` starts with `https://` |
-| `auth.session.sign_in_path` | `Option<String>` | optional | Where `CurrentUser` redirects signed-out HTML requests (`?return_to=` appended); without it they get `401` |
+| `auth.session.sign_in_path` | `Option<String>` | optional | Where `CurrentUser` redirects signed-out navigational requests (`?return_to=` appended); without it they get `401` |
+| `auth.session.return_to_param` | `Option<String>` | optional, default `return_to` | The query parameter that redirect adds. Also the default of `auth.oauth.origin_param` |
+| `auth.session.navigational_formats` | `Option<Vec<String>>` | optional, default `[html]` | `Accept` types that get the redirect rather than `401`: `html`, `turbo_stream`, `json`, `xml`, `"*/*"` (also matches a missing `Accept`), `any` (every request) or a media type. Devise's setting of the same name |
 | `auth.session.store` | `cookie` \| `database` \| `redis` | optional, default `cookie` | `cookie`: the signed cookie holds the session. `database`: a `loco_sessions` table (Postgres and SQLite, created on first use); `redis`: keys with a TTL. Both server-side stores put only a random id in the cookie. See [Server-side sessions and remember me](/docs/how-to/oauth-sign-in#server-side-sessions-and-remember-me) |
 | `auth.session.remember_for` | `Option<u64>` | optional, default 14 days | Lifetime of a remember-me series, in seconds. Fixed from the sign-in; rotation does not extend it. Unset, it is 14 days, or `ttl` plus one day when `ttl` is 13 days or more. Setting it with `store: cookie`, to no more than `ttl`, or over 400 days is a boot error |
 | `auth.session.remember_cookie_name` | `Option<String>` | optional, default `loco_remember` | Must differ from `cookie_name` |
 | `auth.session.redis_uri` | `Option<String>` | optional | Redis for `store: redis`; default is the `cache` Redis URI |
 | `auth.oauth.base_url` | `Option<String>` | optional | Public origin for callback URLs; default `server.full_url()` |
-| `auth.oauth.after_sign_in_path` | `Option<String>` | optional, default `/` | Used when neither `return_to` nor `SignIn::redirect_to` is set |
+| `auth.oauth.after_sign_in_path` | `Option<String>` | optional, default `/` | Used when neither `return_to` nor `SignIn::redirect_to` is set. Wins over the `Referer` |
 | `auth.oauth.after_sign_out_path` | `Option<String>` | optional, default `/` | |
 | `auth.oauth.failure_path` | `Option<String>` | optional | Default failure handler redirects here with `?error=&provider=`; without it, a minimal `401` page |
+| `auth.oauth.origin_param` | `Option<String>` | optional, default `auth.session.return_to_param` | Query parameter of `/auth/{provider}` naming where to land after sign-in; same-site paths only; not `remember`. Without it, a same-site `Referer` is used when nothing else names a landing page |
+| `auth.oauth.state_cookie_name` | `Option<String>` | optional, default `loco_oauth_state` | Prefix of the encrypted state cookie; `_<provider>` is appended |
 | `auth.oauth.providers.<name>` | `OAuthProviderConfig` | at least one | `strategy` (`github`/`google`/`generic`; inferred from the name for `github`/`google`), `client_id`, `client_secret`, `scopes`, `base_url`, `api_url`, `authorize_url`, `token_url`, `userinfo_url`, `emails_url`, `redirect_uri`, `authorize_params` (map), `pkce` (default `true`), `token_auth` (`post`/`basic`) |
 
 ## `server`
@@ -147,6 +156,21 @@ server:
 | `server.host` | `String` | required | `server.rs:38` |
 | `server.ident` | `Option<String>` | optional | `server.rs:40`. When set, replaces the `Server` header value |
 | `server.middlewares` | `middleware::Config` | optional — `#[serde(default)]` | `server.rs:44`. Struct is owned by the middleware area; see the middleware catalog reference for every middleware's keys |
+| `server.middlewares.respond_to` | `Option<respond_to::Config>` | optional, disabled by default | `enable`, `extension` (default `false`), `prefix`, `sign_in_path`. Serves routes as JSON at `<path>.json` and under `prefix`; see [Respond in multiple formats](/docs/how-to/respond-formats) |
+
+Forgery protection is one of those middlewares, off by default:
+
+```yaml
+server:
+  middlewares:
+    forgery_protection:
+      enable: true       # optional, default false
+      mode: header       # header (default) | token (needs `auth_session`)
+      exempt: []         # path prefixes never checked
+      trusted_origins: [] # extra origins allowed to post
+```
+
+See the middleware catalog (`forgery_protection`) for the token-mode keys.
 
 `Server::full_url() -> String` returns `"{host}:{port}"` (`server.rs:52-55`).
 
@@ -474,6 +498,28 @@ storage:
 If the corresponding feature (`storage_aws_s3` / `storage_gcp` / `storage_azure`) is not compiled in, that `kind` value will fail to deserialize.
 
 `Hooks::after_context` still runs after this config builds the default store (`boot::create_context`, `src/boot.rs`), and can freely replace `ctx.storage` — see [Configure file storage](/docs/how-to/configure-storage) for the multi-store/strategy case, which has no dedicated YAML key.
+
+## `webhooks`
+
+`struct Webhook` — `src/config/webhooks.rs`. One entry per incoming webhook source, keyed by the `NAME` of the `WebhookSource` type the `SignedWebhook<S>` extractor is given. See [Verify signed webhooks](/docs/how-to/verify-webhooks).
+
+| Key | Type | Default | Notes |
+|---|---|---|---|
+| `secret` | `String` | required | Shared signing secret. Empty refuses every request (500) |
+| `scheme` | `hmac` \| `timestamped` \| `loco` | `hmac` | `hmac`: `HMAC-SHA256(secret, body)` in one header (GitHub). `timestamped`: `t=<secs>,v1=<sig>` over `"{t}.{body}"` (Stripe). `loco`: what Loco's own notification webhooks send |
+| `header` | `Option<String>` | per scheme | `X-Hub-Signature-256`, `Stripe-Signature`, `X-Loco-Signature` |
+| `prefix` | `Option<String>` | `sha256=` | Text before the digest for `hmac` and `loco`; `""` for none |
+| `encoding` | `hex` \| `base64` | `hex` | How the digest is written |
+| `tolerance_secs` | `u64` | `300` | Replay window for `timestamped` and `loco` |
+
+```yaml
+webhooks:
+  github:
+    secret: <%= get_env(name="GITHUB_WEBHOOK_SECRET", default="") %>
+  stripe:
+    secret: <%= get_env(name="STRIPE_WEBHOOK_SECRET", default="") %>
+    scheme: timestamped
+```
 
 ## `initializers`, `settings`, `scheduler`
 

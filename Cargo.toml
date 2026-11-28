@@ -68,8 +68,9 @@ auth_session_encrypted = ["auth_session", "axum-extra/cookie-private"]
 # "Sign in with GitHub / Google / any OAuth2 provider": mountable
 # `/auth/{provider}` routes, an `OAuthHandler` trait and a normalized
 # `Identity`. Brings an HTTP client (reqwest 0.12 on rustls + ring, so still no
-# C toolchain) for the token exchange and profile fetch.
-auth_oauth = ["auth_session", "dep:reqwest"]
+# C toolchain) for the token exchange and profile fetch, and the encrypted
+# cookies that keep its state cookie (PKCE verifier, `return_to`) unreadable.
+auth_oauth = ["auth_session_encrypted", "dep:reqwest"]
 # Notifiers delivered in the background to Slack incoming webhooks, signed
 # JSON webhooks and (with `mailer`) email. Brings the same reqwest 0.12 on
 # rustls + ring as `auth_oauth`, and RustCrypto HMAC for webhook signatures.
@@ -171,7 +172,7 @@ sea-orm = { version = "2.0", features = [
     "macros",
 ], optional = true }
 
-tokio = { version = "1.45", default-features = false, features = ["fs", "signal", "time"] }
+tokio = { version = "1.45", default-features = false, features = ["fs", "signal", "sync", "time"] }
 tokio-util = { version = "0.7", features = ["io"] }
 # the rest
 
@@ -231,7 +232,9 @@ sha2 = { version = "0.10", optional = true }
 base64 = { version = "0.22", optional = true }
 validator = { version = "0.20.0", features = ["derive"] }
 futures-util = "0.3"
-tower = { workspace = true }
+# `util` is already on through axum; named here for `ServiceExt::oneshot`.
+tower = { workspace = true, features = ["util"] }
+http-body-util = "0.1"
 bytes = "1.11"
 axum-client-ip = { version = "1.3", features = ["forwarded-header"] }
 semver = { version = "1", features = ["serde"] }

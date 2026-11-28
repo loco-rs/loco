@@ -30,7 +30,11 @@ impl Notifier for QueuePaused {
     ///
     /// Other channels: `Channel::slack_url(url)`, `Channel::webhook()`,
     /// `Channel::webhook_url(url).signed(secret)`, `Channel::email()` and
-    /// `Channel::email_to(address)` (needs the `mailer` feature).
+    /// `Channel::email_to(address)` (needs the `mailer` feature). For a URL or
+    /// secret stored per record, use `Channel::slack_for(key)` or
+    /// `Channel::webhook_for(key)`: only the key is queued, and the
+    /// `Destinations` registered with `notifications::set_destinations` look
+    /// it up when the job runs.
     fn channels(&self, _ctx: &AppContext) -> Vec<Channel> {
         vec![Channel::slack()]
     }

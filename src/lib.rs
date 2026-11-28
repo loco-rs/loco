@@ -44,6 +44,7 @@ pub mod hash;
 pub mod logger;
 #[cfg(feature = "mailer")]
 pub mod mailer;
+pub mod net;
 #[cfg(feature = "notifications")]
 pub mod notifications;
 pub mod scheduler;

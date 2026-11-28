@@ -87,6 +87,7 @@ pub mod format;
 pub mod middleware;
 pub mod monitoring;
 mod routes;
+pub mod turbo;
 pub mod views;
 
 /// Create an unauthorized error with a specified message.

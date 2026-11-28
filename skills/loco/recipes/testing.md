@@ -45,6 +45,17 @@ async fn can_register() {
 concurrent tests share one database and interfere — a class of flake that looks
 like a real bug.
 
+Behind session auth (`CurrentUser`), sign in with `sign_in` from the prelude
+(Devise's `sign_in user`) instead of posting a login form or faking a provider:
+
+```rust no-syntax-check="closure body fragment"
+request::<App, _, _>(|mut request, ctx| async move {
+    sign_in(&mut request, &ctx, user.pid.to_string()).await.unwrap();
+    request.get("/dashboard").await.assert_status_ok();
+    request.clear_cookies(); // signed out
+})
+```
+
 ## Asserting that mail was sent
 
 With `mailer: { stub: true }` in `config/test.yaml`, nothing leaves the process

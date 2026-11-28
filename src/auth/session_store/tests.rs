@@ -699,6 +699,23 @@ fn configured(f: impl FnOnce(&mut SessionConfig)) -> Config {
 }
 
 #[test]
+fn return_to_param_must_be_a_parameter_name() {
+    validate(&configured(|s| {
+        s.return_to_param = Some("next".to_string())
+    }))
+    .unwrap();
+    for bad in ["", "a b", "a&b", "a=b", "a#b"] {
+        let err = validate(&configured(|s| s.return_to_param = Some(bad.to_string())))
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("auth.session.return_to_param"),
+            "{bad:?}: {err}"
+        );
+    }
+}
+
+#[test]
 fn a_zero_ttl_is_rejected() {
     let err = validate(&configured(|s| s.ttl = Some(0)))
         .unwrap_err()

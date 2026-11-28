@@ -5,3 +5,5 @@ pub mod redaction;
 pub mod request;
 #[cfg(feature = "testing-html")]
 pub mod selector;
+#[cfg(feature = "auth_session")]
+pub mod session;

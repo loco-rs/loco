@@ -60,6 +60,8 @@ pub const DEV_SESSION_SECRET: &str =
 ///     max_age: 2592000      # seconds; 30 days (cookie store only)
 ///     secure: true          # default: true when `server.host` is https
 ///     sign_in_path: /login  # where `CurrentUser` sends signed-out browsers
+///     return_to_param: return_to     # the query parameter carrying the path back
+///     navigational_formats: [html]   # requests redirected; the rest get 401
 ///     # Where the session lives: `cookie` (default), `database` or `redis`.
 ///     # Server-side stores keep the data on the server (the cookie carries
 ///     # only a signed random id), so a session can be revoked.
@@ -91,10 +93,25 @@ pub struct SessionConfig {
     /// Force the `Secure` cookie flag on or off. Default: on when
     /// `server.host` starts with `https://`.
     pub secure: Option<bool>,
-    /// Where `CurrentUser` redirects a signed-out browser (requests that
-    /// accept HTML), with `?return_to=<original path>`. When unset, it answers
-    /// `401 Unauthorized`.
+    /// Where `CurrentUser` redirects a signed-out browser (a request in one
+    /// of [`navigational_formats`](Self::navigational_formats)), with
+    /// `?return_to=<original path>`. When unset, it answers `401
+    /// Unauthorized`.
     pub sign_in_path: Option<String>,
+    /// The query parameter that carries the original path to
+    /// [`sign_in_path`](Self::sign_in_path). Default `return_to`. The OAuth
+    /// start route reads the same parameter unless `auth.oauth.origin_param`
+    /// says otherwise.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub return_to_param: Option<String>,
+    /// Which requests are redirected to [`sign_in_path`](Self::sign_in_path)
+    /// when signed out; the rest get `401`. Devise's `navigational_formats`.
+    /// Each entry is `html`, `turbo_stream`, `json`, `xml`, a media type
+    /// (`application/vnd.api+json`), `*/*` (a request with no `Accept`, or
+    /// one that accepts anything, like `curl`), or `any` (every request,
+    /// whatever its `Accept`). Default `[html]`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub navigational_formats: Option<Vec<String>>,
     /// Where the session data lives. Default [`SessionStoreKind::Cookie`].
     #[serde(default)]
     pub store: SessionStoreKind,
@@ -146,9 +163,11 @@ impl SessionStoreKind {
 ///     # (`{base_url}/auth/{provider}/callback`). Default: `server.host`
 ///     # plus `server.port`.
 ///     base_url: https://myapp.example.com
-///     after_sign_in_path: /          # used when the flow carried no return_to
+///     after_sign_in_path: /          # used when the link carried no return_to
 ///     after_sign_out_path: /
 ///     failure_path: /login           # optional; see `OAuthHandler::on_failure`
+///     origin_param: return_to        # `/auth/github?return_to=/path`; default shown
+///     state_cookie_name: loco_oauth_state  # `_<provider>` is appended
 ///     providers:
 ///       github:
 ///         client_id: <%= get_env(name="GITHUB_CLIENT_ID") %>
@@ -169,8 +188,9 @@ impl SessionStoreKind {
 pub struct OAuthConfig {
     /// Public base URL used for the `redirect_uri` sent to providers.
     pub base_url: Option<String>,
-    /// Where to land after sign-in when the flow carried no `return_to` and
-    /// the handler named no destination. Default `/`.
+    /// Where to land after sign-in when the sign-in link carried no
+    /// `return_to` and the handler named no destination. Wins over the
+    /// `Referer`. Default: the same-site `Referer`, then `/`.
     pub after_sign_in_path: Option<String>,
     /// Where the sign-out route redirects. Default `/`.
     pub after_sign_out_path: Option<String>,
@@ -178,6 +198,17 @@ pub struct OAuthConfig {
     /// `?error=<kind>&provider=<name>` (`OmniAuth`'s `/auth/failure`) instead of
     /// rendering a small error page.
     pub failure_path: Option<String>,
+    /// The query parameter of `/auth/{provider}` that names where to land
+    /// after sign-in (`OmniAuth`'s `origin_param`). Default:
+    /// `auth.session.return_to_param`, then `return_to`. Must not be
+    /// `remember`, the remember-me flag.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub origin_param: Option<String>,
+    /// Name of the encrypted cookie that holds the flow state while the user
+    /// is at the provider; `_<provider>` is appended. Default
+    /// `loco_oauth_state`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub state_cookie_name: Option<String>,
     /// Providers by name. The name is the URL segment: `github` is served at
     /// `/auth/github`.
     #[serde(default)]

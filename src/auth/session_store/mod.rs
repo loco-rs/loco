@@ -453,7 +453,8 @@ pub fn is_server_side(ctx: &AppContext) -> bool {
 ///
 /// # Errors
 ///
-/// When `ttl` is zero; remember-me is configured with the `cookie` store, or
+/// When `ttl` is zero; `return_to_param` is not a plain parameter name
+/// (letters, digits, `_`, `-`, `.`); remember-me is configured with the `cookie` store, or
 /// would expire before the session it is meant to outlive (when set
 /// explicitly), or outlast what browsers
 /// keep; or the session and remember-me cookies share a name.
@@ -464,6 +465,14 @@ pub fn validate(config: &Config) -> Result<()> {
     let bad = |msg: String| Err(Error::Message(msg));
     if session.ttl == Some(0) {
         return bad("auth.session.ttl must be at least 1 second".to_string());
+    }
+    if let Some(param) = session.return_to_param.as_deref()
+        && !is_param_name(param)
+    {
+        return bad(format!(
+            "auth.session.return_to_param `{param}` is not a query parameter name: use \
+             letters, digits, `_`, `-` or `.`"
+        ));
     }
     if let Some(remember_for) = session.remember_for {
         if !session.store.is_server_side() {
@@ -509,6 +518,15 @@ pub fn validate(config: &Config) -> Result<()> {
         ));
     }
     Ok(())
+}
+
+/// Whether `name` is a plain query parameter name: non-empty, letters,
+/// digits, `_`, `-` and `.` only.
+pub(crate) fn is_param_name(name: &str) -> bool {
+    !name.is_empty()
+        && name
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'-' | b'.'))
 }
 
 /// `remember_for` as configured, or by default 14 days, or a day beyond `ttl`

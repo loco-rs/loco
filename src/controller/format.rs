@@ -33,8 +33,12 @@ use serde::Serialize;
 use serde_json::json;
 
 use crate::{
-    controller::views::{self, ViewRenderer},
-    Result,
+    controller::{
+        middleware::format::RespondTo,
+        views::{self, ViewRenderer},
+        ErrorDetail,
+    },
+    Error, Result,
 };
 
 /// Returns an empty response.
@@ -203,6 +207,141 @@ where
     S: Serialize,
 {
     render().template(template, data)
+}
+
+/// Answers one action in the format the request asked for, like Rails'
+/// `respond_to do |format| ... end`.
+///
+/// Give a branch per format; only the one that matches runs. A request
+/// with no clear preference (no `Accept`, `*/*`, a form post) gets the
+/// first branch given. A request for a format with no branch gets
+/// `406 Not Acceptable`.
+///
+/// ```rust
+/// use loco_rs::prelude::*;
+/// use serde_json::json;
+///
+/// async fn show(
+///     Format(respond_to): Format,
+///     ViewEngine(v): ViewEngine<TeraView>,
+/// ) -> Result<Response> {
+///     let post = json!({ "id": 1, "title": "Hello" });
+///     format::respond_to(&respond_to)
+///         .html(|| format::view(&v, "posts/show.html", json!({ "post": &post })))
+///         .json(|| format::json(&post))
+///         .render()
+/// }
+/// ```
+pub fn respond_to(format: &RespondTo) -> Responder<'_> {
+    Responder {
+        format,
+        answer: None,
+    }
+}
+
+/// Renders `key` with `data` for a browser, or `data` itself as JSON for a
+/// JSON request, like the Rails `respond_with` responder.
+///
+/// Use it when the template and the API show the same data. It is
+/// [`respond_to`] with an `html` and a `json` branch.
+///
+/// # Errors
+///
+/// When rendering fails, or the request asked for a format that is neither
+/// HTML nor JSON (`406`).
+pub fn respond_with<V, S>(v: &V, format: &RespondTo, key: &str, data: S) -> Result<Response>
+where
+    V: ViewRenderer,
+    S: Serialize,
+{
+    let data = serde_json::to_value(data)?;
+    respond_to(format)
+        .html(|| view(v, key, &data))
+        .json(|| json(&data))
+        .render()
+}
+
+/// Built by [`respond_to`]; see there.
+#[must_use = "call `render()` to get the response"]
+pub struct Responder<'a> {
+    format: &'a RespondTo,
+    answer: Option<Result<Response>>,
+}
+
+impl Responder<'_> {
+    fn branch<F>(mut self, wanted: &RespondTo, f: F) -> Self
+    where
+        F: FnOnce() -> Result<Response>,
+    {
+        if self.answer.is_none() && self.accepts(wanted) {
+            self.answer = Some(f());
+        }
+        self
+    }
+
+    fn accepts(&self, wanted: &RespondTo) -> bool {
+        match self.format {
+            // No preference: the first branch given wins.
+            RespondTo::None | RespondTo::Other(_) => true,
+            explicit => explicit == wanted,
+        }
+    }
+
+    /// The answer for a browser (`text/html`).
+    pub fn html<F>(self, f: F) -> Self
+    where
+        F: FnOnce() -> Result<Response>,
+    {
+        self.branch(&RespondTo::Html, f)
+    }
+
+    /// The answer for `application/json`, `.json` paths and the JSON
+    /// prefix of the [`respond_to`](crate::controller::middleware::respond_to)
+    /// middleware.
+    pub fn json<F>(self, f: F) -> Self
+    where
+        F: FnOnce() -> Result<Response>,
+    {
+        self.branch(&RespondTo::Json, f)
+    }
+
+    /// The answer for `application/xml` or `text/xml`.
+    pub fn xml<F>(self, f: F) -> Self
+    where
+        F: FnOnce() -> Result<Response>,
+    {
+        self.branch(&RespondTo::Xml, f)
+    }
+
+    /// The answer for any format no earlier branch took, like Rails'
+    /// `format.any`.
+    pub fn any<F>(mut self, f: F) -> Self
+    where
+        F: FnOnce() -> Result<Response>,
+    {
+        if self.answer.is_none() {
+            self.answer = Some(f());
+        }
+        self
+    }
+
+    /// The chosen branch's response.
+    ///
+    /// # Errors
+    ///
+    /// The branch's own error, or `406 Not Acceptable` when no branch
+    /// matched the requested format.
+    pub fn render(self) -> Result<Response> {
+        self.answer.unwrap_or_else(|| {
+            Err(Error::CustomError(
+                StatusCode::NOT_ACCEPTABLE,
+                ErrorDetail::new(
+                    "not_acceptable",
+                    "This action cannot answer in the requested format",
+                ),
+            ))
+        })
+    }
 }
 
 #[derive(Debug)]
@@ -821,5 +960,47 @@ mod tests {
             response_signature(via_free).await,
             response_signature(via_builder).await
         );
+    }
+
+    async fn answer(format: &RespondTo) -> Result<String> {
+        let res = respond_to(format)
+            .html(|| html("html"))
+            .json(|| json("json"))
+            .render()?;
+        Ok(response_body_to_string(res).await)
+    }
+
+    #[tokio::test]
+    async fn respond_to_picks_the_requested_branch() {
+        assert_eq!(answer(&RespondTo::Html).await.unwrap(), "html");
+        assert_eq!(answer(&RespondTo::Json).await.unwrap(), r#""json""#);
+        // No preference: the first branch wins.
+        assert_eq!(answer(&RespondTo::None).await.unwrap(), "html");
+        assert_eq!(
+            answer(&RespondTo::Other("*/*".to_string())).await.unwrap(),
+            "html"
+        );
+    }
+
+    #[tokio::test]
+    async fn respond_to_runs_only_the_chosen_branch() {
+        let res = respond_to(&RespondTo::Json)
+            .html(|| panic!("html branch must not run"))
+            .json(|| json("json"))
+            .render();
+        assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    async fn respond_to_without_a_matching_branch_is_not_acceptable() {
+        let err = answer(&RespondTo::Xml).await.unwrap_err();
+        assert_eq!(err.into_response().status(), StatusCode::NOT_ACCEPTABLE);
+
+        let res = respond_to(&RespondTo::Xml)
+            .html(|| html("html"))
+            .any(|| text("any"))
+            .render()
+            .unwrap();
+        assert_eq!(response_body_to_string(res).await, "any");
     }
 }
