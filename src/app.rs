@@ -605,7 +605,9 @@ pub trait Hooks: Send {
 
     /// Called when the application is shutting down.
     /// This function allows users to perform any necessary cleanup or final
-    /// actions before the application stops completely.
+    /// actions before the application stops completely. It runs after
+    /// in-flight requests finish, and in worker-only modes after the workers
+    /// finish their current jobs. A force quit skips it.
     async fn on_shutdown(_ctx: &AppContext) {}
 }
 
@@ -660,18 +662,19 @@ pub async fn serve_router(
         tokio::net::TcpListener::bind(&format!("{}:{}", serve_params.binding, serve_params.port))
             .await?;
 
-    axum::serve(
+    let served = axum::serve(
         listener,
         app.into_make_service_with_connect_info::<SocketAddr>(),
     )
     .with_graceful_shutdown(async move {
         shutdown_signal().await;
         tracing::info!("shutting down...");
-        on_shutdown.await;
     })
-    .await?;
+    .await;
 
-    Ok(())
+    // After the drain, so in-flight requests never see resources the hook closed.
+    on_shutdown.await;
+    Ok(served?)
 }
 
 #[cfg(test)]

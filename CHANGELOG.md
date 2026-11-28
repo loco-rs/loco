@@ -65,6 +65,12 @@
   config structs).
 - Generated apps also get the skill under `.agents/skills/loco/`, alongside `.claude/skills/loco/`, for Zed, Cursor and other Agent Skills clients (#1857, @paoValle).
 
+### Fixed
+
+- `Hooks::on_shutdown` ran as soon as the shutdown signal arrived, so in-flight requests, and in worker-only modes in-flight jobs, could hit resources it had closed. It now runs after the HTTP drain, and in worker-only modes after the workers finish their current jobs. A second Ctrl-C (force quit) skips it and exits with an error.
+- Workers now stop on the shutdown signal. When the server and workers run in one process they used to stop only after the HTTP drain finished.
+- The agent skill's cache recipe said `max_capacity` is in bytes; it counts entries.
+
 ## 1.3.1 - 2026-11-05
 
 ### Fixed
