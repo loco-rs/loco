@@ -40,7 +40,7 @@ cache:
 ```yaml
 # omit the `cache` key entirely, or set explicitly — this is the default
 cache:
-  kind: Null
+  kind: "Null"             # quoted: a bare Null is YAML's null and fails to load
 ```
 
 `InMem` needs the `cache_inmem` feature (on by default); `Database` needs `with-db` (on by default); `Redis` needs `cache_redis` (off by default — add it to your `Cargo.toml`). See the [feature flags reference](/docs/reference/feature-flags).
