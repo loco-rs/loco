@@ -18,13 +18,42 @@ fn repo_root() -> PathBuf {
         .to_path_buf()
 }
 
-/// Everything that ends up inside a user's app or in front of an agent.
-const SHIPPED: [&str; 4] = [
-    "loco-new/base_template/README.md",
-    "loco-new/base_template/AGENTS.md",
-    "loco-new/base_template/.claude/skills/loco",
-    "loco-gen/src/templates",
-];
+/// Everything that ends up inside a user's app or in front of an agent,
+/// as well as the repository READMEs and example documentation.
+fn collect_targets(root: &Path) -> Vec<PathBuf> {
+    let mut targets = vec![
+        root.join("loco-new/base_template/README.md"),
+        root.join("loco-new/base_template/AGENTS.md"),
+        root.join("loco-new/base_template/.claude/skills/loco"),
+        root.join("loco-gen/src/templates"),
+    ];
+
+    // Repo-level READMEs (including translations)
+    if let Ok(entries) = std::fs::read_dir(root) {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name_str = name.to_string_lossy();
+            if name_str.starts_with("README") && name_str.ends_with(".md") {
+                targets.push(entry.path());
+            }
+        }
+    }
+
+    // Example READMEs
+    let examples = root.join("examples");
+    if let Ok(entries) = std::fs::read_dir(examples) {
+        for entry in entries.flatten() {
+            let readme = entry.path().join("README.md");
+            if readme.is_file() {
+                targets.push(readme);
+            }
+        }
+    }
+
+    targets.sort();
+    targets.dedup();
+    targets
+}
 
 fn markdown_and_templates(root: &Path) -> Vec<PathBuf> {
     let mut out = Vec::new();
@@ -55,10 +84,12 @@ fn every_docs_link_a_generated_app_ships_resolves_to_a_real_page() {
     let mut dead = Vec::new();
     let mut checked = 0usize;
 
-    for target in SHIPPED {
-        let path = root.join(target);
+    for path in collect_targets(&root) {
         if !path.exists() {
-            panic!("{target} no longer exists — update this test's SHIPPED list");
+            panic!(
+                "{} no longer exists — update collect_targets",
+                path.display()
+            );
         }
 
         for file in markdown_and_templates(&path) {

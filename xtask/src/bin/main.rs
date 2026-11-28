@@ -28,6 +28,9 @@ enum Commands {
     /// Parse every fenced `rust` block in the docs tree and fail on the ones
     /// that are not valid Rust. Syntax only — see `xtask::docs_syntax`.
     DocsSyntax,
+    /// Check that every `loco.rs/docs/` link in READMEs, shipped templates,
+    /// and agent skills resolves to a real documentation page.
+    DocsLinks,
     /// Regenerate the `loco` agent skill's API index from rustdoc JSON and
     /// mirror the skill into the `loco new` app template, so neither can drift
     /// from the crate. See `xtask::agent_skill`.
@@ -100,6 +103,10 @@ fn main() -> eyre::Result<()> {
         Commands::DocsSyntax => {
             xtask::docs_syntax::run(&project_dir)?;
             xtask::CmdExit::ok_with_message("docs-syntax passed")
+        }
+        Commands::DocsLinks => {
+            xtask::docs_links::run(&project_dir)?;
+            xtask::CmdExit::ok_with_message("docs-links passed")
         }
         Commands::AgentSkill { check } => {
             xtask::agent_skill::run(&project_dir, check)?;
